@@ -1,0 +1,138 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+  }
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #060B19;
+    color: #EDF2F4;
+  }
+}
+
+.font-cinzel {
+  font-family: 'Cinzel', serif;
+}
+.font-serif-vintage {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+.font-handwriting {
+  font-family: 'Great Vibes', cursive, 'Georgia';
+}
+
+/* Custom Gold Glow & Magical Aesthetics */
+.gold-glow {
+  box-shadow: 0 0 25px rgba(255, 209, 102, 0.35);
+}
+.gold-glow-lg {
+  box-shadow: 0 0 45px rgba(255, 209, 102, 0.45);
+}
+.red-glow {
+  box-shadow: 0 0 25px rgba(217, 4, 41, 0.35);
+}
+.magical-shadow {
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 209, 102, 0.2);
+}
+
+.wax-seal {
+  background: radial-gradient(circle at 35% 35%, #EF233C 0%, #D90429 50%, #780016 100%);
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -3px 6px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.parchment-bg {
+  background-color: #FCF9F2;
+  background-image: radial-gradient(#F3EBD8 1px, transparent 1px), radial-gradient(#E8DCBF 1px, #FCF9F2 1px);
+  background-size: 40px 40px;
+  background-position: 0 0, 20px 20px;
+}
+
+/* Eye-comfort Reading Mode */
+.parchment-reading-mode {
+  background-color: #1F1914 !important;
+  background-image: radial-gradient(#2A221B 1px, transparent 1px), radial-gradient(#2A221B 1px, #1F1914 1px);
+}
+
+/* =========================================================================
+   Papai Noel - Animação de Voo Oscilante (CSS Keyframes)
+   Altera suavemente a propriedade 'transform: translate' para criar
+   o efeito de voo oscilante e respeita rigorosamente 'prefers-reduced-motion'.
+   ========================================================================= */
+
+@keyframes santaFlightOscillate {
+  0% {
+    transform: translate(0px, 0px);
+  }
+  20% {
+    transform: translate(-6px, -12px);
+  }
+  40% {
+    transform: translate(5px, -5px);
+  }
+  60% {
+    transform: translate(-3px, -14px);
+  }
+  80% {
+    transform: translate(6px, -7px);
+  }
+  100% {
+    transform: translate(0px, 0px);
+  }
+}
+
+@keyframes santaSleighTilt {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(1.2deg);
+  }
+  75% {
+    transform: rotate(-0.8deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes santaGoldenGlow {
+  0%, 100% {
+    opacity: 0.5;
+    filter: drop-shadow(0 0 12px rgba(255, 209, 102, 0.3));
+  }
+  50% {
+    opacity: 0.85;
+    filter: drop-shadow(0 0 24px rgba(255, 209, 102, 0.65));
+  }
+}
+
+.animate-santa-flight {
+  animation: santaFlightOscillate 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-santa-tilt {
+  animation: santaSleighTilt 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-santa-glow {
+  animation: santaGoldenGlow 3.5s ease-in-out infinite;
+}
+
+/* Acessibilidade estrita com prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-santa-flight,
+  .animate-santa-tilt,
+  .animate-santa-glow,
+  .santa-flight-animated {
+    animation: none !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}

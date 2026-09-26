@@ -1,0 +1,8 @@
+{
+  "name": "Remix Carta Mágica",
+  "description": "Plataforma SaaS de experiências personalizadas de Natal onde pais e responsáveis criam cartas e mensagens inesquecíveis do Papai Noel para crianças com inteligência artificial.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
