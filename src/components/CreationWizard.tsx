@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { X, Sparkles, Wand2 } from "lucide-react";
 import { PlanType, Letter } from "../types";
 
@@ -23,6 +24,23 @@ export default function CreationWizard({
   const [parentNotes, setParentNotes] = useState("");
   const [style, setStyle] = useState("mágico");
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+
+  const loadingMessages = [
+    "O Papai Noel está pegando a pena dourada...",
+    "Os duendes estão conferindo o Livro Dourado...",
+    "O Rudolph está iluminando o pergaminho...",
+    "Carimbando o selo de cera do Polo Norte...",
+  ];
+
+  useEffect(() => {
+    if (!loading) {
+      setLoadingStep(0);
+      return;
+    }
+    const t = setInterval(() => setLoadingStep((s) => (s + 1) % loadingMessages.length), 1800);
+    return () => clearInterval(t);
+  }, [loading]);
 
   if (!isOpen) return null;
 
@@ -50,7 +68,7 @@ export default function CreationWizard({
 
       if (res.ok) {
         const data = await res.json();
-        onGenerated(data);
+        onGenerated(data.letter ?? data);
       } else {
         // Fallback local se o backend não responder
         const mockLetter: Letter = {
@@ -107,8 +125,18 @@ Papai Noel 🎅`,
   };
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[#0B132B] border-2 border-[#FFD166] rounded-3xl w-full max-w-lg p-6 sm:p-8 relative text-left shadow-2xl my-8">
+    <motion.div
+      className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25 }}
+    >
+      <motion.div
+        className="bg-[#0B132B] border-2 border-[#FFD166] rounded-3xl w-full max-w-lg p-6 sm:p-8 relative text-left shadow-2xl my-8"
+        initial={{ opacity: 0, y: 40, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 260, damping: 24 }}
+      >
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-[#EDF2F4]/60 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
@@ -118,9 +146,13 @@ Papai Noel 🎅`,
         </button>
 
         <div className="flex items-center gap-2 mb-2">
-          <span className="w-8 h-8 rounded-full bg-[#D90429] flex items-center justify-center text-sm shadow">
+          <motion.span
+            className="w-8 h-8 rounded-full bg-[#D90429] flex items-center justify-center text-sm shadow"
+            animate={{ rotate: [0, -12, 10, -6, 0] }}
+            transition={{ duration: 1.2, repeat: Infinity, repeatDelay: 2.5 }}
+          >
             🎅
-          </span>
+          </motion.span>
           <span className="text-xs font-bold text-[#FFD166] uppercase tracking-wider">
             Oficina Oficial do Polo Norte
           </span>
@@ -206,23 +238,34 @@ Papai Noel 🎅`,
           <button
             type="submit"
             disabled={loading || !childName.trim()}
-            className="w-full mt-6 bg-gradient-to-r from-[#D90429] via-[#EF233C] to-[#D90429] text-white font-bold py-3.5 rounded-full flex items-center justify-center gap-2 shadow-lg border border-[#FFD166]/50 hover:scale-[1.02] active:scale-[0.98] transition-transform cursor-pointer disabled:opacity-50"
+            className="w-full mt-6 bg-gradient-to-r from-[#D90429] via-[#EF233C] to-[#D90429] text-white font-bold py-3.5 rounded-full flex items-center justify-center gap-2 shadow-lg border border-[#FFD166]/50 hover:scale-[1.02] active:scale-[0.98] transition-transform cursor-pointer disabled:opacity-50 btn-shine"
             id="wizard-submit-btn"
           >
             {loading ? (
               <>
-                <Sparkles className="w-4 h-4 animate-spin text-[#FFD166]" />
-                <span>O Papai Noel está escrevendo...</span>
+                <Sparkles className="w-4 h-4 animate-spin text-[#FFD166] relative z-10" />
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={loadingStep}
+                    className="relative z-10"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {loadingMessages[loadingStep]}
+                  </motion.span>
+                </AnimatePresence>
               </>
             ) : (
               <>
-                <Wand2 className="w-4 h-4 text-[#FFD166]" />
-                <span>Gerar Carta Mágica</span>
+                <Wand2 className="w-4 h-4 text-[#FFD166] relative z-10" />
+                <span className="relative z-10">Gerar Carta Mágica</span>
               </>
             )}
           </button>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

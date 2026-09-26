@@ -1,5 +1,6 @@
 import { Check, Sparkles } from "lucide-react";
 import { PlanType } from "../types";
+import Reveal from "./Reveal";
 
 interface PricingSectionProps {
   onSelectPlan: (plan: PlanType) => void;
@@ -8,7 +9,7 @@ interface PricingSectionProps {
 export default function PricingSection({ onSelectPlan }: PricingSectionProps) {
   return (
     <section className="py-16 md:py-24 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto" id="precos">
-      <div className="text-center max-w-2xl mx-auto mb-12">
+      <Reveal className="text-center max-w-2xl mx-auto mb-12">
         <span className="text-xs text-[#FFD166] uppercase font-bold tracking-widest block mb-2">
           Acessível para todas as famílias
         </span>
@@ -18,11 +19,12 @@ export default function PricingSection({ onSelectPlan }: PricingSectionProps) {
         <p className="text-sm sm:text-base text-[#EDF2F4]/75">
           Experimente 100% grátis ou desbloqueie narração em áudio mágica e certificado dourado de bom comportamento.
         </p>
-      </div>
+      </Reveal>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
         {/* Free Plan */}
-        <div className="bg-[#0B132B]/80 border border-white/10 rounded-3xl p-7 sm:p-8 flex flex-col justify-between backdrop-blur-sm">
+        <Reveal delay={0.1} className="h-full">
+        <div className="h-full bg-[#0B132B]/80 border border-white/10 rounded-3xl p-7 sm:p-8 flex flex-col justify-between backdrop-blur-sm hover:-translate-y-1.5 hover:border-white/25 transition-all duration-300">
           <div>
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-cinzel text-xl font-bold text-white">Carta Digital</h3>
@@ -61,10 +63,12 @@ export default function PricingSection({ onSelectPlan }: PricingSectionProps) {
             Gerar Carta Grátis
           </button>
         </div>
+        </Reveal>
 
         {/* Pro Plan */}
-        <div className="bg-gradient-to-b from-[#1C2541] via-[#0B132B] to-[#0B132B] border-2 border-[#FFD166] rounded-3xl p-7 sm:p-8 flex flex-col justify-between relative shadow-2xl">
-          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#D90429] to-[#EF233C] text-white text-[11px] font-bold uppercase tracking-wider px-4 py-1 rounded-full border border-[#FFD166]/60 shadow-md flex items-center gap-1">
+        <Reveal delay={0.25} className="h-full">
+        <div className="h-full pro-glow-border rounded-3xl p-7 sm:p-8 flex flex-col justify-between relative shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_25px_60px_-15px_rgba(255,209,102,0.45)] transition-all duration-300">
+          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#D90429] to-[#EF233C] text-white text-[11px] font-bold uppercase tracking-wider px-4 py-1 rounded-full border border-[#FFD166]/60 shadow-md flex items-center gap-1 whitespace-nowrap">
             <Sparkles className="w-3 h-3 text-[#FFD166]" />
             <span>Mais Popular e Completo</span>
           </div>
@@ -104,12 +108,13 @@ export default function PricingSection({ onSelectPlan }: PricingSectionProps) {
           </div>
           <button
             onClick={() => onSelectPlan("pro")}
-            className="w-full bg-gradient-to-r from-[#D90429] via-[#EF233C] to-[#D90429] hover:from-[#EF233C] hover:to-[#9B021A] text-white font-bold py-3.5 rounded-full text-sm transition-transform active:scale-95 shadow-lg border border-[#FFD166]/50 gold-glow cursor-pointer"
+            className="w-full bg-gradient-to-r from-[#D90429] via-[#EF233C] to-[#D90429] hover:from-[#EF233C] hover:to-[#9B021A] text-white font-bold py-3.5 rounded-full text-sm transition-transform active:scale-95 shadow-lg border border-[#FFD166]/50 cursor-pointer btn-shine animate-soft-pulse"
             id="plan-pro-btn"
           >
-            Garantir Magia Completa
+            <span className="relative z-10">Garantir Magia Completa</span>
           </button>
         </div>
+        </Reveal>
       </div>
     </section>
   );

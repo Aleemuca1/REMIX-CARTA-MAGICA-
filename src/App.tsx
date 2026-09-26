@@ -4,6 +4,7 @@ import LandingHero from "./components/LandingHero";
 import HowItWorks from "./components/HowItWorks";
 import PricingSection from "./components/PricingSection";
 import SnowCanvas from "./components/SnowCanvas";
+import TwinkleStars from "./components/TwinkleStars";
 import SampleLetterPreview from "./components/SampleLetterPreview";
 import CreationWizard from "./components/CreationWizard";
 import LetterView from "./components/LetterView";
@@ -35,6 +36,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#060B19] text-[#EDF2F4] relative flex flex-col selection:bg-[#FFD166] selection:text-[#060B19]">
       {/* Falling snow atmospheric effect */}
+      <TwinkleStars />
       <SnowCanvas />
 
       {/* Navigation Header */}

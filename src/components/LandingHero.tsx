@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { Sparkles, ArrowRight, ShieldCheck, Heart, Volume2, Stamp } from "lucide-react";
 import ChristmasCountdown from "./ChristmasCountdown";
 import HeroSantaFlight from "./HeroSantaFlight";
@@ -15,6 +16,15 @@ export default function LandingHero({
   onViewSample,
 }: LandingHeroProps) {
   const [envelopeOpen, setEnvelopeOpen] = useState(false);
+  const reduce = useReducedMotion();
+  const item = (i: number) =>
+    reduce
+      ? {}
+      : {
+          initial: { opacity: 0, y: 24 },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: 0.7, delay: 0.1 + i * 0.12, ease: [0.22, 1, 0.36, 1] as const },
+        };
 
   return (
     <section className="relative pt-6 pb-16 md:pt-12 md:pb-24 px-4 sm:px-6 lg:px-8 w-full overflow-hidden" id="hero-section">
@@ -25,31 +35,31 @@ export default function LandingHero({
         {/* Left Column: Emotional Copy & CTAs */}
         <div className="lg:col-span-7 space-y-5 sm:space-y-6 text-center lg:text-left z-20">
           {/* Subtle Tag */}
-          <div className="inline-flex items-center gap-2 bg-[#0B132B]/90 border border-[#FFD166]/40 rounded-full px-4 py-1.5 text-xs text-[#FFD166] shadow-md mx-auto lg:mx-0">
+          <motion.div {...item(0)} className="inline-flex items-center gap-2 bg-[#0B132B]/90 border border-[#FFD166]/40 rounded-full px-4 py-1.5 text-xs text-[#FFD166] shadow-md mx-auto lg:mx-0">
             <span className="flex h-2 w-2 rounded-full bg-[#EF233C] animate-ping" />
             <span className="font-semibold tracking-wide">Experiência Oficial de Natal por Inteligência Artificial</span>
-          </div>
+          </motion.div>
 
           {/* Headline Mandated by User */}
-          <h1 className="font-cinzel text-3xl sm:text-4xl lg:text-[40px] xl:text-5xl font-extrabold text-white leading-[1.18] tracking-tight">
+          <motion.h1 {...item(1)} className="font-cinzel text-3xl sm:text-4xl lg:text-[40px] xl:text-5xl font-extrabold text-white leading-[1.18] tracking-tight">
             Neste Natal, o Papai Noel vai chamar seu filho{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FFE194] via-[#FFD166] to-[#FFB703] drop-shadow-sm">
+            <span className="text-gold-shimmer drop-shadow-sm">
               pelo nome.
             </span>
-          </h1>
+          </motion.h1>
 
           {/* Subheadline Mandated by User */}
-          <p className="text-base sm:text-lg text-[#EDF2F4]/80 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
+          <motion.p {...item(2)} className="text-base sm:text-lg text-[#EDF2F4]/80 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
             Crie uma experiência mágica e personalizada que seu filho vai lembrar para sempre.
-          </p>
+          </motion.p>
 
           {/* Elegant Christmas Countdown for Dec 25 */}
-          <div className="pt-1 flex justify-center lg:justify-start">
+          <motion.div {...item(3)} className="pt-1 flex justify-center lg:justify-start">
             <ChristmasCountdown />
-          </div>
+          </motion.div>
 
           {/* Social Proof & Trust snippet */}
-          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 sm:gap-4 text-xs text-[#EDF2F4]/70 pt-1">
+          <motion.div {...item(4)} className="flex flex-wrap items-center justify-center lg:justify-start gap-3 sm:gap-4 text-xs text-[#EDF2F4]/70 pt-1">
             <div className="flex items-center gap-1.5 bg-[#1C2541]/70 px-3 py-1.5 rounded-full border border-white/5">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span>Privacidade Infantil Protegida</span>
@@ -62,18 +72,18 @@ export default function LandingHero({
               <Volume2 className="w-3.5 h-3.5 text-[#FFD166]" />
               <span>Voz e PDF prontos para imprimir</span>
             </div>
-          </div>
+          </motion.div>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+          <motion.div {...item(5)} className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
             <button
               onClick={() => onStartWizard("free")}
-              className="w-full sm:w-auto bg-gradient-to-r from-[#D90429] via-[#EF233C] to-[#D90429] hover:from-[#EF233C] hover:to-[#9B021A] text-white font-bold px-8 py-4 rounded-full shadow-lg border border-[#FFD166]/50 flex items-center justify-center gap-3 text-base sm:text-lg transition-all transform hover:scale-[1.03] active:scale-[0.98] cursor-pointer gold-glow"
+              className="group w-full sm:w-auto bg-gradient-to-r from-[#D90429] via-[#EF233C] to-[#D90429] hover:from-[#EF233C] hover:to-[#9B021A] text-white font-bold px-8 py-4 rounded-full shadow-lg border border-[#FFD166]/50 flex items-center justify-center gap-3 text-base sm:text-lg transition-all transform hover:scale-[1.03] active:scale-[0.98] cursor-pointer btn-shine animate-soft-pulse"
               id="hero-cta-free"
             >
-              <Sparkles className="w-5 h-5 text-[#FFD166]" />
-              <span>✨ Criar minha carta grátis</span>
-              <ArrowRight className="w-4 h-4 text-[#FFD166]" />
+              <Sparkles className="w-5 h-5 text-[#FFD166] relative z-10" />
+              <span className="relative z-10">Criar minha carta grátis</span>
+              <ArrowRight className="w-4 h-4 text-[#FFD166] relative z-10 transition-transform group-hover:translate-x-1" />
             </button>
 
             <button
@@ -83,7 +93,7 @@ export default function LandingHero({
             >
               <span>🎅 Ver como funciona</span>
             </button>
-          </div>
+          </motion.div>
 
           {/* Guarantee Tag */}
           <p className="text-xs text-[#EDF2F4]/60 text-center lg:text-left">
@@ -92,17 +102,22 @@ export default function LandingHero({
         </div>
 
         {/* Right Column: Visual Elegant Parchment Letter + Integrated Decorative Santa in Sky */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center relative z-20 w-full">
+        <motion.div
+          className="lg:col-span-5 flex flex-col items-center justify-center relative z-20 w-full"
+          initial={reduce ? false : { opacity: 0, scale: 0.9, rotate: -4 }}
+          animate={{ opacity: 1, scale: 1, rotate: 0 }}
+          transition={{ duration: 0.9, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        >
           {/* Dedicated celestial flight corridor in the upper-right sky above the letter card */}
           <div className="w-full relative h-28 sm:h-32 md:h-36 lg:h-40 flex items-end justify-end mb-2 sm:mb-3 pointer-events-none select-none">
             <HeroSantaFlight />
           </div>
 
-          <div className="relative w-full max-w-[360px] sm:max-w-[400px] xl:max-w-[420px] mx-auto">
+          <div className={`relative w-full max-w-[360px] sm:max-w-[400px] xl:max-w-[420px] mx-auto ${envelopeOpen ? "" : "animate-float-card"}`}>
             {/* North Pole Wax Seal Stamp */}
             <div 
               onClick={() => setEnvelopeOpen(!envelopeOpen)}
-              className="absolute -top-4 -right-2 sm:-top-5 sm:-right-3 z-30 wax-seal w-14 h-14 sm:w-16 sm:h-16 rounded-full flex flex-col items-center justify-center border-2 border-[#FFD166] text-[#FFD166] cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+              className="absolute -top-4 -right-2 sm:-top-5 sm:-right-3 z-30 wax-seal w-14 h-14 sm:w-16 sm:h-16 rounded-full flex flex-col items-center justify-center border-2 border-[#FFD166] text-[#FFD166] cursor-pointer hover:scale-110 active:scale-95 transition-transform animate-seal-wiggle"
               title="Clique para abrir ou fechar a carta"
               id="seal-stamp"
             >
@@ -200,7 +215,7 @@ export default function LandingHero({
               </span>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );

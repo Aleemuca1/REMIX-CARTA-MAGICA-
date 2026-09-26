@@ -1,4 +1,5 @@
 import { Sparkles, Edit3, Scroll, Gift } from "lucide-react";
+import Reveal from "./Reveal";
 
 interface HowItWorksProps {
   onStartWizard: (plan?: "free" | "pro") => void;
@@ -28,7 +29,7 @@ export default function HowItWorks({ onStartWizard }: HowItWorksProps) {
 
   return (
     <section className="py-16 md:py-24 px-4 sm:px-6 lg:px-8 max-w-6xl xl:max-w-7xl mx-auto" id="como-funciona">
-      <div className="text-center max-w-2xl mx-auto mb-12">
+      <Reveal className="text-center max-w-2xl mx-auto mb-12">
         <span className="text-xs text-[#FFD166] uppercase font-bold tracking-widest block mb-2">
           Simples, Rápido e Inesquecível
         </span>
@@ -38,15 +39,15 @@ export default function HowItWorks({ onStartWizard }: HowItWorksProps) {
         <p className="text-sm sm:text-base text-[#EDF2F4]/75">
           Em menos de 2 minutos você cria uma memória de infância que sua família guardará para sempre.
         </p>
-      </div>
+      </Reveal>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
         {steps.map((item, index) => (
+          <Reveal key={index} delay={index * 0.15}>
           <div
-            key={index}
-            className="bg-[#0B132B]/80 border border-white/10 rounded-2xl p-6 sm:p-7 relative backdrop-blur-sm hover:border-[#FFD166]/40 transition-colors"
+            className="group h-full bg-[#0B132B]/80 border border-white/10 rounded-2xl p-6 sm:p-7 relative backdrop-blur-sm hover:border-[#FFD166]/50 hover:-translate-y-2 hover:shadow-[0_18px_40px_-12px_rgba(255,209,102,0.35)] transition-all duration-300"
           >
-            <div className="w-12 h-12 rounded-xl bg-[#1C2541] flex items-center justify-center mb-4 border border-white/10">
+            <div className="icon-bounce w-12 h-12 rounded-xl bg-[#1C2541] flex items-center justify-center mb-4 border border-white/10">
               {item.icon}
             </div>
             <span className="font-cinzel font-extrabold text-2xl text-[#FFD166]/30 absolute top-6 right-6">
@@ -59,19 +60,20 @@ export default function HowItWorks({ onStartWizard }: HowItWorksProps) {
               {item.desc}
             </p>
           </div>
+          </Reveal>
         ))}
       </div>
 
-      <div className="text-center mt-10">
+      <Reveal className="text-center mt-10" delay={0.3}>
         <button
           onClick={() => onStartWizard("free")}
-          className="bg-gradient-to-r from-[#D90429] to-[#EF233C] text-white font-bold px-7 py-3 rounded-full text-sm sm:text-base inline-flex items-center gap-2 shadow-lg border border-[#FFD166]/40 hover:scale-105 transition-transform cursor-pointer"
+          className="bg-gradient-to-r from-[#D90429] to-[#EF233C] text-white font-bold px-7 py-3 rounded-full text-sm sm:text-base inline-flex items-center gap-2 shadow-lg border border-[#FFD166]/40 hover:scale-105 transition-transform cursor-pointer btn-shine"
           id="how-it-works-cta"
         >
           <Gift className="w-4 h-4 text-[#FFD166]" />
-          <span>Começar Agora Mesmo</span>
+          <span className="relative z-10">Começar Agora Mesmo</span>
         </button>
-      </div>
+      </Reveal>
     </section>
   );
 }
