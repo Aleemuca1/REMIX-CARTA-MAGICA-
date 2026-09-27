@@ -3,6 +3,9 @@ import { motion, useReducedMotion } from "motion/react";
 import { Sparkles, ArrowRight, ShieldCheck, Heart, Volume2, Stamp } from "lucide-react";
 import ChristmasCountdown from "./ChristmasCountdown";
 import HeroSantaFlight from "./HeroSantaFlight";
+import TypewriterNames from "./TypewriterNames";
+
+const DEMO_NAMES = ["Lucas", "Sofia", "Miguel", "Helena", "Arthur", "Alice"];
 
 interface LandingHeroProps {
   onStartWizard: (plan?: "free" | "pro") => void;
@@ -30,6 +33,7 @@ export default function LandingHero({
     <section className="relative pt-6 pb-16 md:pt-12 md:pb-24 px-4 sm:px-6 lg:px-8 w-full overflow-hidden" id="hero-section">
       {/* Background radial glow - strictly bounded to prevent horizontal expansion */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-full max-w-[650px] h-[360px] bg-radial from-[#D90429]/15 via-[#FFD166]/10 to-transparent blur-3xl pointer-events-none -z-10" />
+      <div className="aurora pointer-events-none -z-10" aria-hidden="true" />
 
       <div className="max-w-6xl xl:max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 xl:gap-12 items-center">
         {/* Left Column: Emotional Copy & CTAs */}
@@ -160,7 +164,7 @@ export default function LandingHero({
               {/* Body snippet */}
               <div className="font-serif text-sm sm:text-base leading-relaxed space-y-2 text-[#1C2541]">
                 <p className="font-cinzel font-bold text-[#9B021A] text-base">
-                  Ho Ho Ho! Meu querido Lucas,
+                  Ho Ho Ho! Olá, <TypewriterNames names={DEMO_NAMES} />!
                 </p>
                 <p>
                   Aqui do alto do Polo Norte, observei no meu telescópio de cristal o quanto você foi corajoso ao aprender a andar de bicicleta sem rodinhas este ano!

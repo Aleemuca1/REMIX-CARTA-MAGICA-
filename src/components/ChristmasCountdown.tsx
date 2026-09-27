@@ -1,5 +1,26 @@
 import { useState, useEffect } from "react";
 import { Clock } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+
+function FlipUnit({ value, suffix }: { value: string; suffix: string }) {
+  return (
+    <span className="relative inline-flex overflow-hidden bg-[#D90429]/40 px-1.5 py-0.5 rounded border border-[#EF233C]/40">
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span
+          key={value}
+          initial={{ y: "-100%", opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: "100%", opacity: 0 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className="inline-block tabular-nums"
+        >
+          {value}
+        </motion.span>
+      </AnimatePresence>
+      {suffix}
+    </span>
+  );
+}
 
 export default function ChristmasCountdown() {
   const [timeLeft, setTimeLeft] = useState({
@@ -36,13 +57,13 @@ export default function ChristmasCountdown() {
       <Clock className="w-3.5 h-3.5 text-[#FFD166] shrink-0" />
       <span className="text-[11px] sm:text-xs font-medium text-[#FFD166]">Faltam para o Natal:</span>
       <div className="flex items-center gap-1 font-mono font-bold text-white text-[11px] sm:text-xs">
-        <span className="bg-[#D90429]/40 px-1.5 py-0.5 rounded border border-[#EF233C]/40">{timeLeft.days}d</span>
+        <FlipUnit value={String(timeLeft.days)} suffix="d" />
         <span>:</span>
-        <span className="bg-[#D90429]/40 px-1.5 py-0.5 rounded border border-[#EF233C]/40">{String(timeLeft.hours).padStart(2, "0")}h</span>
+        <FlipUnit value={String(timeLeft.hours).padStart(2, "0")} suffix="h" />
         <span>:</span>
-        <span className="bg-[#D90429]/40 px-1.5 py-0.5 rounded border border-[#EF233C]/40">{String(timeLeft.minutes).padStart(2, "0")}m</span>
+        <FlipUnit value={String(timeLeft.minutes).padStart(2, "0")} suffix="m" />
         <span>:</span>
-        <span className="bg-[#D90429]/40 px-1.5 py-0.5 rounded border border-[#EF233C]/40">{String(timeLeft.seconds).padStart(2, "0")}s</span>
+        <FlipUnit value={String(timeLeft.seconds).padStart(2, "0")} suffix="s" />
       </div>
     </div>
   );

@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
+import ChristmasLights from "./ChristmasLights";
 
 interface NavbarProps {
   onStartWizard: (plan?: "free" | "pro") => void;
@@ -6,16 +8,31 @@ interface NavbarProps {
 }
 
 export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   return (
-    <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-[#060B19]/80 border-b border-white/10">
-      <div className="max-w-6xl xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <header
+      className={`sticky top-0 z-40 w-full backdrop-blur-md border-b border-white/10 transition-all duration-300 ${
+        scrolled ? "bg-[#060B19]/95 shadow-[0_8px_30px_-10px_rgba(0,0,0,0.8)]" : "bg-[#060B19]/70"
+      }`}
+    >
+      <div
+        className={`max-w-6xl xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between transition-all duration-300 ${
+          scrolled ? "h-14" : "h-16"
+        }`}
+      >
         {/* Brand Logo */}
         <div
           onClick={() => onScrollTo("hero-section")}
           className="flex items-center gap-2.5 cursor-pointer group"
           id="navbar-brand"
         >
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#D90429] to-[#EF233C] flex items-center justify-center text-xl shadow-md border border-[#FFD166]/40 group-hover:scale-105 transition-transform">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#D90429] to-[#EF233C] flex items-center justify-center text-xl shadow-md border border-[#FFD166]/40 group-hover:scale-110 group-hover:rotate-12 transition-transform">
             🎅
           </div>
           <div className="flex flex-col">
@@ -38,6 +55,12 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
             Como Funciona
           </button>
           <button
+            onClick={() => onScrollTo("duvidas")}
+            className="text-xs sm:text-sm text-[#EDF2F4]/80 hover:text-white transition-colors cursor-pointer hidden md:inline-block"
+          >
+            Dúvidas
+          </button>
+          <button
             onClick={() => onScrollTo("precos")}
             className="text-xs sm:text-sm text-[#EDF2F4]/80 hover:text-white transition-colors cursor-pointer hidden sm:inline-block"
             id="nav-link-pricing"
@@ -46,14 +69,15 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
           </button>
           <button
             onClick={() => onStartWizard("free")}
-            className="bg-gradient-to-r from-[#D90429] to-[#EF233C] hover:from-[#EF233C] hover:to-[#9B021A] text-white font-bold px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm flex items-center gap-1.5 shadow-md border border-[#FFD166]/40 transition-transform active:scale-95 cursor-pointer"
+            className="bg-gradient-to-r from-[#D90429] to-[#EF233C] hover:from-[#EF233C] hover:to-[#9B021A] text-white font-bold px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm flex items-center gap-1.5 shadow-md border border-[#FFD166]/40 transition-transform active:scale-95 cursor-pointer btn-shine"
             id="nav-cta-create"
           >
-            <Sparkles className="w-3.5 h-3.5 text-[#FFD166]" />
-            <span>Criar Carta</span>
+            <Sparkles className="w-3.5 h-3.5 text-[#FFD166] relative z-10" />
+            <span className="relative z-10">Criar Carta</span>
           </button>
         </nav>
       </div>
+      <ChristmasLights />
     </header>
   );
 }

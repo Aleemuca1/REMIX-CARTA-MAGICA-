@@ -1,5 +1,6 @@
-import { useEffect } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import { useCallback, useEffect, useState } from "react";
+import { motion, useReducedMotion, AnimatePresence } from "motion/react";
+import EnvelopeIntro from "./EnvelopeIntro";
 import confetti from "canvas-confetti";
 import { X, Printer, Share2, Sparkles, Stamp } from "lucide-react";
 import { Letter } from "../types";
@@ -11,11 +12,13 @@ interface LetterViewProps {
 
 export default function LetterView({ letter, onClose }: LetterViewProps) {
   const reduce = useReducedMotion();
+  const [opened, setOpened] = useState(!!reduce);
+  const handleOpened = useCallback(() => setOpened(true), []);
   const paragraphs = (letter.content || "").split(/\n\s*\n/).filter(Boolean);
 
   // Chuva de confete dourado e vermelho quando a carta abre
   useEffect(() => {
-    if (reduce) return;
+    if (reduce || !opened) return;
     const colors = ["#FFD166", "#EF233C", "#FFFFFF", "#2DC653"];
     const fire = (ratio: number, opts: confetti.Options) =>
       confetti({ origin: { y: 0.65 }, colors, particleCount: Math.floor(180 * ratio), zIndex: 60, ...opts });
@@ -27,7 +30,7 @@ export default function LetterView({ letter, onClose }: LetterViewProps) {
       fire(0.1, { spread: 120, startVelocity: 45 });
     }, 450);
     return () => clearTimeout(t);
-  }, [reduce]);
+  }, [reduce, opened]);
 
   const handlePrint = () => {
     window.print();
@@ -52,7 +55,12 @@ export default function LetterView({ letter, onClose }: LetterViewProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
+      <AnimatePresence mode="wait">
+      {!opened ? (
+        <EnvelopeIntro key="env" childName={letter.childName} onDone={handleOpened} />
+      ) : (
       <motion.div
+        key="letter"
         initial={reduce ? false : { opacity: 0, y: 80, rotateX: 25, scale: 0.9 }}
         animate={{ opacity: 1, y: 0, rotateX: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 120, damping: 18 }}
@@ -164,6 +172,8 @@ export default function LetterView({ letter, onClose }: LetterViewProps) {
           </div>
         </div>
       </motion.div>
+      )}
+      </AnimatePresence>
     </motion.div>
   );
 }

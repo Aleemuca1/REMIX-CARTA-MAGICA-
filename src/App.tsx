@@ -5,6 +5,11 @@ import HowItWorks from "./components/HowItWorks";
 import PricingSection from "./components/PricingSection";
 import SnowCanvas from "./components/SnowCanvas";
 import TwinkleStars from "./components/TwinkleStars";
+import ScrollProgress from "./components/ScrollProgress";
+import MagicCursor from "./components/MagicCursor";
+import FloatingOrnaments from "./components/FloatingOrnaments";
+import StickyMobileCTA from "./components/StickyMobileCTA";
+import FAQSection from "./components/FAQSection";
 import SampleLetterPreview from "./components/SampleLetterPreview";
 import CreationWizard from "./components/CreationWizard";
 import LetterView from "./components/LetterView";
@@ -36,7 +41,10 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#060B19] text-[#EDF2F4] relative flex flex-col selection:bg-[#FFD166] selection:text-[#060B19]">
       {/* Falling snow atmospheric effect */}
+      <ScrollProgress />
       <TwinkleStars />
+      <FloatingOrnaments />
+      <MagicCursor />
       <SnowCanvas />
 
       {/* Navigation Header */}
@@ -56,6 +64,9 @@ export default function App() {
 
         {/* Pricing & Value Section */}
         <PricingSection onSelectPlan={handleStartWizard} />
+
+        {/* Perguntas frequentes */}
+        <FAQSection />
       </main>
 
       {/* Footer */}
@@ -72,6 +83,8 @@ export default function App() {
           </p>
         </div>
       </footer>
+
+      <StickyMobileCTA onClick={() => handleStartWizard("free")} />
 
       {/* Interactive Modals */}
       <SampleLetterPreview

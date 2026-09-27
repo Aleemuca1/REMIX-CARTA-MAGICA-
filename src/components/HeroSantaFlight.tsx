@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import santaSleighHeroImg from "../assets/images/santa_sleigh_hero_1789648784565.jpg";
+import santaSleighHeroImg from "../assets/images/santa-sleigh.webp";
 
 /**
  * Componente HeroSantaFlight
@@ -125,7 +125,7 @@ export default function HeroSantaFlight() {
             <img
               src={santaSleighHeroImg}
               alt="Papai Noel oficial voando em seu trenó mágico"
-              className="w-full h-auto max-h-[130px] sm:max-h-[160px] lg:max-h-[175px] object-contain drop-shadow-[0_8px_20px_rgba(0,0,0,0.65)] drop-shadow-[0_0_15px_rgba(255,209,102,0.3)] rounded-2xl"
+              className="w-full h-auto max-h-[130px] sm:max-h-[160px] lg:max-h-[175px] object-contain drop-shadow-[0_0_18px_rgba(255,209,102,0.35)]"
               onError={() => setImgError(true)}
               loading="eager"
             />
