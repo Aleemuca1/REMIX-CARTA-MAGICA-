@@ -13,6 +13,10 @@ const FAQS = [
     a: "Sim. Você gera e vê a carta completa sem pagar nada. O plano Magia Completa é opcional e acrescenta narração em áudio, PDF para impressão e certificado.",
   },
   {
+    q: "Como funciona o Calendário do Advento?",
+    a: "De 1 a 24 de dezembro abre uma portinha por dia, com minijogos, adivinhas, desafios de bondade e recados do Papai Noel. A primeira portinha é grátis para você experimentar; as outras fazem parte do plano Natal Completo.",
+  },
+  {
     q: "Posso imprimir a carta?",
     a: "Pode. Ela já vem no formato de pergaminho, pronta para imprimir em papel A4 e colocar em um envelope para a criança abrir.",
   },

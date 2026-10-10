@@ -55,6 +55,24 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
             Como Funciona
           </button>
           <button
+            onClick={() => onScrollTo("calendario")}
+            className="text-xs sm:text-sm text-[#EDF2F4]/80 hover:text-white transition-colors cursor-pointer hidden lg:inline-block"
+          >
+            📅 Calendário
+          </button>
+          <button
+            onClick={() => onScrollTo("jogo")}
+            className="text-xs sm:text-sm text-[#FFD166] hover:text-white font-semibold transition-colors cursor-pointer hidden sm:inline-block"
+          >
+            🎮 Jogo
+          </button>
+          <button
+            onClick={() => onScrollTo("atelie")}
+            className="text-xs sm:text-sm text-[#EDF2F4]/80 hover:text-white transition-colors cursor-pointer hidden lg:inline-block"
+          >
+            🎨 Ateliê
+          </button>
+          <button
             onClick={() => onScrollTo("duvidas")}
             className="text-xs sm:text-sm text-[#EDF2F4]/80 hover:text-white transition-colors cursor-pointer hidden md:inline-block"
           >
@@ -71,6 +89,7 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
             onClick={() => onStartWizard("free")}
             className="bg-gradient-to-r from-[#D90429] to-[#EF233C] hover:from-[#EF233C] hover:to-[#9B021A] text-white font-bold px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm flex items-center gap-1.5 shadow-md border border-[#FFD166]/40 transition-transform active:scale-95 cursor-pointer btn-shine"
             id="nav-cta-create"
+            data-celebrate
           >
             <Sparkles className="w-3.5 h-3.5 text-[#FFD166] relative z-10" />
             <span className="relative z-10">Criar Carta</span>

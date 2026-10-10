@@ -126,13 +126,13 @@ Papai Noel 🎅`,
 
   return (
     <motion.div
-      className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
     >
       <motion.div
-        className="bg-[#0B132B] border-2 border-[#FFD166] rounded-3xl w-full max-w-lg p-6 sm:p-8 relative text-left shadow-2xl my-8"
+        className="bg-[#0B132B] border-2 border-[#FFD166] rounded-3xl w-full max-w-lg p-6 sm:p-8 relative text-left shadow-2xl my-auto"
         initial={{ opacity: 0, y: 40, scale: 0.94 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 24 }}
@@ -191,9 +191,10 @@ Papai Noel 🎅`,
               />
             </div>
             <div>
-              <label className="block text-white font-semibold mb-1">Cidade / Estado</label>
+              <label className="block text-white font-semibold mb-1">Cidade / Estado *</label>
               <input
                 type="text"
+                required
                 placeholder="Ex: São Paulo, SP"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
@@ -237,7 +238,7 @@ Papai Noel 🎅`,
 
           <button
             type="submit"
-            disabled={loading || !childName.trim()}
+            disabled={loading || !childName.trim() || !city.trim()}
             className="w-full mt-6 bg-gradient-to-r from-[#D90429] via-[#EF233C] to-[#D90429] text-white font-bold py-3.5 rounded-full flex items-center justify-center gap-2 shadow-lg border border-[#FFD166]/50 hover:scale-[1.02] active:scale-[0.98] transition-transform cursor-pointer disabled:opacity-50 btn-shine"
             id="wizard-submit-btn"
           >

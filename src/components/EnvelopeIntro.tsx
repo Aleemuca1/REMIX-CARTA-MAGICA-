@@ -13,7 +13,7 @@ export default function EnvelopeIntro({ childName, onDone }: { childName: string
 
   return (
     <motion.div
-      className="relative w-[300px] sm:w-[380px] h-[200px] sm:h-[250px] cursor-pointer select-none"
+      className="relative self-center my-auto w-[300px] sm:w-[380px] h-[200px] sm:h-[250px] cursor-pointer select-none"
       initial={{ y: 60, opacity: 0, scale: 0.8, rotate: -6 }}
       animate={{ y: 0, opacity: 1, scale: 1, rotate: 0 }}
       exit={{ opacity: 0, scale: 1.1, transition: { duration: 0.3 } }}

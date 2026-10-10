@@ -1,4 +1,5 @@
 import { Sparkles, Edit3, Scroll, Gift } from "lucide-react";
+import { motion } from "motion/react";
 import Reveal from "./Reveal";
 
 interface HowItWorksProps {
@@ -41,11 +42,26 @@ export default function HowItWorks({ onStartWizard }: HowItWorksProps) {
         </p>
       </Reveal>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+      <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+        {/* Caminho do trenó ligando os passos */}
+        <svg className="hidden md:block absolute -top-10 left-0 w-full h-16 pointer-events-none" viewBox="0 0 1000 60" preserveAspectRatio="none" aria-hidden="true">
+          <motion.path
+            d="M 80 50 C 250 -10, 400 -10, 500 30 S 780 70, 920 20"
+            fill="none"
+            stroke="#FFD166"
+            strokeWidth="2"
+            strokeDasharray="6 8"
+            vectorEffect="non-scaling-stroke"
+            initial={{ pathLength: 0, opacity: 0 }}
+            whileInView={{ pathLength: 1, opacity: 0.7 }}
+            viewport={{ once: true }}
+            transition={{ duration: 2, ease: "easeInOut" }}
+          />
+        </svg>
         {steps.map((item, index) => (
           <Reveal key={index} delay={index * 0.15}>
           <div
-            className="group h-full bg-[#0B132B]/80 border border-white/10 rounded-2xl p-6 sm:p-7 relative backdrop-blur-sm hover:border-[#FFD166]/50 hover:-translate-y-2 hover:shadow-[0_18px_40px_-12px_rgba(255,209,102,0.35)] transition-all duration-300"
+            className="group snow-cap h-full bg-[#0B132B]/80 border border-white/10 rounded-2xl p-6 sm:p-7 relative backdrop-blur-sm hover:border-[#FFD166]/50 hover:-translate-y-2 hover:shadow-[0_18px_40px_-12px_rgba(255,209,102,0.35)] transition-all duration-300"
           >
             <div className="icon-bounce w-12 h-12 rounded-xl bg-[#1C2541] flex items-center justify-center mb-4 border border-white/10">
               {item.icon}

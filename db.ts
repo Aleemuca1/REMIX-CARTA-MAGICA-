@@ -13,7 +13,7 @@ export type LetterRecord = {
   giftRequest: string;
   parentNotes: string;
   style: string;
-  plan: "free" | "pro";
+  plan: "free" | "pro" | "natal";
   content: string;
   date: string;
   photoUrl?: string;

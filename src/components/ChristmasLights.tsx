@@ -6,11 +6,14 @@ export default function ChristmasLights({ count = 28 }: { count?: number }) {
     <div className="xmas-lights" aria-hidden="true">
       <svg className="xmas-wire" viewBox="0 0 100 10" preserveAspectRatio="none">
         <path
-          d={Array.from({ length: count }, (_, i) => {
-            const x0 = (i / count) * 100;
-            const x1 = ((i + 1) / count) * 100;
-            return `${i === 0 ? "M" : ""}${x0},1 Q${(x0 + x1) / 2},6 ${x1},1`;
-          }).join(" ")}
+          d={
+            "M0,1 " +
+            Array.from({ length: count }, (_, i) => {
+              const x0 = (i / count) * 100;
+              const x1 = ((i + 1) / count) * 100;
+              return `Q${(x0 + x1) / 2},6 ${x1},1`;
+            }).join(" ")
+          }
           fill="none"
           stroke="#1a2a1f"
           strokeWidth="0.35"

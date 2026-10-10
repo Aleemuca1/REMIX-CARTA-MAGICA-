@@ -23,6 +23,7 @@ export default function StickyMobileCTA({ onClick }: { onClick: () => void }) {
         >
           <button
             onClick={onClick}
+            data-celebrate
             className="w-full bg-gradient-to-r from-[#D90429] via-[#EF233C] to-[#D90429] text-white font-bold py-3.5 rounded-full flex items-center justify-center gap-2 shadow-lg border border-[#FFD166]/50 btn-shine animate-soft-pulse cursor-pointer"
           >
             <Sparkles className="w-4 h-4 text-[#FFD166] relative z-10" />

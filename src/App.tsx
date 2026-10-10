@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "./components/Navbar";
 import LandingHero from "./components/LandingHero";
 import HowItWorks from "./components/HowItWorks";
@@ -10,6 +10,19 @@ import MagicCursor from "./components/MagicCursor";
 import FloatingOrnaments from "./components/FloatingOrnaments";
 import StickyMobileCTA from "./components/StickyMobileCTA";
 import FAQSection from "./components/FAQSection";
+import GiftSurprise from "./components/GiftSurprise";
+import MusicToggle from "./components/MusicToggle";
+import SantaGame from "./components/SantaGame";
+import SnowDivider from "./components/SnowDivider";
+import Footer from "./components/Footer";
+import SnowToggle from "./components/SnowToggle";
+import FrostEdges from "./components/FrostEdges";
+import SnowGlobe from "./components/SnowGlobe";
+import AdventCalendar from "./components/advent/AdventCalendar";
+import AtelierSection from "./components/atelier/AtelierSection";
+import SantaPeek from "./components/SantaPeek";
+import { celebrateFrom } from "./lib/celebrate";
+import { snow } from "./lib/snow";
 import SampleLetterPreview from "./components/SampleLetterPreview";
 import CreationWizard from "./components/CreationWizard";
 import LetterView from "./components/LetterView";
@@ -20,6 +33,38 @@ export default function App() {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
   const [activeLetter, setActiveLetter] = useState<Letter | null>(null);
+
+  // Link compartilhado: /natal/<token> abre a carta direto
+  useEffect(() => {
+    const m = window.location.pathname.match(/^\/natal\/([a-z0-9-]+)\/?$/i);
+    if (!m) return;
+    fetch(`/api/letter/${m[1].toLowerCase()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((l) => l && setActiveLetter(l))
+      .catch(() => {});
+  }, []);
+
+  // Clique em área vazia da página: explosão de flocos de neve.
+  // Botões principais (data-celebrate) soltam uma chuva de presentes.
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const el = e.target as HTMLElement;
+      const cel = el.closest("[data-celebrate]") as HTMLElement | null;
+      if (cel) {
+        celebrateFrom(cel);
+        return;
+      }
+      if (el.closest("button, a, input, textarea, select, label, canvas, [role='button'], .parchment-bg")) return;
+      snow.burst(e.clientX, e.clientY);
+    };
+    window.addEventListener("click", onClick);
+    return () => window.removeEventListener("click", onClick);
+  }, []);
+
+  const closeLetter = () => {
+    setActiveLetter(null);
+    if (window.location.pathname.startsWith("/natal/")) window.history.replaceState(null, "", "/");
+  };
 
   const handleStartWizard = (plan: PlanType = "free") => {
     setSelectedPlan(plan);
@@ -60,31 +105,41 @@ export default function App() {
         />
 
         {/* How It Works Section */}
+        <SnowDivider />
         <HowItWorks onStartWizard={handleStartWizard} />
 
+        {/* Presente surpresa interativo */}
+        <GiftSurprise onStart={() => handleStartWizard("free")} />
+
+        {/* Jogo de Natal */}
+        <SantaGame onCreateLetter={() => handleStartWizard("free")} />
+
+        {/* Ateliê de Natal: colorir e desenhar */}
+        <AtelierSection />
+
         {/* Pricing & Value Section */}
+        <SnowDivider />
+        <AdventCalendar onUpgrade={() => handleScrollTo("precos")} />
+
+        <SnowGlobe />
+
+        <SnowDivider />
         <PricingSection onSelectPlan={handleStartWizard} />
 
         {/* Perguntas frequentes */}
+        <SnowDivider />
         <FAQSection />
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-white/10 bg-[#040812] py-8 text-center text-xs text-[#EDF2F4]/60">
-        <div className="max-w-6xl mx-auto px-4 space-y-2">
-          <p className="font-cinzel text-sm text-[#FFD166]">
-            Carta Mágica do Papai Noel • Polo Norte 2026
-          </p>
-          <p>
-            Transformando o Natal das crianças com inteligência artificial, carinho e memórias inesquecíveis.
-          </p>
-          <p className="text-[10px] text-[#EDF2F4]/40 pt-2">
-            © 2026 Carta Mágica. Todos os direitos reservados.
-          </p>
-        </div>
-      </footer>
+      <SnowDivider />
+      <Footer onScrollTo={handleScrollTo} />
 
       <StickyMobileCTA onClick={() => handleStartWizard("free")} />
+      <MusicToggle />
+      <SantaPeek />
+      <SnowToggle />
+      <FrostEdges />
 
       {/* Interactive Modals */}
       <SampleLetterPreview
@@ -101,7 +156,14 @@ export default function App() {
       />
 
       {activeLetter && (
-        <LetterView letter={activeLetter} onClose={() => setActiveLetter(null)} />
+        <LetterView
+          letter={activeLetter}
+          onClose={closeLetter}
+          onUpgrade={() => {
+            closeLetter();
+            setTimeout(() => handleScrollTo("precos"), 150);
+          }}
+        />
       )}
     </div>
   );

@@ -1,20 +1,85 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "motion/react";
 import EnvelopeIntro from "./EnvelopeIntro";
 import confetti from "canvas-confetti";
-import { X, Printer, Share2, Sparkles, Stamp } from "lucide-react";
+import { X, Printer, Share2, Sparkles, Stamp, Volume2, Square, Download, Lock, Check } from "lucide-react";
 import { Letter } from "../types";
+import { narrate, type Narrator } from "../lib/narration";
 
 interface LetterViewProps {
   letter: Letter;
   onClose: () => void;
+  onUpgrade?: () => void;
 }
 
-export default function LetterView({ letter, onClose }: LetterViewProps) {
+export default function LetterView({ letter, onClose, onUpgrade }: LetterViewProps) {
   const reduce = useReducedMotion();
   const [opened, setOpened] = useState(!!reduce);
   const handleOpened = useCallback(() => setOpened(true), []);
   const paragraphs = (letter.content || "").split(/\n\s*\n/).filter(Boolean);
+  const isPro = letter.plan === "pro" || letter.plan === "natal";
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const narratorRef = useRef<Narrator | null>(null);
+  const [speaking, setSpeaking] = useState<"idle" | "loading" | "playing">("idle");
+  const [toast, setToast] = useState<string | null>(null);
+  const [upsell, setUpsell] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2600);
+  };
+
+  useEffect(() => () => narratorRef.current?.stop(), []);
+
+  const handleListen = async () => {
+    if (speaking !== "idle") {
+      narratorRef.current?.stop();
+      narratorRef.current = null;
+      setSpeaking("idle");
+      return;
+    }
+    setSpeaking("loading");
+    // plano grátis: prévia com os dois primeiros parágrafos
+    const text = isPro ? letter.content : paragraphs.slice(0, 2).join("\n\n");
+    narratorRef.current = await narrate(text, letter.childName, () => {
+      setSpeaking("idle");
+      if (!isPro) setUpsell(true);
+    });
+    setSpeaking((st) => (st === "loading" ? "playing" : st));
+  };
+
+  const handlePdf = async () => {
+    if (!isPro) {
+      setUpsell(true);
+      return;
+    }
+    if (!cardRef.current || pdfBusy) return;
+    setPdfBusy(true);
+    try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 2,
+        backgroundColor: "#FCF9F2",
+        ignoreElements: (el) => el.hasAttribute("data-no-pdf"),
+      });
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = 210, pageH = 297, margin = 10;
+      let w = pageW - margin * 2;
+      let h = (canvas.height * w) / canvas.width;
+      if (h > pageH - margin * 2) {
+        h = pageH - margin * 2;
+        w = (canvas.width * h) / canvas.height;
+      }
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", (pageW - w) / 2, margin, w, h);
+      pdf.save(`Carta-do-Papai-Noel-${letter.childName}.pdf`);
+      showToast("PDF baixado! 🎄");
+    } catch {
+      showToast("Não foi possível gerar o PDF agora.");
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   // Chuva de confete dourado e vermelho quando a carta abre
   useEffect(() => {
@@ -36,22 +101,29 @@ export default function LetterView({ letter, onClose }: LetterViewProps) {
     window.print();
   };
 
-  const handleShare = () => {
+  const shareUrl = `${window.location.origin}/natal/${letter.token}`;
+  const handleShare = async () => {
     if (navigator.share) {
-      navigator.share({
-        title: `Carta do Papai Noel para ${letter.childName}`,
-        text: `Veja a cartinha mágica oficial que o Papai Noel escreveu para ${letter.childName}!`,
-        url: window.location.href,
-      }).catch(() => {});
+      navigator
+        .share({
+          title: `Carta do Papai Noel para ${letter.childName}`,
+          text: `Olha a cartinha que o Papai Noel escreveu para ${letter.childName}! 🎅`,
+          url: shareUrl,
+        })
+        .catch(() => {});
     } else {
-      navigator.clipboard.writeText(window.location.href);
-      alert("Link copiado para a área de transferência!");
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        showToast("Link da carta copiado! ✨");
+      } catch {
+        showToast(shareUrl);
+      }
     }
   };
 
   return (
     <motion.div
-      className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white"
+      className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto print:p-0 print:bg-white"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
@@ -65,31 +137,14 @@ export default function LetterView({ letter, onClose }: LetterViewProps) {
         animate={{ opacity: 1, y: 0, rotateX: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 120, damping: 18 }}
         style={{ transformPerspective: 1200 }}
-        className="relative w-full max-w-2xl parchment-bg text-[#1C2541] rounded-3xl p-6 sm:p-10 border-4 border-[#FFD166] shadow-2xl my-6 print:border-none print:shadow-none print:p-6 print:rounded-none">
-        {/* Controls - Hidden on Print */}
-        <div className="flex justify-between items-center pb-4 mb-4 border-b-2 border-[#1C2541]/15 print:hidden">
-          <div className="flex items-center gap-2">
+        ref={cardRef}
+        className="relative w-full max-w-2xl parchment-bg text-[#1C2541] rounded-3xl p-6 sm:p-10 border-4 border-[#FFD166] shadow-2xl my-auto print:border-none print:shadow-none print:p-6 print:rounded-none">
+        {/* Controles (não aparecem na impressão nem no PDF) */}
+        <div data-no-pdf className="pb-4 mb-4 border-b-2 border-[#1C2541]/15 print:hidden">
+          <div className="flex justify-between items-center gap-2">
             <span className="font-cinzel text-xs font-bold text-[#9B021A] uppercase tracking-wider">
-              Carta Gerada com Sucesso
+              Carta do Polo Norte
             </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrint}
-              className="bg-[#1C2541] hover:bg-[#2A3555] text-white p-2 rounded-full text-xs flex items-center gap-1.5 px-3 transition-colors cursor-pointer"
-              title="Imprimir carta"
-            >
-              <Printer className="w-4 h-4 text-[#FFD166]" />
-              <span className="hidden sm:inline">Imprimir</span>
-            </button>
-            <button
-              onClick={handleShare}
-              className="bg-[#1C2541] hover:bg-[#2A3555] text-white p-2 rounded-full text-xs flex items-center gap-1.5 px-3 transition-colors cursor-pointer"
-              title="Compartilhar"
-            >
-              <Share2 className="w-4 h-4 text-[#FFD166]" />
-              <span className="hidden sm:inline">Compartilhar</span>
-            </button>
             <button
               onClick={onClose}
               className="text-[#1C2541]/70 hover:text-[#1C2541] p-2 rounded-full hover:bg-black/5 transition-colors cursor-pointer"
@@ -98,6 +153,71 @@ export default function LetterView({ letter, onClose }: LetterViewProps) {
               <X className="w-5 h-5" />
             </button>
           </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <motion.button
+              onClick={handleListen}
+              whileTap={{ scale: 0.95 }}
+              className={`relative overflow-hidden rounded-full px-4 py-2 text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer text-white shadow-md ${
+                speaking === "idle" ? "bg-gradient-to-r from-[#D90429] to-[#EF233C] btn-shine" : "bg-[#1C2541]"
+              }`}
+            >
+              {speaking === "idle" ? (
+                <>
+                  <Volume2 className="w-4 h-4 text-[#FFD166] relative z-10" />
+                  <span className="relative z-10">{isPro ? "Ouvir o Papai Noel" : "Ouvir prévia da voz"}</span>
+                </>
+              ) : speaking === "loading" ? (
+                <>
+                  <Sparkles className="w-4 h-4 text-[#FFD166] animate-spin" />
+                  <span>Papai Noel limpando a garganta...</span>
+                </>
+              ) : (
+                <>
+                  <Square className="w-3.5 h-3.5 text-[#FFD166] fill-[#FFD166]" />
+                  <span className="flex items-end gap-[2px] h-3.5" aria-hidden="true">
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <span key={i} className="eq-bar w-[3px] bg-[#FFD166] rounded-sm" style={{ animationDelay: `${i * 0.12}s` }} />
+                    ))}
+                  </span>
+                  <span>Parar</span>
+                </>
+              )}
+            </motion.button>
+            <ToolButton onClick={handlePdf} icon={isPro ? <Download className="w-4 h-4 text-[#FFD166]" /> : <Lock className="w-3.5 h-3.5 text-[#FFD166]" />}>
+              {pdfBusy ? "Gerando PDF..." : "Baixar PDF"}
+            </ToolButton>
+            <ToolButton onClick={() => window.print()} icon={<Printer className="w-4 h-4 text-[#FFD166]" />}>
+              Imprimir
+            </ToolButton>
+            <ToolButton onClick={handleShare} icon={<Share2 className="w-4 h-4 text-[#FFD166]" />}>
+              Compartilhar
+            </ToolButton>
+          </div>
+
+          <AnimatePresence>
+            {upsell && !isPro && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-3 rounded-2xl bg-gradient-to-r from-[#1C2541] to-[#0B132B] text-white p-4 flex flex-col sm:flex-row items-center gap-3 border border-[#FFD166]/60">
+                  <span className="text-3xl">🎅</span>
+                  <p className="text-xs sm:text-sm flex-1 text-center sm:text-left">
+                    <strong className="text-[#FFD166]">Gostou da voz?</strong> No plano Magia Completa o Papai Noel lê a carta
+                    inteira, e você baixa o PDF em alta para imprimir.
+                  </p>
+                  <button
+                    onClick={() => onUpgrade?.()}
+                    className="bg-gradient-to-r from-[#D90429] to-[#EF233C] text-white font-bold px-4 py-2 rounded-full text-xs sm:text-sm whitespace-nowrap btn-shine cursor-pointer"
+                  >
+                    <span className="relative z-10">Desbloquear</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Letterhead */}
@@ -174,6 +294,34 @@ export default function LetterView({ letter, onClose }: LetterViewProps) {
       </motion.div>
       )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-[#0B132B] text-white text-sm font-semibold px-5 py-3 rounded-full border border-[#FFD166]/60 shadow-2xl flex items-center gap-2 max-w-[90vw] break-all"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+          >
+            <Check className="w-4 h-4 text-[#2DC653] shrink-0" />
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
+  );
+}
+
+function ToolButton({ onClick, icon, children }: { onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <motion.button
+      onClick={onClick}
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.95 }}
+      className="bg-[#1C2541] hover:bg-[#2A3555] text-white rounded-full text-xs sm:text-sm flex items-center gap-1.5 px-3.5 py-2 transition-colors cursor-pointer"
+    >
+      {icon}
+      <span>{children}</span>
+    </motion.button>
   );
 }

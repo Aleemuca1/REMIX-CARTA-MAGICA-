@@ -2,11 +2,15 @@ import { useEffect, useState } from "react";
 import { useReducedMotion } from "motion/react";
 
 /** Escreve e apaga nomes em sequência, como se o Papai Noel escrevesse à mão. */
-export default function TypewriterNames({ names }: { names: string[] }) {
+export default function TypewriterNames({ names, onName }: { names: string[]; onName?: (n: string) => void }) {
   const reduce = useReducedMotion();
   const [idx, setIdx] = useState(0);
   const [text, setText] = useState(reduce ? names[0] : "");
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    onName?.(names[idx]);
+  }, [idx, names, onName]);
 
   useEffect(() => {
     if (reduce) return;

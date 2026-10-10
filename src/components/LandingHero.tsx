@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Sparkles, ArrowRight, ShieldCheck, Heart, Volume2, Stamp } from "lucide-react";
+import { Sparkles, ArrowRight, ShieldCheck, Timer, Volume2, Stamp } from "lucide-react";
 import ChristmasCountdown from "./ChristmasCountdown";
 import HeroSantaFlight from "./HeroSantaFlight";
 import TypewriterNames from "./TypewriterNames";
+import NightSky from "./NightSky";
+import SnowyVillage from "./SnowyVillage";
+import HangingOrnaments from "./HangingOrnaments";
 
 const DEMO_NAMES = ["Lucas", "Sofia", "Miguel", "Helena", "Arthur", "Alice"];
 
@@ -19,6 +22,7 @@ export default function LandingHero({
   onViewSample,
 }: LandingHeroProps) {
   const [envelopeOpen, setEnvelopeOpen] = useState(false);
+  const [demoName, setDemoName] = useState(DEMO_NAMES[0]);
   const reduce = useReducedMotion();
   const item = (i: number) =>
     reduce
@@ -30,10 +34,13 @@ export default function LandingHero({
         };
 
   return (
-    <section className="relative pt-6 pb-16 md:pt-12 md:pb-24 px-4 sm:px-6 lg:px-8 w-full overflow-hidden" id="hero-section">
+    <section className="relative pt-6 pb-36 md:pt-12 md:pb-44 px-4 sm:px-6 lg:px-8 w-full overflow-hidden" id="hero-section">
       {/* Background radial glow - strictly bounded to prevent horizontal expansion */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-full max-w-[650px] h-[360px] bg-radial from-[#D90429]/15 via-[#FFD166]/10 to-transparent blur-3xl pointer-events-none -z-10" />
       <div className="aurora pointer-events-none -z-10" aria-hidden="true" />
+      <NightSky />
+      <HangingOrnaments />
+      <SnowyVillage />
 
       <div className="max-w-6xl xl:max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 xl:gap-12 items-center">
         {/* Left Column: Emotional Copy & CTAs */}
@@ -41,14 +48,17 @@ export default function LandingHero({
           {/* Subtle Tag */}
           <motion.div {...item(0)} className="inline-flex items-center gap-2 bg-[#0B132B]/90 border border-[#FFD166]/40 rounded-full px-4 py-1.5 text-xs text-[#FFD166] shadow-md mx-auto lg:mx-0">
             <span className="flex h-2 w-2 rounded-full bg-[#EF233C] animate-ping" />
-            <span className="font-semibold tracking-wide">Experiência Oficial de Natal por Inteligência Artificial</span>
+            <span className="font-semibold tracking-wide">Experiência Mágica de Natal com Inteligência Artificial</span>
           </motion.div>
 
           {/* Headline Mandated by User */}
           <motion.h1 {...item(1)} className="font-cinzel text-3xl sm:text-4xl lg:text-[40px] xl:text-5xl font-extrabold text-white leading-[1.18] tracking-tight">
             Neste Natal, o Papai Noel vai chamar seu filho{" "}
-            <span className="text-gold-shimmer drop-shadow-sm">
-              pelo nome.
+            <span className="relative inline-block">
+              <span className="text-gold-shimmer drop-shadow-sm">pelo nome.</span>
+              <span className="title-sparkle text-base -top-2 -left-3" style={{ animationDelay: "0s" }}>✦</span>
+              <span className="title-sparkle text-sm top-0 -right-4" style={{ animationDelay: "0.8s" }}>✦</span>
+              <span className="title-sparkle text-xs -bottom-1 left-1/2" style={{ animationDelay: "1.6s" }}>✦</span>
             </span>
           </motion.h1>
 
@@ -69,8 +79,8 @@ export default function LandingHero({
               <span>Privacidade Infantil Protegida</span>
             </div>
             <div className="flex items-center gap-1.5 bg-[#1C2541]/70 px-3 py-1.5 rounded-full border border-white/5">
-              <Heart className="w-3.5 h-3.5 text-[#EF233C]" />
-              <span>Mais de 14.800 crianças encantadas</span>
+              <Timer className="w-3.5 h-3.5 text-[#EF233C]" />
+              <span>Pronta em menos de 2 minutos</span>
             </div>
             <div className="flex items-center gap-1.5 bg-[#1C2541]/70 px-3 py-1.5 rounded-full border border-white/5">
               <Volume2 className="w-3.5 h-3.5 text-[#FFD166]" />
@@ -84,6 +94,7 @@ export default function LandingHero({
               onClick={() => onStartWizard("free")}
               className="group w-full sm:w-auto bg-gradient-to-r from-[#D90429] via-[#EF233C] to-[#D90429] hover:from-[#EF233C] hover:to-[#9B021A] text-white font-bold px-8 py-4 rounded-full shadow-lg border border-[#FFD166]/50 flex items-center justify-center gap-3 text-base sm:text-lg transition-all transform hover:scale-[1.03] active:scale-[0.98] cursor-pointer btn-shine animate-soft-pulse"
               id="hero-cta-free"
+              data-celebrate
             >
               <Sparkles className="w-5 h-5 text-[#FFD166] relative z-10" />
               <span className="relative z-10">Criar minha carta grátis</span>
@@ -158,13 +169,13 @@ export default function LandingHero({
 
               {/* Child Info Badge */}
               <div className="inline-block bg-[#D90429]/10 text-[#9B021A] border border-[#D90429]/30 rounded-full px-3 py-1 text-[11px] font-bold mb-3">
-                Para: Lucas, 6 anos — São Paulo, SP
+                Para: {demoName} ✨ — com muito carinho
               </div>
 
               {/* Body snippet */}
               <div className="font-serif text-sm sm:text-base leading-relaxed space-y-2 text-[#1C2541]">
                 <p className="font-cinzel font-bold text-[#9B021A] text-base">
-                  Ho Ho Ho! Olá, <TypewriterNames names={DEMO_NAMES} />!
+                  Ho Ho Ho! Olá, <TypewriterNames names={DEMO_NAMES} onName={setDemoName} />!
                 </p>
                 <p>
                   Aqui do alto do Polo Norte, observei no meu telescópio de cristal o quanto você foi corajoso ao aprender a andar de bicicleta sem rodinhas este ano!

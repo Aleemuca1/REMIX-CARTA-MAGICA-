@@ -3,7 +3,6 @@ var __name = (target, value) =>
   __defProp(target, "name", { value, configurable: true });
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import * as db from "./db";
 const app = express();
@@ -203,7 +202,7 @@ app.post("/api/generate-letter", async (req, res) => {
             "Campos obrigat\xF3rios ausentes (nome da crian\xE7a, idade e cidade).",
         });
     }
-    const isPro = plan === "pro";
+    const isPro = plan === "pro" || plan === "natal";
     let letterContent = "";
     let generatedWithAI = false;
     const ai = getGeminiClient();
@@ -271,7 +270,7 @@ DIRETRIZES DE SEGURAN\xC7A E \xC9TICA:
       giftRequest: giftRequest || "",
       parentNotes: parentNotes || "",
       style,
-      plan: isPro ? "pro" : "free",
+      plan: plan === "natal" ? "natal" : isPro ? "pro" : "free",
       content: letterContent,
       date: new Date().toLocaleDateString("pt-BR"),
       token,
@@ -314,7 +313,7 @@ app.post("/api/tts", async (req, res) => {
             {
               parts: [
                 {
-                  text: `Com voz profunda, calorosa, lenta, acolhedora e paternal de Papai Noel falando em portugu\xEAs do Brasil: ${text.slice(0, 800)}`,
+                  text: `Com voz profunda, calorosa, lenta, acolhedora e paternal de Papai Noel falando em portugu\xEAs do Brasil: ${String(text).slice(0, 2500)}`,
                 },
               ],
             },
@@ -426,7 +425,7 @@ app.post("/api/generate-pdf", (req, res) => {
       plan = "pro",
       photoUrl,
     } = req.body;
-    const isPro = plan === "pro";
+    const isPro = plan === "pro" || plan === "natal";
     const waterMarkHtml = !isPro
       ? `<div style="position: absolute; bottom: 20px; left: 0; right: 0; text-align: center; font-size: 11px; color: #9B021A; opacity: 0.7;">
           Vers\xE3o de Degusta\xE7\xE3o \u2022 Carta M\xE1gica (cartamagica.com.br)
@@ -1030,6 +1029,8 @@ app.get("/api/admin/metrics", requireAdmin, async (_req, res) => {
 });
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
+    // Vite só é carregado em desenvolvimento (não entra no servidor da Vercel)
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -1047,4 +1048,10 @@ async function startServer() {
   });
 }
 __name(startServer, "startServer");
-startServer();
+
+// Na Vercel o app roda como função serverless (api/index.ts); localmente sobe o servidor.
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;
