@@ -22,6 +22,8 @@ import AdventCalendar from "./components/advent/AdventCalendar";
 import AtelierSection from "./components/atelier/AtelierSection";
 import SantaPeek from "./components/SantaPeek";
 import { celebrateFrom } from "./lib/celebrate";
+import { startCheckout, usePaymentReturn } from "./lib/payment";
+import PaymentToast from "./components/PaymentToast";
 import { snow } from "./lib/snow";
 import SampleLetterPreview from "./components/SampleLetterPreview";
 import CreationWizard from "./components/CreationWizard";
@@ -33,6 +35,16 @@ export default function App() {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
   const [activeLetter, setActiveLetter] = useState<Letter | null>(null);
+  const [payMsg, setPayMsg] = useState<{ kind: "wait" | "ok" | "error"; text: string } | null>(null);
+
+  // volta do Asaas: confirma o pagamento e reabre a carta já liberada
+  usePaymentReturn(setPayMsg, setActiveLetter);
+
+  const pay = async (letter: Letter, plan: "pro" | "natal") => {
+    setPayMsg({ kind: "wait", text: "Abrindo o pagamento seguro do Asaas..." });
+    const err = await startCheckout(letter.id, plan);
+    if (err) setPayMsg({ kind: "error", text: err });
+  };
 
   // Link compartilhado: /natal/<token> abre a carta direto
   useEffect(() => {
@@ -81,6 +93,8 @@ export default function App() {
   const handleLetterGenerated = (letter: Letter) => {
     setIsWizardOpen(false);
     setActiveLetter(letter);
+    // escolheu um plano pago: a carta já fica salva e seguimos para o pagamento
+    if (selectedPlan === "pro" || selectedPlan === "natal") void pay(letter, selectedPlan);
   };
 
   return (
@@ -159,12 +173,11 @@ export default function App() {
         <LetterView
           letter={activeLetter}
           onClose={closeLetter}
-          onUpgrade={() => {
-            closeLetter();
-            setTimeout(() => handleScrollTo("precos"), 150);
-          }}
+          onUpgrade={(plan) => void pay(activeLetter, plan)}
         />
       )}
+
+      <PaymentToast msg={payMsg} onClose={() => setPayMsg(null)} />
     </div>
   );
 }

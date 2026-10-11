@@ -9,7 +9,7 @@ import { narrate, type Narrator } from "../lib/narration";
 interface LetterViewProps {
   letter: Letter;
   onClose: () => void;
-  onUpgrade?: () => void;
+  onUpgrade?: (plan: "pro" | "natal") => void;
 }
 
 export default function LetterView({ letter, onClose, onUpgrade }: LetterViewProps) {
@@ -42,10 +42,15 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
     setSpeaking("loading");
     // plano grátis: prévia com os dois primeiros parágrafos
     const text = isPro ? letter.content : paragraphs.slice(0, 2).join("\n\n");
-    narratorRef.current = await narrate(text, letter.childName, () => {
-      setSpeaking("idle");
-      if (!isPro) setUpsell(true);
-    });
+    narratorRef.current = await narrate(
+      text,
+      letter.childName,
+      () => {
+        setSpeaking("idle");
+        if (!isPro) setUpsell(true);
+      },
+      letter.token,
+    );
     setSpeaking((st) => (st === "loading" ? "playing" : st));
   };
 
@@ -208,12 +213,20 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                     <strong className="text-[#FFD166]">Gostou da voz?</strong> No plano Magia Completa o Papai Noel lê a carta
                     inteira, e você baixa o PDF em alta para imprimir.
                   </p>
-                  <button
-                    onClick={() => onUpgrade?.()}
-                    className="bg-gradient-to-r from-[#D90429] to-[#EF233C] text-white font-bold px-4 py-2 rounded-full text-xs sm:text-sm whitespace-nowrap btn-shine cursor-pointer"
-                  >
-                    <span className="relative z-10">Desbloquear</span>
-                  </button>
+                  <div className="flex flex-col gap-2 w-full sm:w-auto">
+                    <button
+                      onClick={() => onUpgrade?.("pro")}
+                      className="bg-gradient-to-r from-[#D90429] to-[#EF233C] text-white font-bold px-4 py-2 rounded-full text-xs sm:text-sm whitespace-nowrap btn-shine cursor-pointer"
+                    >
+                      <span className="relative z-10">Magia Completa · R$ 19,90</span>
+                    </button>
+                    <button
+                      onClick={() => onUpgrade?.("natal")}
+                      className="bg-[#FFD166] text-[#0B132B] font-bold px-4 py-2 rounded-full text-xs sm:text-sm whitespace-nowrap cursor-pointer hover:brightness-105"
+                    >
+                      + Calendário do Advento · R$ 29,90
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}

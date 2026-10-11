@@ -29,13 +29,18 @@ function pcmBase64ToWavUrl(b64: string, sampleRate = 24000) {
 
 export type Narrator = { stop: () => void };
 
-export async function narrate(text: string, childName: string, onEnd: () => void): Promise<Narrator> {
+export async function narrate(
+  text: string,
+  childName: string,
+  onEnd: () => void,
+  token?: string,
+): Promise<Narrator> {
   // 1) voz do servidor
   try {
     const res = await fetch("/api/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, childName }),
+      body: JSON.stringify({ token }),
     });
     if (res.ok) {
       const data = await res.json();

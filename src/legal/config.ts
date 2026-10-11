@@ -10,6 +10,6 @@ export const LEGAL = {
   email: "[e-mail de contato, ex.: contato@seudominio.com.br]",
   emailPrivacidade: "[e-mail para assuntos de privacidade, pode ser o mesmo]",
   encarregado: "[Nome do encarregado de dados (DPO) — pode ser você]",
-  site: "[endereço do site, ex.: https://cartamagica.com.br]",
+  site: "https://remix-carta-magica-three.vercel.app",
   atualizadoEm: "10 de outubro de 2026",
 };

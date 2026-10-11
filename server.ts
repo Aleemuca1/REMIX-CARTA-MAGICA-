@@ -5,6 +5,8 @@ import express from "express";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import * as db from "./db";
+import { randomBytes } from "crypto";
+import * as asaas from "./asaas";
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
@@ -75,7 +77,6 @@ Durma bem e guarde sempre o encanto do Natal no seu cora\xE7\xE3ozinho.
 Com carinho, Papai Noel \u{1F385}`,
   },
 ];
-const ASAAS_CHECKOUT_URL = "https://www.asaas.com/c/vrbnn78e3935jocc";
 const demoOrders: any[] = [
   {
     orderId: "ORD-98214",
@@ -158,6 +159,9 @@ app.get("/api/health", (_req, res) => {
     status: "ok",
     service: "Carta M\xE1gica API",
     geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+    supabaseConfigured: db.usingSupabase(),
+    paymentsConfigured: asaas.asaasConfigured(),
+    webhookConfigured: Boolean(process.env.ASAAS_WEBHOOK_TOKEN),
     timestamp: new Date().toISOString(),
   });
 });
@@ -209,6 +213,8 @@ app.post("/api/generate-letter", async (req, res) => {
             "Campos obrigat\xF3rios ausentes (nome da crian\xE7a, idade e cidade).",
         });
     }
+    // o plano pedido só define o tamanho da carta; o acesso pago só é liberado
+    // depois que o Asaas confirma o pagamento (webhook)
     const isPro = plan === "pro" || plan === "natal";
     let letterContent = "";
     let generatedWithAI = false;
@@ -277,16 +283,13 @@ DIRETRIZES DE SEGURAN\xC7A E \xC9TICA:
       giftRequest: giftRequest || "",
       parentNotes: parentNotes || "",
       style,
-      plan: plan === "natal" ? "natal" : isPro ? "pro" : "free",
+      plan: "free",
       parentalConsentAt: new Date().toISOString(),
       content: letterContent,
       date: new Date().toLocaleDateString("pt-BR"),
       token,
       photoUrl,
-      deliveryStatus: isPro ? "processing" : "digital_only",
-      trackingCode: isPro
-        ? `NP-${Math.floor(1e5 + Math.random() * 9e5)}-BR`
-        : void 0,
+      deliveryStatus: "digital_only",
     };
     await db.insertLetter(newRecord as any);
     return res.json({
@@ -304,7 +307,16 @@ DIRETRIZES DE SEGURAN\xC7A E \xC9TICA:
 });
 app.post("/api/tts", async (req, res) => {
   try {
-    const { text, childName = "Crian\xE7a", voice = "Fenrir" } = req.body;
+    const { token, voice = "Fenrir" } = req.body;
+    // a voz só é gerada para cartas reais: o texto vem do banco, não do navegador
+    const letterRec = await db.findLetter(String(token || ""));
+    if (!letterRec) {
+      return res.status(404).json({ error: "Carta n\xE3o encontrada." });
+    }
+    const childName = letterRec.childName;
+    const paras = String(letterRec.content || "").split(/\n\s*\n/).filter(Boolean);
+    const paidVoice = letterRec.plan === "pro" || letterRec.plan === "natal";
+    const text = paidVoice ? letterRec.content : paras.slice(0, 2).join("\n\n");
     if (!text) {
       return res
         .status(400)
@@ -670,52 +682,118 @@ app.post("/api/generate-pdf", (req, res) => {
       });
   }
 });
+function siteUrlFrom(req: any) {
+  if (process.env.PUBLIC_SITE_URL) return process.env.PUBLIC_SITE_URL;
+  const proto = String(req.headers["x-forwarded-proto"] || "https").split(",")[0];
+  const host = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0];
+  return `${proto}://${host}`;
+}
+
+// Cria um pedido pendente e a sessão de pagamento no Asaas (Pix ou cartão).
 app.post("/api/checkout", async (req, res) => {
   try {
-    const {
-      letterId,
-      childName,
-      includePhysicalDispatch = false,
-      address,
-    } = req.body;
-    const basePrice = 39.99;
-    const physicalShippingPrice = includePhysicalDispatch ? 29.9 : 0;
-    const totalPrice = Number((basePrice + physicalShippingPrice).toFixed(2));
-    const orderId = `ORD-${Math.floor(1e4 + Math.random() * 9e4)}`;
-    const newOrder = {
-      orderId,
-      letterId: letterId || "temp",
-      childName: childName || "Crian\xE7a",
-      amount: totalPrice,
-      plan: "pro",
-      includePhysicalDispatch,
-      status: "paid",
-      paymentMethod: "Asaas (Pix / Cart\xE3o)",
-      createdAt: new Date().toLocaleString("pt-BR"),
-      paidAt: new Date().toLocaleString("pt-BR"),
-    };
-    await db.insertOrder(newOrder);
-    const letter = await db.findLetter(letterId);
-    if (letter) {
-      const patch: any = { plan: "pro" };
-      if (includePhysicalDispatch) {
-        patch.deliveryStatus = "processing";
-        patch.trackingCode = `NP-${Math.floor(1e5 + Math.random() * 9e5)}-BR`;
-        if (address) patch.shippingAddress = address;
-      }
-      await db.updateLetter(letter.id, patch);
+    const { letterId, plan } = req.body || {};
+    if (!asaas.isPaidPlan(plan)) {
+      return res.status(400).json({ error: "Plano inválido." });
     }
-    res.json({
-      success: true,
-      order: newOrder,
-      asaasCheckoutUrl: ASAAS_CHECKOUT_URL,
-      message:
-        "Pagamento processado via Asaas e Experi\xEAncia M\xE1gica PRO liberada com sucesso!",
+    const letter = await db.findLetter(String(letterId || ""));
+    if (!letter) {
+      return res.status(404).json({ error: "Carta não encontrada. Crie a carta antes de pagar." });
+    }
+    if (!asaas.asaasConfigured()) {
+      return res.status(503).json({
+        error: "O pagamento ainda não está disponível. Tente novamente em breve.",
+      });
+    }
+    const orderId = `cm${randomBytes(9).toString("base64url")}`;
+    const price = asaas.PLAN_PRICES[plan];
+    await db.insertOrder({
+      orderId,
+      letterId: letter.id,
+      childName: letter.childName,
+      amount: price.value,
+      plan,
+      includePhysicalDispatch: false,
+      status: "pending",
+      paymentMethod: "Asaas (Pix / Cartão)",
+      createdAt: new Date().toLocaleString("pt-BR"),
     });
-  } catch (err) {
-    res.status(500).json({ error: "Erro ao processar pagamento" });
+    const checkout = await asaas.createCheckout({ orderId, plan, siteUrl: siteUrlFrom(req) });
+    await db.updateOrder(orderId, { gatewayChargeId: checkout.id });
+    res.json({ success: true, orderId, checkoutUrl: checkout.link });
+  } catch (err: any) {
+    console.error("Erro no checkout:", err?.message || err);
+    res.status(500).json({ error: "Não foi possível abrir o pagamento agora. Tente de novo em instantes." });
   }
 });
+
+// A página consulta aqui, depois de voltar do Asaas, se o pagamento já foi confirmado.
+app.get("/api/order/:orderId", async (req, res) => {
+  try {
+    const order = await db.findOrder(req.params.orderId);
+    if (!order || order.orderId !== req.params.orderId) {
+      return res.status(404).json({ error: "Pedido não encontrado" });
+    }
+    const letter = await db.findLetter(order.letterId);
+    res.json({
+      status: order.status,
+      plan: order.plan,
+      letterToken: order.status === "paid" ? letter?.token : undefined,
+    });
+  } catch {
+    res.status(500).json({ error: "Erro ao consultar pedido" });
+  }
+});
+
+// Webhook do Asaas: é o ÚNICO lugar que libera o acesso pago.
+// No Asaas: Integrações > Webhooks > URL https://SEU-SITE/api/asaas/webhook,
+// eventos de Checkout e de Cobrança, e o mesmo token da variável ASAAS_WEBHOOK_TOKEN.
+const processedEvents = new Set<string>();
+app.post("/api/asaas/webhook", async (req, res) => {
+  if (!asaas.webhookAuthorized(req.headers["asaas-access-token"])) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+  const evt = req.body || {};
+  try {
+    if (evt.id && processedEvents.has(evt.id)) return res.json({ received: true });
+    const event: string = evt.event || "";
+    const refs = [
+      evt.checkout?.id,
+      evt.checkout?.externalReference,
+      evt.payment?.checkoutSession,
+      evt.payment?.externalReference,
+    ].filter((v) => typeof v === "string" && v);
+
+    let order: db.OrderRecord | null = null;
+    for (const r of refs) {
+      order = await db.findOrder(r);
+      if (order) break;
+    }
+    if (!order) return res.json({ received: true, ignored: true });
+
+    const paid = ["CHECKOUT_PAID", "PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"].includes(event);
+    const closed = ["CHECKOUT_CANCELED", "CHECKOUT_EXPIRED"].includes(event);
+    const refunded = ["PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED"].includes(event);
+
+    if (paid && order.status !== "paid") {
+      await db.updateOrder(order.orderId, { status: "paid" });
+      const letter = await db.findLetter(order.letterId);
+      if (letter) await db.updateLetter(letter.id, { plan: order.plan as any });
+    } else if (closed && order.status === "pending") {
+      await db.updateOrder(order.orderId, { status: "canceled" });
+    } else if (refunded) {
+      await db.updateOrder(order.orderId, { status: "refunded" });
+      const letter = await db.findLetter(order.letterId);
+      if (letter) await db.updateLetter(letter.id, { plan: "free" });
+    }
+    if (evt.id) processedEvents.add(evt.id);
+    res.json({ received: true });
+  } catch (err: any) {
+    console.error("Erro no webhook do Asaas:", err?.message || err);
+    res.status(500).json({ error: "erro" });
+  }
+});
+
 app.post("/api/logistics/calculate", (req, res) => {
   const { zipCode, country = "Brasil" } = req.body;
   res.json({

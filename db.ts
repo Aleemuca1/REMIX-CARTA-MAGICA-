@@ -37,6 +37,7 @@ export type OrderRecord = {
   paymentMethod: string;
   createdAt: string;
   paidAt?: string;
+  gatewayChargeId?: string;
 };
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -111,6 +112,7 @@ const orderToRow = (o: OrderRecord) => ({
   include_physical_dispatch: o.includePhysicalDispatch,
   status: o.status,
   payment_method: o.paymentMethod,
+  gateway_charge_id: o.gatewayChargeId ?? null,
   paid_at: o.status === "paid" ? new Date().toISOString() : null,
 });
 
@@ -125,6 +127,7 @@ const rowToOrder = (r: any): OrderRecord => ({
   paymentMethod: r.payment_method,
   createdAt: new Date(r.created_at).toLocaleString("pt-BR"),
   paidAt: r.paid_at ? new Date(r.paid_at).toLocaleString("pt-BR") : undefined,
+  gatewayChargeId: r.gateway_charge_id ?? undefined,
 });
 
 // ---------- fallback em memória ----------
@@ -201,6 +204,46 @@ export async function insertOrder(order: OrderRecord): Promise<void> {
   }
   const { error } = await supabase.from("orders").insert(orderToRow(order));
   if (error) throw new Error(`Supabase insertOrder: ${error.message}`);
+}
+
+const SAFE_ID = /^[A-Za-z0-9_-]{1,120}$/;
+
+/** Busca um pedido pelo nosso id ou pelo id do checkout no Asaas. */
+export async function findOrder(id: string): Promise<OrderRecord | null> {
+  if (!id || !SAFE_ID.test(id)) return null;
+  if (!supabase) {
+    return memOrders.find((o) => o.orderId === id || o.gatewayChargeId === id) ?? null;
+  }
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .or(`order_id.eq.${id},gateway_charge_id.eq.${id}`)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`Supabase findOrder: ${error.message}`);
+  return data ? rowToOrder(data) : null;
+}
+
+/** Atualiza status (e id do checkout) de um pedido. */
+export async function updateOrder(
+  orderId: string,
+  patch: { status?: string; gatewayChargeId?: string; paymentMethod?: string },
+): Promise<void> {
+  if (!supabase) {
+    const o = memOrders.find((x) => x.orderId === orderId);
+    if (o) {
+      Object.assign(o, patch);
+      if (patch.status === "paid") o.paidAt = new Date().toLocaleString("pt-BR");
+    }
+    return;
+  }
+  const row: Record<string, any> = {};
+  if (patch.status) row.status = patch.status;
+  if (patch.status === "paid") row.paid_at = new Date().toISOString();
+  if (patch.gatewayChargeId) row.gateway_charge_id = patch.gatewayChargeId;
+  if (patch.paymentMethod) row.payment_method = patch.paymentMethod;
+  const { error } = await supabase.from("orders").update(row).eq("order_id", orderId);
+  if (error) throw new Error(`Supabase updateOrder: ${error.message}`);
 }
 
 export async function listOrders(limit = 50): Promise<OrderRecord[]> {
