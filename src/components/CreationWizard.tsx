@@ -23,6 +23,7 @@ export default function CreationWizard({
   const [giftRequest, setGiftRequest] = useState("");
   const [parentNotes, setParentNotes] = useState("");
   const [style, setStyle] = useState("mágico");
+  const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
 
@@ -63,6 +64,7 @@ export default function CreationWizard({
           parentNotes,
           style,
           plan,
+          parentalConsent: consent,
         }),
       });
 
@@ -236,9 +238,30 @@ Papai Noel 🎅`,
             />
           </div>
 
+          <label className="flex items-start gap-2.5 bg-white/5 border border-white/15 rounded-xl p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              required
+              checked={consent}
+              onChange={(e) => setConsent(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-[#FFD166] shrink-0"
+            />
+            <span className="text-[11px] sm:text-xs text-white/80 leading-relaxed">
+              Sou pai, mãe ou responsável legal pela criança e autorizo o uso destas informações apenas para criar a carta, conforme a{" "}
+              <a href="/privacidade" target="_blank" rel="noopener" className="underline text-[#FFD166]">
+                Política de Privacidade
+              </a>{" "}
+              e os{" "}
+              <a href="/termos" target="_blank" rel="noopener" className="underline text-[#FFD166]">
+                Termos de Uso
+              </a>
+              . Não informe sobrenome, escola ou endereço da criança.
+            </span>
+          </label>
+
           <button
             type="submit"
-            disabled={loading || !childName.trim() || !city.trim()}
+            disabled={loading || !childName.trim() || !city.trim() || !consent}
             className="w-full mt-6 bg-gradient-to-r from-[#D90429] via-[#EF233C] to-[#D90429] text-white font-bold py-3.5 rounded-full flex items-center justify-center gap-2 shadow-lg border border-[#FFD166]/50 hover:scale-[1.02] active:scale-[0.98] transition-transform cursor-pointer disabled:opacity-50 btn-shine"
             id="wizard-submit-btn"
           >

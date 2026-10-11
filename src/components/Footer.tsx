@@ -40,6 +40,11 @@ export default function Footer({ onScrollTo }: { onScrollTo: (id: string) => voi
             </button>
           ))}
         </nav>
+        <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-1 text-[11px] text-[#EDF2F4]/55">
+          <a href="/termos" className="hover:text-[#FFD166] underline-offset-2 hover:underline">Termos de Uso</a>
+          <a href="/privacidade" className="hover:text-[#FFD166] underline-offset-2 hover:underline">Política de Privacidade</a>
+          <a href="/cookies" className="hover:text-[#FFD166] underline-offset-2 hover:underline">Política de Cookies</a>
+        </nav>
         <p className="text-[11px] text-[#EDF2F4]/40 pt-3">
           Feito com ❤️ e muito chocolate quente • © {new Date().getFullYear()} Carta Mágica
         </p>
