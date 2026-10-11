@@ -22,6 +22,7 @@ export type LetterRecord = {
   shippingAddress?: any;
   secretMessage?: string;
   childReaction?: string;
+  parentalConsentAt?: string;
   createdAt?: string;
 };
 
@@ -72,6 +73,7 @@ const letterToRow = (l: Partial<LetterRecord>) => {
     shipping_address: l.shippingAddress,
     secret_message: l.secretMessage,
     child_reaction: l.childReaction,
+    parental_consent_at: l.parentalConsentAt,
   };
   Object.keys(row).forEach((k) => row[k] === undefined && delete row[k]);
   return row;
@@ -96,6 +98,7 @@ const rowToLetter = (r: any): LetterRecord => ({
   shippingAddress: r.shipping_address ?? undefined,
   secretMessage: r.secret_message ?? undefined,
   childReaction: r.child_reaction ?? undefined,
+  parentalConsentAt: r.parental_consent_at ?? undefined,
   createdAt: r.created_at,
 });
 
@@ -140,7 +143,14 @@ export async function insertLetter(letter: LetterRecord): Promise<void> {
     memLetters.unshift(letter);
     return;
   }
-  const { error } = await supabase.from("letters").insert(letterToRow(letter));
+  const row = letterToRow(letter);
+  let { error } = await supabase.from("letters").insert(row);
+  // se a migração 003 ainda não foi aplicada, salva sem a coluna nova (não quebra o site)
+  if (error && /parental_consent_at/.test(error.message)) {
+    console.warn("Coluna parental_consent_at ausente: rode supabase/migrations/003_consentimento.sql");
+    delete row.parental_consent_at;
+    ({ error } = await supabase.from("letters").insert(row));
+  }
   if (error) throw new Error(`Supabase insertLetter: ${error.message}`);
 }
 

@@ -193,7 +193,14 @@ app.post("/api/generate-letter", async (req, res) => {
       style = "m\xE1gico",
       plan = "free",
       photoUrl,
+      parentalConsent,
     } = req.body;
+    // LGPD art. 14: exige consentimento do responsável antes de tratar dados da criança
+    if (parentalConsent !== true) {
+      return res.status(400).json({
+        error: "É preciso confirmar que você é o responsável pela criança e autoriza o uso dos dados.",
+      });
+    }
     if (!childName || !age || !city) {
       return res
         .status(400)
@@ -271,6 +278,7 @@ DIRETRIZES DE SEGURAN\xC7A E \xC9TICA:
       parentNotes: parentNotes || "",
       style,
       plan: plan === "natal" ? "natal" : isPro ? "pro" : "free",
+      parentalConsentAt: new Date().toISOString(),
       content: letterContent,
       date: new Date().toLocaleDateString("pt-BR"),
       token,
