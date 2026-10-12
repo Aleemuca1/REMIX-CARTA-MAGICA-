@@ -33,14 +33,14 @@ export async function narrate(
   text: string,
   childName: string,
   onEnd: () => void,
-  token?: string,
+  source?: { token: string } | { adventDay: number; name: string },
 ): Promise<Narrator> {
   // 1) voz do servidor
   try {
     const res = await fetch("/api/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify(source ?? {}),
     });
     if (res.ok) {
       const data = await res.json();

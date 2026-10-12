@@ -49,7 +49,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
         setSpeaking("idle");
         if (!isPro) setUpsell(true);
       },
-      letter.token,
+      { token: letter.token },
     );
     setSpeaking((st) => (st === "loading" ? "playing" : st));
   };
@@ -210,23 +210,15 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                 <div className="mt-3 rounded-2xl bg-gradient-to-r from-[#1C2541] to-[#0B132B] text-white p-4 flex flex-col sm:flex-row items-center gap-3 border border-[#FFD166]/60">
                   <span className="text-3xl">🎅</span>
                   <p className="text-xs sm:text-sm flex-1 text-center sm:text-left">
-                    <strong className="text-[#FFD166]">Gostou da voz?</strong> No plano Magia Completa o Papai Noel lê a carta
-                    inteira, e você baixa o PDF em alta para imprimir.
+                    <strong className="text-[#FFD166]">Gostou da voz?</strong> No Natal Completo o Papai Noel lê a carta
+                    inteira, você baixa o PDF para imprimir e ganha 24 dias de surpresas no Calendário do Advento.
                   </p>
-                  <div className="flex flex-col gap-2 w-full sm:w-auto">
-                    <button
-                      onClick={() => onUpgrade?.("pro")}
-                      className="bg-gradient-to-r from-[#D90429] to-[#EF233C] text-white font-bold px-4 py-2 rounded-full text-xs sm:text-sm whitespace-nowrap btn-shine cursor-pointer"
-                    >
-                      <span className="relative z-10">Magia Completa · R$ 19,90</span>
-                    </button>
-                    <button
-                      onClick={() => onUpgrade?.("natal")}
-                      className="bg-[#FFD166] text-[#0B132B] font-bold px-4 py-2 rounded-full text-xs sm:text-sm whitespace-nowrap cursor-pointer hover:brightness-105"
-                    >
-                      + Calendário do Advento · R$ 29,90
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => onUpgrade?.("natal")}
+                    className="bg-gradient-to-r from-[#D90429] to-[#EF233C] text-white font-bold px-4 py-2 rounded-full text-xs sm:text-sm whitespace-nowrap btn-shine cursor-pointer"
+                  >
+                    <span className="relative z-10">Liberar tudo · R$ 29,90</span>
+                  </button>
                 </div>
               </motion.div>
             )}

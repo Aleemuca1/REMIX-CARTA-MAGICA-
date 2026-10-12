@@ -36,32 +36,18 @@ const PLANS: Plan[] = [
   {
     id: "natal",
     name: "Natal Completo",
-    tag: "Mais escolhido",
+    tag: "PRO · tudo incluído",
     price: "R$ 29,90",
     note: "pagamento único",
     cta: "Quero o Natal Completo",
     highlight: true,
     features: [
-      { text: "Tudo da Magia Completa", strong: true },
-      { text: "Calendário do Advento com 24 surpresas", strong: true },
-      { text: "Minijogos, adivinhas, desenhos exclusivos e desafios de bondade" },
-      { text: "Recados diários do Papai Noel e da Mamãe Noel" },
-      { text: "Estrelas no Livro Dourado até a véspera" },
-    ],
-  },
-  {
-    id: "pro",
-    name: "Magia Completa",
-    tag: "PRO",
-    price: "R$ 19,90",
-    note: "pagamento único",
-    cta: "Garantir Magia Completa",
-    features: [
-      { text: "Tudo do plano grátis", strong: true },
-      { text: "Carta inteira narrada pelo Papai Noel", strong: true },
-      { text: "PDF em alta para imprimir em A4" },
-      { text: "Certificado de Bom Comportamento" },
-      { text: "Link para compartilhar com a família" },
+      { text: "Carta completa e personalizada", strong: true },
+      { text: "Voz do Papai Noel lendo a carta para seu filho", strong: true },
+      { text: "24 dias de surpresas no Calendário do Advento", strong: true },
+      { text: "PDF para imprimir e Certificado de Bom Comportamento" },
+      { text: "Link para avós e tios verem a carta" },
+      { text: "Desenhos exclusivos no Ateliê e todos os jogos" },
     ],
   },
 ];
@@ -77,7 +63,7 @@ export default function PricingSection({ onSelectPlan }: PricingSectionProps) {
         </p>
       </Reveal>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 items-stretch max-w-4xl mx-auto">
         {PLANS.map((p, i) => (
           <Reveal key={p.id} delay={0.1 + i * 0.12} className={`h-full ${p.highlight ? "md:-mt-4 md:mb-4" : ""}`}>
             <div

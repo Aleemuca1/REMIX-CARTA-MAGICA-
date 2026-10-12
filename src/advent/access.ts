@@ -54,6 +54,15 @@ export function hasFullAccess() {
   return isTestMode() || read(ACCESS_KEY) === "natal";
 }
 
+const CODE_KEY = "carta-magica-codigo";
+/** Código mágico do pedido pago (para abrir em outro aparelho). */
+export function saveAccessCode(code: string) {
+  write(CODE_KEY, code);
+}
+export function getAccessCode() {
+  return read(CODE_KEY) || "";
+}
+
 /** Chamado depois do pagamento do plano Natal Completo. */
 export function grantFullAccess() {
   write(ACCESS_KEY, "natal");

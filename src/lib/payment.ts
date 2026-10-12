@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { Letter } from "../types";
-import { grantFullAccess } from "../advent/access";
+import { grantFullAccess, saveAccessCode } from "../advent/access";
 
 type Msg = { kind: "wait" | "ok" | "error"; text: string } | null;
 
@@ -59,7 +59,8 @@ export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Lette
           if (r.ok) {
             const o = await r.json();
             if (o.status === "paid") {
-              if (o.plan === "natal") grantFullAccess();
+              grantFullAccess();
+              if (o.accessCode) saveAccessCode(o.accessCode);
               if (o.letterToken) {
                 const lr = await fetch(`/api/letter/${encodeURIComponent(o.letterToken)}`);
                 if (lr.ok) openLetter(await lr.json());
@@ -68,9 +69,10 @@ export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Lette
               setMsg({
                 kind: "ok",
                 text:
-                  o.plan === "natal"
-                    ? "Pagamento confirmado! A Magia Completa e o Calendário do Advento estão liberados. 🎄"
-                    : "Pagamento confirmado! A Magia Completa está liberada. 🎅",
+                  "Pagamento confirmado! A voz do Papai Noel, o PDF e o Calendário do Advento estão liberados. 🎄" +
+                  (o.accessCode
+                    ? ` Seu código mágico para abrir em outro aparelho: ${o.accessCode} (guarde, ele também aparece no Calendário).`
+                    : ""),
               });
               return;
             }

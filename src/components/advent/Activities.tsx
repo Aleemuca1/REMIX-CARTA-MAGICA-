@@ -15,7 +15,19 @@ const btn =
   "bg-gradient-to-r from-[#D90429] via-[#EF233C] to-[#D90429] text-white font-bold px-6 py-3 rounded-full inline-flex items-center justify-center gap-2 border border-[#FFD166]/50 btn-shine cursor-pointer";
 
 /* ------------------------------------------------------------------ Mensagem */
-export function MessageActivity({ from, text, onDone }: { from: string; text: string; onDone: Done }) {
+export function MessageActivity({
+  from,
+  text,
+  day,
+  name,
+  onDone,
+}: {
+  from: string;
+  text: string;
+  day: number;
+  name: string;
+  onDone: Done;
+}) {
   const [state, setState] = useState<"idle" | "loading" | "playing">("idle");
   const nar = useRef<Narrator | null>(null);
   useEffect(() => {
@@ -32,7 +44,7 @@ export function MessageActivity({ from, text, onDone }: { from: string; text: st
       return;
     }
     setState("loading");
-    nar.current = await narrate(text, "", () => setState("idle"));
+    nar.current = await narrate(text, "", () => setState("idle"), { adventDay: day, name });
     setState((s) => (s === "loading" ? "playing" : s));
   };
   return (

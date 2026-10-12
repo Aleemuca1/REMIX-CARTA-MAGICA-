@@ -10,7 +10,7 @@ const FAQS = [
   },
   {
     q: "A carta gratuita é realmente grátis?",
-    a: "Sim. Você gera e vê a carta completa sem pagar nada. O plano Magia Completa é opcional e acrescenta narração em áudio, PDF para impressão e certificado.",
+    a: "Sim. Você gera e vê a carta completa sem pagar nada. O plano Natal Completo (R$ 29,90, pagamento único) é opcional e acrescenta a voz do Papai Noel, PDF para impressão, certificado e as 24 portinhas do Calendário do Advento.",
   },
   {
     q: "Como funciona o Calendário do Advento?",

@@ -35,7 +35,7 @@ export const TERMOS: LegalDoc = {
     {
       h: "4. Planos, preços e pagamento",
       li: [
-        "A carta digital básica é gratuita. Os planos pagos (Magia Completa e Natal Completo) liberam recursos extras descritos na página de planos, pelos preços informados no momento da compra.",
+        "A carta digital básica é gratuita. O plano pago (Natal Completo) libera recursos extras descritos na página de planos, pelos preços informados no momento da compra.",
         "Os pagamentos são processados pelo Asaas, intermediador de pagamentos. A Carta Mágica não recebe nem armazena os dados do seu cartão.",
         "Os recursos pagos são liberados após a confirmação do pagamento pelo intermediador.",
         "O Calendário do Advento libera uma portinha por dia, de 1º a 24 de dezembro. Comprar depois de 1º de dezembro dá acesso às portinhas já abertas e às seguintes.",
@@ -114,6 +114,8 @@ export const PRIVACIDADE: LegalDoc = {
       li: [
         "plano escolhido, valor, data e situação do pagamento;",
         "dados de identificação e cobrança informados diretamente ao Asaas. Os dados de cartão ficam somente com o intermediador; não temos acesso a eles.",
+        "e-mail do comprador (recebido do Asaas), usado só para enviar o link da carta e o código de acesso da compra;",
+        "código de acesso gerado para cada compra, que permite abrir o plano pago em outro aparelho.",
       ],
     },
     {
@@ -161,6 +163,7 @@ export const PRIVACIDADE: LegalDoc = {
         "Supabase: banco de dados onde as cartas e pedidos ficam guardados.",
         "Vercel: hospedagem do site.",
         "Asaas: processamento dos pagamentos.",
+        "Resend: envio do e-mail com o link da carta e o código de acesso, depois da compra.",
         "Google Fonts: fornece as fontes do site (recebe o endereço IP ao carregar a página).",
       ],
     },
@@ -232,6 +235,7 @@ export const COOKIES: LegalDoc = {
         "carta-magica-advento — guarda quais portinhas do Calendário do Advento já foram completadas;",
         "carta-magica-advento-acesso — lembra se este navegador tem o plano Natal Completo;",
         "carta-magica-nome — nome da criança digitado no calendário ou no Ateliê, para não precisar digitar de novo;",
+        "carta-magica-codigo — código de acesso da compra, para você poder consultá-lo e usar em outro aparelho;",
         "carta-magica-best — recorde do jogo Entrega Relâmpago;",
         "carta-magica-cookies — lembra que você já viu este aviso.",
       ],

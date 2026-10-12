@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { Lock, X, Star, Crown } from "lucide-react";
 import Reveal from "../Reveal";
 import { ADVENT_DAYS, type AdventDay } from "../../advent/days";
-import { canPlay, daysUntilOpen, getChildName, getProgress, hasFullAccess, isDateOpen, isTestMode, markDone, setChildName } from "../../advent/access";
+import CodeRedeem from "./CodeRedeem";
+import { canPlay, daysUntilOpen, getAccessCode, getChildName, getProgress, hasFullAccess, isDateOpen, isTestMode, markDone, setChildName } from "../../advent/access";
 import { MessageActivity, QuizActivity, KindnessActivity, MemoryActivity, CatchActivity, BellsActivity, SnowmanActivity, celebrate } from "./Activities";
 import { GameModal } from "../SantaGame";
 import { AtelierModal } from "../atelier/AtelierSection";
@@ -26,7 +27,18 @@ export default function AdventCalendar({ onUpgrade }: { onUpgrade: () => void })
   const [toast, setToast] = useState<string | null>(null);
   const [upsell, setUpsell] = useState(false);
   const [shake, setShake] = useState<number | null>(null);
+  const [, setUnlockTick] = useState(0);
   const full = hasFullAccess();
+  const myCode = full ? getAccessCode() : "";
+  const unlocked = (child?: string) => {
+    setUnlockTick((t) => t + 1);
+    setUpsell(false);
+    if (child && !getChildName()) {
+      setChildName(child);
+      setName(child);
+    }
+    say("Calendário liberado neste aparelho! 🎄");
+  };
   const test = isTestMode();
 
   useEffect(() => {
@@ -182,6 +194,16 @@ export default function AdventCalendar({ onUpgrade }: { onUpgrade: () => void })
           .
         </p>
       )}
+      {!full && (
+        <div className="text-center mt-3">
+          <CodeRedeem onUnlocked={unlocked} />
+        </div>
+      )}
+      {full && myCode && (
+        <p className="text-center text-xs text-[#EDF2F4]/60 mt-4">
+          Seu código mágico para abrir em outro aparelho: <b className="text-[#FFD166] tracking-widest">{myCode}</b>
+        </p>
+      )}
       {full && !isDateOpen(2) && (
         <p className="text-center text-xs sm:text-sm text-[#EDF2F4]/70 mt-5">As portinhas começam a abrir no dia 1º de dezembro. 🎄</p>
       )}
@@ -220,6 +242,9 @@ export default function AdventCalendar({ onUpgrade }: { onUpgrade: () => void })
               >
                 <span className="relative z-10">Quero o Natal Completo</span>
               </button>
+              <div className="mt-4">
+                <CodeRedeem onUnlocked={unlocked} />
+              </div>
             </div>
           </Backdrop>
         )}
@@ -288,7 +313,7 @@ function DayBody({ d, name, done, onDone }: { d: AdventDay; name: string; done: 
   const a = d.activity;
   switch (a.type) {
     case "message":
-      return <MessageActivity from={a.from} text={a.text.replace(/\{nome\}/g, name)} onDone={onDone} />;
+      return <MessageActivity from={a.from} text={a.text.replace(/\{nome\}/g, name)} day={d.day} name={name} onDone={onDone} />;
     case "quiz":
       return <QuizActivity {...a} onDone={onDone} />;
     case "kindness":
