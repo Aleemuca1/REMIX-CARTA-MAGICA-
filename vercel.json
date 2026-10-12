@@ -13,6 +13,10 @@
       "destination": "/api"
     },
     {
+      "source": "/arvore/(.*)",
+      "destination": "/api"
+    },
+    {
       "source": "/((?!api/|assets/).*)",
       "destination": "/index.html"
     }

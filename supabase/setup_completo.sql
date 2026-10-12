@@ -73,3 +73,15 @@ alter table public.letters add column if not exists parental_consent_at timestam
 alter table public.orders add column if not exists access_code text;
 alter table public.orders add column if not exists customer_email text;
 create unique index if not exists orders_access_code_idx on public.orders (access_code) where access_code is not null;
+
+-- Carta Mágica — Árvore de Natal da Família (enfeites com frases, compartilhada por link)
+create table if not exists public.family_trees (
+  token          text primary key,
+  edit_key_hash  text not null,
+  title          text not null default '',
+  ornaments      jsonb not null default '[]'::jsonb,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
+);
+-- Só o servidor (chave secreta) lê e grava.
+alter table public.family_trees enable row level security;

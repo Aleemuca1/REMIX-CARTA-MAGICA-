@@ -472,3 +472,28 @@
   80% { transform: translateY(0) scale(1.08, 0.92); }
   100% { transform: translateY(0) scale(1, 1); }
 }
+
+/* ---------- Árvore de Natal da Família ---------- */
+@keyframes treeTwinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@keyframes treeGlow {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.55; }
+}
+@keyframes treeSway {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(4deg); }
+}
+@keyframes treeStar {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.12); }
+}
+.tree-light { animation: treeTwinkle 1.6s ease-in-out infinite; }
+.tree-light-glow { animation: treeGlow 1.6s ease-in-out infinite; }
+.tree-ornament { animation: treeSway 3.2s ease-in-out infinite; transform-origin: 0 -28px; transform-box: view-box; }
+.tree-star-glow { animation: treeStar 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion: reduce) {
+  .tree-light, .tree-light-glow, .tree-ornament, .tree-star-glow { animation: none; }
+}

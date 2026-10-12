@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import BackButton from "./BackButton";
+import { useBackClose } from "../lib/backClose";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { X, Play, RotateCcw, Sparkles, Trophy } from "lucide-react";
@@ -141,6 +143,7 @@ export function GameModal({
   const [result, setResult] = useState<GameResult | null>(null);
   const [best, setBest] = useState(readBest);
   const [newBest, setNewBest] = useState(false);
+  useBackClose(true, onClose);
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -243,13 +246,10 @@ export function GameModal({
           aria-label="Área do jogo: toque para soltar um presente"
         />
 
-        <button
+        <BackButton
           onClick={onClose}
-          className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 cursor-pointer"
-          aria-label="Fechar jogo"
-        >
-          <X className="w-5 h-5" />
-        </button>
+          className={`absolute z-20 top-3 ${phase === "play" || phase === "count" ? "left-1/2 -translate-x-1/2" : "left-3"}`}
+        />
 
         <AnimatePresence mode="wait">
           {phase === "intro" && (
@@ -357,12 +357,13 @@ export function GameModal({
 function Overlay({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
-      className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-5 bg-[#050A1A]/75 backdrop-blur-[2px] overflow-y-auto"
+      className="absolute inset-0 z-10 flex flex-col items-center text-center px-5 bg-[#050A1A]/75 backdrop-blur-[2px] overflow-y-auto"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      {children}
+      {/* my-auto centraliza quando cabe e deixa rolar quando a tela é baixa (celular deitado) */}
+      <div className="my-auto w-full flex flex-col items-center pt-16 pb-6">{children}</div>
     </motion.div>
   );
 }

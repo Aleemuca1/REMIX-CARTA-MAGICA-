@@ -9,6 +9,8 @@ import { randomBytes } from "crypto";
 import * as asaas from "./asaas";
 import { ADVENT_DAYS } from "./src/advent/days";
 import * as mailer from "./mailer";
+import { createHash, timingSafeEqual } from "crypto";
+import { MAX_AUTHOR, MAX_ORNAMENTS, MAX_TEXT, ORNAMENT_TYPES, VIEW_H, VIEW_W, sanitizeText } from "./src/tree/model";
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
@@ -813,6 +815,33 @@ async function loadIndexHtml(req: any): Promise<string | null> {
 }
 const escAttr = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
+app.get("/arvore/:token", async (req, res, next) => {
+  if (process.env.NODE_ENV !== "production") return next();
+  try {
+    const html = await loadIndexHtml(req);
+    if (!html) return next();
+    const t = await db.findTree(String(req.params.token).toLowerCase()).catch(() => null);
+    const site = siteUrlFrom(req).replace(/\/+$/, "");
+    const title = t?.title ? `🎄 ${t.title}: venha pendurar um enfeite!` : "🎄 Venha pendurar um enfeite na nossa Árvore de Natal!";
+    const desc = "Escreva uma frase de carinho e pendure na árvore da família. 💌";
+    const tags = `
+    <meta property="og:title" content="${escAttr(title)}" />
+    <meta property="og:description" content="${escAttr(desc)}" />
+    <meta property="og:image" content="${site}/og-arvore.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />`;
+    const out = html
+      .replace(/<title>[^<]*<\/title>/, `<title>${escAttr(title)}</title>`)
+      .replace(/\s*<meta (property="og:[^"]+"|name="twitter:card")[^>]*>/g, "")
+      .replace("</head>", `${tags}\n  </head>`);
+    res.set("Cache-Control", "public, max-age=300").type("html").send(out);
+  } catch {
+    next();
+  }
+});
+
 app.get("/natal/:token", async (req, res, next) => {
   if (process.env.NODE_ENV !== "production") return next();
   try {
@@ -839,6 +868,108 @@ app.get("/natal/:token", async (req, res, next) => {
     res.set("Cache-Control", "public, max-age=300").type("html").send(out);
   } catch {
     next();
+  }
+});
+
+// ---------- Árvore de Natal da Família ----------
+const TREE_TYPES = new Set(ORNAMENT_TYPES.map((t) => t.type));
+const hashKey = (k: string) => createHash("sha256").update(k).digest("hex");
+function cleanOrnament(o: any) {
+  if (!o || typeof o !== "object" || !TREE_TYPES.has(o.type)) return null;
+  const x = Number(o.x);
+  const y = Number(o.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > VIEW_W || y < 0 || y > VIEW_H) return null;
+  const color = /^#[0-9a-fA-F]{6}$/.test(o.color) ? o.color : "#E63946";
+  const id = /^[a-z0-9]{4,24}$/.test(String(o.id)) ? String(o.id) : randomBytes(6).toString("hex");
+  const text = sanitizeText(o.text, MAX_TEXT);
+  const author = sanitizeText(o.author, MAX_AUTHOR);
+  return { id, type: o.type, color, x: Math.round(x), y: Math.round(y), ...(text ? { text } : {}), ...(author ? { author } : {}), at: new Date().toISOString() };
+}
+function ownerOk(rec: db.TreeRecord, key: unknown) {
+  if (typeof key !== "string" || key.length < 10) return false;
+  const a = Buffer.from(hashKey(key));
+  const b = Buffer.from(rec.editKeyHash);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+const treeHits = new Map<string, { n: number; t: number }>();
+function treeRateLimited(req: any, limit = 40) {
+  const ip = String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "").split(",")[0].trim();
+  const now = Date.now();
+  const r = treeHits.get(ip);
+  if (!r || now - r.t > 10 * 60 * 1000) {
+    treeHits.set(ip, { n: 1, t: now });
+    return false;
+  }
+  r.n++;
+  return r.n > limit;
+}
+const publicTree = (t: db.TreeRecord) => ({ title: t.title, ornaments: t.ornaments });
+
+app.post("/api/tree", async (req, res) => {
+  if (treeRateLimited(req, 10)) return res.status(429).json({ error: "Muitas árvores criadas. Tente mais tarde." });
+  try {
+    const title = sanitizeText(req.body?.title, 40);
+    const list = Array.isArray(req.body?.ornaments) ? req.body.ornaments.slice(0, MAX_ORNAMENTS) : [];
+    const ornaments = list.map(cleanOrnament).filter(Boolean);
+    const token = randomBytes(8).toString("hex").slice(0, 10);
+    const editKey = randomBytes(18).toString("base64url");
+    await db.insertTree({ token, editKeyHash: hashKey(editKey), title, ornaments });
+    res.json({ token, editKey });
+  } catch (err: any) {
+    console.error("Erro ao criar árvore:", err?.message || err);
+    res.status(503).json({ error: "O compartilhamento da árvore está indisponível agora. Sua árvore continua salva neste aparelho." });
+  }
+});
+
+app.get("/api/tree/:token", async (req, res) => {
+  try {
+    const t = await db.findTree(String(req.params.token).toLowerCase());
+    if (!t) return res.status(404).json({ error: "Árvore não encontrada. Confira o link." });
+    res.json(publicTree(t));
+  } catch {
+    res.status(500).json({ error: "Erro ao buscar a árvore." });
+  }
+});
+
+app.post("/api/tree/:token/ornaments", async (req, res) => {
+  if (treeRateLimited(req)) return res.status(429).json({ error: "Calma, duende! Muitos enfeites seguidos. Tente daqui a pouco." });
+  try {
+    const t = await db.findTree(String(req.params.token).toLowerCase());
+    if (!t) return res.status(404).json({ error: "Árvore não encontrada." });
+    if (t.ornaments.length >= MAX_ORNAMENTS) return res.status(400).json({ error: "A árvore está lotada de enfeites!" });
+    const o = cleanOrnament(req.body?.ornament);
+    if (!o) return res.status(400).json({ error: "Enfeite inválido." });
+    const ornaments = [...t.ornaments.filter((x: any) => x.id !== o.id), o];
+    await db.saveTree(t.token, { ornaments });
+    res.json({ title: t.title, ornaments });
+  } catch {
+    res.status(500).json({ error: "Não foi possível pendurar o enfeite agora." });
+  }
+});
+
+app.delete("/api/tree/:token/ornaments/:id", async (req, res) => {
+  try {
+    const t = await db.findTree(String(req.params.token).toLowerCase());
+    if (!t) return res.status(404).json({ error: "Árvore não encontrada." });
+    if (!ownerOk(t, req.headers["x-edit-key"])) return res.status(403).json({ error: "Só quem criou a árvore pode tirar enfeites." });
+    const ornaments = t.ornaments.filter((x: any) => x.id !== req.params.id);
+    await db.saveTree(t.token, { ornaments });
+    res.json({ title: t.title, ornaments });
+  } catch {
+    res.status(500).json({ error: "Erro ao tirar o enfeite." });
+  }
+});
+
+app.patch("/api/tree/:token", async (req, res) => {
+  try {
+    const t = await db.findTree(String(req.params.token).toLowerCase());
+    if (!t) return res.status(404).json({ error: "Árvore não encontrada." });
+    if (!ownerOk(t, req.headers["x-edit-key"])) return res.status(403).json({ error: "Sem permissão." });
+    const title = sanitizeText(req.body?.title, 40);
+    await db.saveTree(t.token, { title });
+    res.json({ title, ornaments: t.ornaments });
+  } catch {
+    res.status(500).json({ error: "Erro ao salvar o nome." });
   }
 });
 

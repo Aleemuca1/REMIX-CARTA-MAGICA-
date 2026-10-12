@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import BackButton from "../BackButton";
+import { useBackClose } from "../../lib/backClose";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Palette } from "lucide-react";
 import Reveal from "../Reveal";
@@ -80,6 +82,7 @@ export function AtelierModal({
   onDone?: () => void;
   title?: string;
 }) {
+  useBackClose(true, onClose);
   useEffect(() => {
     document.body.style.overflow = "hidden";
     const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -104,9 +107,7 @@ export function AtelierModal({
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-cinzel text-xl sm:text-2xl font-bold text-white">🎨 {title}</h3>
-          <button onClick={onClose} className="text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 cursor-pointer" aria-label="Fechar ateliê">
-            <X className="w-5 h-5" />
-          </button>
+          <BackButton onClick={onClose} />
         </div>
         <AtelierEditor initialDesignId={designId} lockDesign={lockDesign} allowExclusive={allowExclusive} childName={getChildName()} onDone={onDone} />
       </motion.div>

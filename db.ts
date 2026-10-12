@@ -310,3 +310,50 @@ export async function getMetrics() {
   const revenue = (paid.data ?? []).reduce((a: number, o: any) => a + Number(o.amount), 0);
   return { total: total ?? 0, pro: pro ?? 0, revenue };
 }
+
+// ---------- Árvore de Natal da Família ----------
+export type TreeRecord = {
+  token: string;
+  editKeyHash: string;
+  title: string;
+  ornaments: any[];
+  updatedAt?: string;
+};
+const memTrees = new Map<string, TreeRecord>();
+
+export async function insertTree(t: TreeRecord): Promise<void> {
+  if (!supabase) {
+    memTrees.set(t.token, { ...t, updatedAt: new Date().toISOString() });
+    return;
+  }
+  const { error } = await supabase.from("family_trees").insert({
+    token: t.token,
+    edit_key_hash: t.editKeyHash,
+    title: t.title,
+    ornaments: t.ornaments,
+  });
+  if (error) throw new Error(`Supabase insertTree: ${error.message}`);
+}
+
+export async function findTree(token: string): Promise<TreeRecord | null> {
+  if (!/^[a-z0-9]{6,16}$/.test(token)) return null;
+  if (!supabase) return memTrees.get(token) ?? null;
+  const { data, error } = await supabase.from("family_trees").select("*").eq("token", token).maybeSingle();
+  if (error) throw new Error(`Supabase findTree: ${error.message}`);
+  return data
+    ? { token: data.token, editKeyHash: data.edit_key_hash, title: data.title, ornaments: data.ornaments || [], updatedAt: data.updated_at }
+    : null;
+}
+
+export async function saveTree(token: string, patch: { title?: string; ornaments?: any[] }): Promise<void> {
+  if (!supabase) {
+    const t = memTrees.get(token);
+    if (t) Object.assign(t, patch, { updatedAt: new Date().toISOString() });
+    return;
+  }
+  const { error } = await supabase
+    .from("family_trees")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("token", token);
+  if (error) throw new Error(`Supabase saveTree: ${error.message}`);
+}

@@ -20,10 +20,12 @@ import FrostEdges from "./components/FrostEdges";
 import SnowGlobe from "./components/SnowGlobe";
 import AdventCalendar from "./components/advent/AdventCalendar";
 import AtelierSection from "./components/atelier/AtelierSection";
+import TreeSection from "./components/tree/TreeSection";
 import SantaPeek from "./components/SantaPeek";
 import { celebrateFrom } from "./lib/celebrate";
 import { startCheckout, usePaymentReturn } from "./lib/payment";
 import PaymentToast from "./components/PaymentToast";
+import ScrollTopButton from "./components/ScrollTopButton";
 import { snow } from "./lib/snow";
 import SampleLetterPreview from "./components/SampleLetterPreview";
 import CreationWizard from "./components/CreationWizard";
@@ -75,7 +77,7 @@ export default function App() {
 
   const closeLetter = () => {
     setActiveLetter(null);
-    if (window.location.pathname.startsWith("/natal/")) window.history.replaceState(null, "", "/");
+    if (window.location.pathname.startsWith("/natal/")) setTimeout(() => window.history.replaceState(null, "", "/"), 80);
   };
 
   const handleStartWizard = (plan: PlanType = "free") => {
@@ -131,6 +133,9 @@ export default function App() {
         {/* Ateliê de Natal: colorir e desenhar */}
         <AtelierSection />
 
+        {/* Árvore de Natal da Família: enfeites com frases */}
+        <TreeSection />
+
         {/* Pricing & Value Section */}
         <SnowDivider />
         <AdventCalendar onUpgrade={() => handleScrollTo("precos")} />
@@ -177,6 +182,7 @@ export default function App() {
         />
       )}
 
+      <ScrollTopButton />
       <PaymentToast msg={payMsg} onClose={() => setPayMsg(null)} />
     </div>
   );

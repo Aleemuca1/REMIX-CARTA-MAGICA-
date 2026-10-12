@@ -116,6 +116,7 @@ export const PRIVACIDADE: LegalDoc = {
         "dados de identificação e cobrança informados diretamente ao Asaas. Os dados de cartão ficam somente com o intermediador; não temos acesso a eles.",
         "e-mail do comprador (recebido do Asaas), usado só para enviar o link da carta e o código de acesso da compra;",
         "código de acesso gerado para cada compra, que permite abrir o plano pago em outro aparelho.",
+        "Árvore de Natal da Família: o nome da árvore, os enfeites, as frases e o nome de quem escreveu. Ficam só no seu aparelho até você tocar em “Chamar a família”; a partir daí ficam guardados no nosso banco de dados e qualquer pessoa com o link pode ver e adicionar enfeites. Não escreva sobrenomes, endereços ou telefones nas frases.",
       ],
     },
     {
@@ -236,6 +237,7 @@ export const COOKIES: LegalDoc = {
         "carta-magica-advento-acesso — lembra se este navegador tem o plano Natal Completo;",
         "carta-magica-nome — nome da criança digitado no calendário ou no Ateliê, para não precisar digitar de novo;",
         "carta-magica-codigo — código de acesso da compra, para você poder consultá-lo e usar em outro aparelho;",
+        "carta-magica-arvore — os enfeites e frases da sua Árvore de Natal da Família e a chave que permite a você (e só a você) tirar enfeites;",
         "carta-magica-best — recorde do jogo Entrega Relâmpago;",
         "carta-magica-cookies — lembra que você já viu este aviso.",
       ],

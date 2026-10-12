@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
+import BackButton from "./BackButton";
+import { useBackClose } from "../lib/backClose";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Sparkles, Wand2 } from "lucide-react";
 import { PlanType, Letter } from "../types";
@@ -43,6 +45,7 @@ export default function CreationWizard({
     return () => clearInterval(t);
   }, [loading]);
 
+  useBackClose(isOpen, onClose);
   if (!isOpen) return null;
 
   const handleSubmit = async (e: FormEvent) => {
@@ -139,13 +142,9 @@ Papai Noel 🎅`,
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 24 }}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-[#EDF2F4]/60 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
-          aria-label="Fechar formulário"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex justify-start mb-3">
+          <BackButton onClick={onClose} />
+        </div>
 
         <div className="flex items-center gap-2 mb-2">
           <motion.span

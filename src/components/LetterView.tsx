@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import BackButton from "./BackButton";
+import { useBackClose } from "../lib/backClose";
 import { motion, useReducedMotion, AnimatePresence } from "motion/react";
 import EnvelopeIntro from "./EnvelopeIntro";
 import confetti from "canvas-confetti";
@@ -24,6 +26,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
   const [toast, setToast] = useState<string | null>(null);
   const [upsell, setUpsell] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  useBackClose(true, onClose);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -150,13 +153,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
             <span className="font-cinzel text-xs font-bold text-[#9B021A] uppercase tracking-wider">
               Carta do Polo Norte
             </span>
-            <button
-              onClick={onClose}
-              className="text-[#1C2541]/70 hover:text-[#1C2541] p-2 rounded-full hover:bg-black/5 transition-colors cursor-pointer"
-              aria-label="Fechar carta"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <BackButton onClick={onClose} light />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <motion.button

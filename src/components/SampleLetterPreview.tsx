@@ -1,4 +1,6 @@
 import { X, Volume2, Stamp } from "lucide-react";
+import BackButton from "./BackButton";
+import { useBackClose } from "../lib/backClose";
 
 interface SampleLetterPreviewProps {
   isOpen: boolean;
@@ -11,18 +13,15 @@ export default function SampleLetterPreview({
   onClose,
   onStartCustomization,
 }: SampleLetterPreviewProps) {
+  useBackClose(isOpen, onClose);
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="relative w-full max-w-lg parchment-bg text-[#1C2541] rounded-3xl p-6 sm:p-8 border-4 border-[#FFD166] shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-[#1C2541]/60 hover:text-[#1C2541] p-1.5 rounded-full hover:bg-black/5 transition-colors cursor-pointer"
-          aria-label="Fechar amostra"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex justify-end mb-2">
+          <BackButton onClick={onClose} light />
+        </div>
 
         {/* Header bar */}
         <div className="flex justify-between items-center border-b-2 border-[#1C2541]/20 pb-4 mb-4">

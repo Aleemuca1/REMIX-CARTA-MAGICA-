@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import BackButton from "../BackButton";
+import { useBackClose } from "../../lib/backClose";
 import { motion, AnimatePresence } from "motion/react";
 import { Lock, X, Star, Crown } from "lucide-react";
 import Reveal from "../Reveal";
@@ -332,6 +334,7 @@ function DayBody({ d, name, done, onDone }: { d: AdventDay; name: string; done: 
 }
 
 function Backdrop({ children, onClose, wide }: { children: React.ReactNode; onClose: () => void; wide?: boolean }) {
+  useBackClose(true, onClose);
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", k);
@@ -351,9 +354,9 @@ function Backdrop({ children, onClose, wide }: { children: React.ReactNode; onCl
         exit={{ scale: 0.9, opacity: 0 }}
         transition={{ type: "spring", stiffness: 220, damping: 20 }}
       >
-        <button onClick={onClose} className="absolute top-3 right-3 text-white/60 hover:text-white p-1.5 rounded-full hover:bg-white/10 cursor-pointer" aria-label="Fechar">
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex justify-start -mt-1 mb-3">
+          <BackButton onClick={onClose} />
+        </div>
         {children}
       </motion.div>
     </motion.div>

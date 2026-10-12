@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Menu, X } from "lucide-react";
+
+const MENU = [
+  { id: "como-funciona", label: "✨ Como funciona" },
+  { id: "jogo", label: "🎮 Jogo do Papai Noel" },
+  { id: "atelie", label: "🎨 Ateliê de Natal" },
+  { id: "arvore", label: "🎄 Árvore da Família" },
+  { id: "calendario", label: "📅 Calendário do Advento" },
+  { id: "precos", label: "👑 Planos" },
+  { id: "duvidas", label: "❓ Dúvidas" },
+];
 import ChristmasLights from "./ChristmasLights";
 
 interface NavbarProps {
@@ -9,6 +19,7 @@ interface NavbarProps {
 
 export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false);
+  const [menu, setMenu] = useState(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     onScroll();
@@ -73,6 +84,12 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
             🎨 Ateliê
           </button>
           <button
+            onClick={() => onScrollTo("arvore")}
+            className="text-xs sm:text-sm text-[#EDF2F4]/80 hover:text-white transition-colors cursor-pointer hidden xl:inline-block"
+          >
+            🎄 Árvore
+          </button>
+          <button
             onClick={() => onScrollTo("duvidas")}
             className="text-xs sm:text-sm text-[#EDF2F4]/80 hover:text-white transition-colors cursor-pointer hidden md:inline-block"
           >
@@ -86,6 +103,15 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
             Planos
           </button>
           <button
+            onClick={() => setMenu((v) => !v)}
+            className="xl:hidden text-white/90 hover:text-white p-2 -mr-1 rounded-full hover:bg-white/10 cursor-pointer"
+            aria-label={menu ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={menu}
+            id="nav-menu-btn"
+          >
+            {menu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+          <button
             onClick={() => onStartWizard("free")}
             className="bg-gradient-to-r from-[#D90429] to-[#EF233C] hover:from-[#EF233C] hover:to-[#9B021A] text-white font-bold px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm flex items-center gap-1.5 shadow-md border border-[#FFD166]/40 transition-transform active:scale-95 cursor-pointer btn-shine"
             id="nav-cta-create"
@@ -97,6 +123,24 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
         </nav>
       </div>
       <ChristmasLights />
+      {menu && (
+        <div className="xl:hidden absolute top-full inset-x-0 bg-[#060B19]/97 backdrop-blur-md border-b border-white/10 shadow-2xl">
+          <nav className="max-w-6xl mx-auto px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-1">
+            {MENU.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => {
+                  setMenu(false);
+                  onScrollTo(m.id);
+                }}
+                className="text-left text-sm text-white/90 hover:text-white hover:bg-white/10 rounded-xl px-4 py-3 cursor-pointer"
+              >
+                {m.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }
