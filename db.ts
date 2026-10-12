@@ -38,6 +38,8 @@ export type OrderRecord = {
   createdAt: string;
   paidAt?: string;
   gatewayChargeId?: string;
+  accessCode?: string;
+  customerEmail?: string;
 };
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -128,6 +130,8 @@ const rowToOrder = (r: any): OrderRecord => ({
   createdAt: new Date(r.created_at).toLocaleString("pt-BR"),
   paidAt: r.paid_at ? new Date(r.paid_at).toLocaleString("pt-BR") : undefined,
   gatewayChargeId: r.gateway_charge_id ?? undefined,
+  accessCode: r.access_code ?? undefined,
+  customerEmail: r.customer_email ?? undefined,
 });
 
 // ---------- fallback em memória ----------
@@ -227,7 +231,13 @@ export async function findOrder(id: string): Promise<OrderRecord | null> {
 /** Atualiza status (e id do checkout) de um pedido. */
 export async function updateOrder(
   orderId: string,
-  patch: { status?: string; gatewayChargeId?: string; paymentMethod?: string },
+  patch: {
+    status?: string;
+    gatewayChargeId?: string;
+    paymentMethod?: string;
+    accessCode?: string;
+    customerEmail?: string;
+  },
 ): Promise<void> {
   if (!supabase) {
     const o = memOrders.find((x) => x.orderId === orderId);
@@ -242,8 +252,34 @@ export async function updateOrder(
   if (patch.status === "paid") row.paid_at = new Date().toISOString();
   if (patch.gatewayChargeId) row.gateway_charge_id = patch.gatewayChargeId;
   if (patch.paymentMethod) row.payment_method = patch.paymentMethod;
-  const { error } = await supabase.from("orders").update(row).eq("order_id", orderId);
+  if (patch.accessCode) row.access_code = patch.accessCode;
+  if (patch.customerEmail) row.customer_email = patch.customerEmail;
+  let { error } = await supabase.from("orders").update(row).eq("order_id", orderId);
+  // se a migração 004 ainda não foi aplicada, salva o resto (não trava a liberação do plano)
+  if (error && /access_code|customer_email/.test(error.message)) {
+    console.warn("Colunas novas ausentes: rode supabase/migrations/004_codigo_magico.sql");
+    delete row.access_code;
+    delete row.customer_email;
+    ({ error } = await supabase.from("orders").update(row).eq("order_id", orderId));
+  }
   if (error) throw new Error(`Supabase updateOrder: ${error.message}`);
+}
+
+/** Procura um pedido PAGO pelo código mágico (para liberar em outro aparelho). */
+export async function findPaidOrderByCode(code: string): Promise<OrderRecord | null> {
+  if (!/^[A-Z0-9]{6}$/.test(code)) return null;
+  if (!supabase) {
+    return memOrders.find((o) => o.accessCode === code && o.status === "paid") ?? null;
+  }
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("access_code", code)
+    .eq("status", "paid")
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`Supabase findPaidOrderByCode: ${error.message}`);
+  return data ? rowToOrder(data) : null;
 }
 
 export async function listOrders(limit = 50): Promise<OrderRecord[]> {

@@ -7,6 +7,8 @@ import { GoogleGenAI } from "@google/genai";
 import * as db from "./db";
 import { randomBytes } from "crypto";
 import * as asaas from "./asaas";
+import { ADVENT_DAYS } from "./src/advent/days";
+import * as mailer from "./mailer";
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
@@ -162,6 +164,7 @@ app.get("/api/health", (_req, res) => {
     supabaseConfigured: db.usingSupabase(),
     paymentsConfigured: asaas.asaasConfigured(),
     webhookConfigured: Boolean(process.env.ASAAS_WEBHOOK_TOKEN),
+    emailConfigured: mailer.emailConfigured(),
     timestamp: new Date().toISOString(),
   });
 });
@@ -305,27 +308,41 @@ DIRETRIZES DE SEGURAN\xC7A E \xC9TICA:
       .json({ error: "Falha ao gerar a carta m\xE1gica. Tente novamente." });
   }
 });
+// guarda áudios já gerados (mesmo texto = mesma voz), para não pagar duas vezes
+const ttsCache = new Map<string, string>();
 app.post("/api/tts", async (req, res) => {
   try {
-    const { token, voice = "Fenrir" } = req.body;
-    // a voz só é gerada para cartas reais: o texto vem do banco, não do navegador
-    const letterRec = await db.findLetter(String(token || ""));
-    if (!letterRec) {
-      return res.status(404).json({ error: "Carta n\xE3o encontrada." });
+    const { token, adventDay, name, voice = "Fenrir" } = req.body || {};
+    // a voz só é gerada para textos do próprio site (carta salva ou recado do calendário),
+    // nunca para um texto qualquer vindo do navegador
+    let text = "";
+    let childName = "";
+    if (adventDay) {
+      const d = ADVENT_DAYS.find((x) => x.day === Number(adventDay));
+      if (!d || d.activity.type !== "message") {
+        return res.status(404).json({ error: "Recado n\xE3o encontrado." });
+      }
+      childName = String(name || "").replace(/[^\p{L} ]/gu, "").trim().slice(0, 20) || "crian\xE7a querida";
+      text = d.activity.text.replace(/\{nome\}/g, childName);
+    } else {
+      const letterRec = await db.findLetter(String(token || ""));
+      if (!letterRec) {
+        return res.status(404).json({ error: "Carta n\xE3o encontrada." });
+      }
+      childName = letterRec.childName;
+      const paras = String(letterRec.content || "").split(/\n\s*\n/).filter(Boolean);
+      const paidVoice = letterRec.plan === "pro" || letterRec.plan === "natal";
+      text = paidVoice ? letterRec.content : paras.slice(0, 2).join("\n\n");
     }
-    const childName = letterRec.childName;
-    const paras = String(letterRec.content || "").split(/\n\s*\n/).filter(Boolean);
-    const paidVoice = letterRec.plan === "pro" || letterRec.plan === "natal";
-    const text = paidVoice ? letterRec.content : paras.slice(0, 2).join("\n\n");
     if (!text) {
       return res
         .status(400)
         .json({ error: "Texto n\xE3o fornecido para s\xEDntese de voz." });
     }
     const ai = getGeminiClient();
-    let audioBase64 = null;
-    let provider = "web_speech_fallback";
-    if (ai) {
+    let audioBase64 = ttsCache.get(text) ?? null;
+    let provider = audioBase64 ? "gemini_tts" : "web_speech_fallback";
+    if (ai && !audioBase64) {
       try {
         const ttsResponse = await ai.models.generateContent({
           model: "gemini-3.1-flash-tts-preview",
@@ -353,6 +370,8 @@ app.post("/api/tts", async (req, res) => {
         if (part && "inlineData" in part && part.inlineData?.data) {
           audioBase64 = part.inlineData.data;
           provider = "gemini_tts";
+          if (ttsCache.size > 150) ttsCache.delete(ttsCache.keys().next().value as string);
+          ttsCache.set(text, audioBase64 as string);
         }
       } catch (ttsErr) {
         console.warn(
@@ -692,8 +711,10 @@ function siteUrlFrom(req: any) {
 // Cria um pedido pendente e a sessão de pagamento no Asaas (Pix ou cartão).
 app.post("/api/checkout", async (req, res) => {
   try {
-    const { letterId, plan } = req.body || {};
-    if (!asaas.isPaidPlan(plan)) {
+    const { letterId } = req.body || {};
+    // um único plano pago: Natal Completo (R$ 29,90). "pro" antigo vira "natal".
+    const plan = asaas.isPaidPlan(req.body?.plan) ? "natal" : null;
+    if (!plan) {
       return res.status(400).json({ error: "Plano inválido." });
     }
     const letter = await db.findLetter(String(letterId || ""));
@@ -739,9 +760,85 @@ app.get("/api/order/:orderId", async (req, res) => {
       status: order.status,
       plan: order.plan,
       letterToken: order.status === "paid" ? letter?.token : undefined,
+      accessCode: order.status === "paid" ? order.accessCode : undefined,
     });
   } catch {
     res.status(500).json({ error: "Erro ao consultar pedido" });
+  }
+});
+
+// Código mágico: libera o plano pago em outro aparelho (celular, tablet...)
+const redeemTries = new Map<string, { n: number; t: number }>();
+app.post("/api/access/redeem", async (req, res) => {
+  const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
+  const now = Date.now();
+  const r = redeemTries.get(ip);
+  if (r && now - r.t < 10 * 60 * 1000 && r.n >= 8) {
+    return res.status(429).json({ error: "Muitas tentativas. Espere alguns minutos e tente de novo." });
+  }
+  redeemTries.set(ip, r && now - r.t < 10 * 60 * 1000 ? { n: r.n + 1, t: r.t } : { n: 1, t: now });
+  try {
+    const code = String(req.body?.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const order = await db.findPaidOrderByCode(code);
+    if (!order) return res.status(404).json({ error: "Código não encontrado. Confira as letras e tente de novo." });
+    const letter = await db.findLetter(order.letterId);
+    res.json({ ok: true, plan: order.plan, letterToken: letter?.token, childName: letter?.childName });
+  } catch {
+    res.status(500).json({ error: "Erro ao conferir o código." });
+  }
+});
+
+// Link compartilhado /natal/<token>: devolve a página com título e imagem
+// próprios, para aparecer bonito no WhatsApp (o WhatsApp não roda JavaScript).
+let indexHtmlCache: string | null = null;
+async function loadIndexHtml(req: any): Promise<string | null> {
+  if (indexHtmlCache) return indexHtmlCache;
+  try {
+    const fs = await import("fs");
+    const local = path.join(process.cwd(), "dist", "index.html");
+    if (fs.existsSync(local)) {
+      indexHtmlCache = fs.readFileSync(local, "utf8");
+      return indexHtmlCache;
+    }
+  } catch {
+    /* na Vercel o arquivo fica no CDN */
+  }
+  try {
+    const r = await fetch(`${siteUrlFrom(req).replace(/\/+$/, "")}/index.html`);
+    if (r.ok) indexHtmlCache = await r.text();
+  } catch {
+    /* sem página */
+  }
+  return indexHtmlCache;
+}
+const escAttr = (s: string) =>
+  s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
+app.get("/natal/:token", async (req, res, next) => {
+  if (process.env.NODE_ENV !== "production") return next();
+  try {
+    const html = await loadIndexHtml(req);
+    if (!html) return next();
+    const letter = await db.findLetter(String(req.params.token).toLowerCase());
+    const first = letter ? String(letter.childName).trim().split(/\s+/)[0].slice(0, 20) : "";
+    const site = siteUrlFrom(req).replace(/\/+$/, "");
+    const title = first ? `Uma carta do Papai Noel para ${first} ✨` : "Uma carta do Papai Noel chegou! ✨";
+    const desc = "Direto do Polo Norte: abra a carta mágica e ouça o Papai Noel. 🎅🎄";
+    const tags = `
+    <meta property="og:title" content="${escAttr(title)}" />
+    <meta property="og:description" content="${escAttr(desc)}" />
+    <meta property="og:image" content="${site}/og-carta.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content="${site}/natal/${escAttr(String(req.params.token))}" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />`;
+    const out = html
+      .replace(/<title>[^<]*<\/title>/, `<title>${escAttr(title)}</title>`)
+      .replace(/\s*<meta (property="og:[^"]+"|name="twitter:card")[^>]*>/g, "")
+      .replace("</head>", `${tags}\n  </head>`);
+    res.set("Cache-Control", "public, max-age=300").type("html").send(out);
+  } catch {
+    next();
   }
 });
 
@@ -776,9 +873,26 @@ app.post("/api/asaas/webhook", async (req, res) => {
     const refunded = ["PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED"].includes(event);
 
     if (paid && order.status !== "paid") {
-      await db.updateOrder(order.orderId, { status: "paid" });
+      const accessCode = asaas.newAccessCode();
+      const customerId = evt.payment?.customer || evt.checkout?.customer;
+      const customerEmail =
+        (typeof evt.checkout?.customerData?.email === "string" && evt.checkout.customerData.email) ||
+        (customerId ? await asaas.getCustomerEmail(String(customerId)) : undefined);
+      await db.updateOrder(order.orderId, { status: "paid", accessCode, customerEmail: customerEmail || undefined });
       const letter = await db.findLetter(order.letterId);
       if (letter) await db.updateLetter(letter.id, { plan: order.plan as any });
+      // e-mail com o link da carta e o código mágico (só se o Resend estiver configurado)
+      if (letter && customerEmail) {
+        const site = siteUrlFrom(req).replace(/\/+$/, "");
+        const saved = await db.findOrder(order.orderId);
+        await mailer.sendPurchaseEmail({
+          to: customerEmail,
+          childName: letter.childName,
+          letterUrl: `${site}/natal/${letter.token}`,
+          siteUrl: site,
+          accessCode: saved?.accessCode,
+        });
+      }
     } else if (closed && order.status === "pending") {
       await db.updateOrder(order.orderId, { status: "canceled" });
     } else if (refunded) {

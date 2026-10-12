@@ -17,7 +17,7 @@ export const PLAN_PRICES: Record<PaidPlan, { value: number; name: string; descri
   natal: {
     value: 29.9,
     name: "Natal Completo",
-    description: "Magia Completa + Calendário do Advento com 24 surpresas até a véspera de Natal",
+    description: "Carta completa com a voz do Papai Noel, PDF, certificado e Calendário do Advento com 24 surpresas",
   },
 };
 
@@ -92,4 +92,27 @@ export function webhookAuthorized(headerToken: unknown) {
   const expected = process.env.ASAAS_WEBHOOK_TOKEN;
   if (!expected) return false;
   return typeof headerToken === "string" && headerToken === expected;
+}
+
+/** Busca o e-mail do cliente no Asaas (o checkout pede e-mail ao comprador). */
+export async function getCustomerEmail(customerId: string): Promise<string | undefined> {
+  if (!customerId || !/^[A-Za-z0-9_-]{1,80}$/.test(customerId) || !asaasConfigured()) return undefined;
+  try {
+    const res = await fetch(`${baseUrl()}/customers/${customerId}`, {
+      headers: { access_token: process.env.ASAAS_API_KEY as string, "User-Agent": "carta-magica" },
+    });
+    if (!res.ok) return undefined;
+    const c: any = await res.json();
+    return typeof c?.email === "string" && c.email.includes("@") ? c.email : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Código fácil de digitar (sem 0/O, 1/I/L). */
+export function newAccessCode() {
+  const abc = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => abc[b % abc.length]).join("");
 }
