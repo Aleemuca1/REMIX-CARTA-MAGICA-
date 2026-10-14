@@ -148,6 +148,40 @@ export class ChristmasMusicBox {
     }
   }
 
+  private recDest: MediaStreamAudioDestinationNode | null = null;
+  /** Áudio da caixinha de música para gravar junto com um vídeo. */
+  recordingStream(): MediaStream | null {
+    try {
+      this.ensure();
+      if (!this.recDest) {
+        this.recDest = this.ctx!.createMediaStreamDestination();
+        this.master!.connect(this.recDest);
+      }
+      if (this.ctx!.state === "suspended") this.ctx!.resume();
+      return this.recDest.stream;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Sininhos de trenó: guizos ritmados + "plim" de sinos (antes da voz do Papai Noel). */
+  sleighBells(seconds = 1.8, vol = 0.12) {
+    this.ensure();
+    const ctx = this.ctx!;
+    if (ctx.state === "suspended") ctx.resume();
+    const t0 = ctx.currentTime + 0.02;
+    if (!this.playing && this.master) {
+      this.master.gain.cancelScheduledValues(t0);
+      this.master.gain.setValueAtTime(0.9, t0);
+    }
+    const steps = Math.floor(seconds / 0.11);
+    for (let i = 0; i < steps; i++) {
+      const fade = 1 - i / steps;
+      this.jingle(t0 + i * 0.11 + (i % 2 ? 0.015 : 0), vol * (i % 4 === 0 ? 1 : 0.6) * (0.4 + fade * 0.6));
+    }
+    [88, 91, 96, 93].forEach((n, i) => this.chime(n, t0 + 0.15 + i * 0.32, 0.1));
+  }
+
   private jingle(t: number, vol = 0.06) {
     const ctx = this.ctx!;
     const src = ctx.createBufferSource();

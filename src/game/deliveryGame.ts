@@ -4,6 +4,7 @@
  * Acerte a boca das chaminés; chaminés douradas valem mais; o vento muda.
  */
 import santaSrc from "../assets/images/santa-sleigh.webp";
+import { drawFace, SEATS } from "../family/store";
 
 export type GameResult = { score: number; delivered: number; perfect: number; bestStreak: number };
 
@@ -40,6 +41,9 @@ export class DeliveryGame {
   private W = 0; private H = 0; private dpr = 1; private u = 1;
   private raf = 0; private last = 0; private running = false;
   private santa = new Image(); private santaReady = false;
+  /** Família que viaja no trenó (fotos do "Família no Trenó"). */
+  passengers: HTMLImageElement[] = [];
+  passengerNames: string[] = [];
 
   private cam = 0; private speed = 0; private t = 0; private timeLeft = DURATION;
   private houses: House[] = []; private gifts: Gift[] = []; private parts: Particle[] = []; private pops: Popup[] = [];
@@ -653,6 +657,16 @@ export class DeliveryGame {
     ctx.rotate(Math.sin(this.t * 2.2 + 1) * 0.04);
     if (this.santaReady) ctx.drawImage(this.santa, -w / 2, -h / 2, w, h);
     else { ctx.fillStyle = "#D90429"; ctx.fillRect(-w / 4, -h / 6, w / 2, h / 3); }
+    const fr = w * 0.062;
+    this.passengers.slice(0, SEATS.length).forEach((img, i) => {
+      const fx = -w / 2 + SEATS[i].x * w;
+      const fy = -h / 2 + SEATS[i].y * h + Math.sin(this.t * 4 + i) * fr * 0.08;
+      ctx.fillStyle = "#C1121F";
+      ctx.beginPath();
+      ctx.ellipse(fx, fy + fr * 1.05, fr * 0.85, fr * 0.6, 0, Math.PI, 0);
+      ctx.fill();
+      drawFace(ctx, img, fx, fy, fr, undefined, true);
+    });
     ctx.restore();
     // mira: linha pontilhada mostrando a queda aproximada
     if (this.running) {

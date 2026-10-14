@@ -31,12 +31,17 @@ export default function AtelierEditor({
   allowExclusive = false,
   childName = "",
   onDone,
+  full = true,
+  onLocked,
 }: {
   initialDesignId?: string;
   lockDesign?: boolean;
   allowExclusive?: boolean;
   childName?: string;
   onDone?: () => void;
+  /** tem o Natal Completo? (libera todos os desenhos, adesivos e o nome na moldura) */
+  full?: boolean;
+  onLocked?: (what: string) => void;
 }) {
   const bgRef = useRef<HTMLCanvasElement | null>(null);
   const paintRef = useRef<HTMLCanvasElement | null>(null);
@@ -56,7 +61,11 @@ export default function AtelierEditor({
   const [canUndo, setCanUndo] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const designs = DESIGNS.filter((d) => allowExclusive || !d.exclusive || d.id === initialDesignId);
+  // plano grátis: 6 desenhos e 6 adesivos; o resto é do Natal Completo
+  const freeIds = DESIGNS.filter((d) => !d.exclusive).slice(0, 6).map((d) => d.id);
+  const designs = DESIGNS; // no grátis, os exclusivos aparecem com cadeado
+  const designLocked = (id: string) => !full && !allowExclusive && !freeIds.includes(id) && id !== initialDesignId;
+  const stickerLocked = (i: number) => !full && i >= 6;
   const design = DESIGNS.find((d) => d.id === designId) ?? DESIGNS[0];
 
   const ctx = (r: React.RefObject<HTMLCanvasElement | null>) => r.current!.getContext("2d", { willReadFrequently: true })!;
@@ -293,7 +302,7 @@ export default function AtelierEditor({
     c.textAlign = "center";
     c.fillStyle = "#FFD166";
     c.font = 'bold 60px Georgia, "Times New Roman", serif';
-    const who = name.trim();
+    const who = full ? name.trim() : "";
     c.fillText(who ? `Desenho de ${who}` : "Meu desenho de Natal", W / 2, 130);
     c.fillStyle = "#EDF2F4";
     c.font = '32px Georgia, "Times New Roman", serif';
@@ -412,11 +421,12 @@ export default function AtelierEditor({
               {designs.map((d) => (
                 <button
                   key={d.id}
-                  onClick={() => setDesignId(d.id)}
-                  title={d.name}
-                  className={`aspect-square rounded-xl bg-white p-1 border-4 cursor-pointer transition-transform hover:scale-105 ${designId === d.id ? "border-[#FFD166]" : "border-transparent"}`}
+                  onClick={() => (designLocked(d.id) ? onLocked?.(`O desenho "${d.name}"`) : setDesignId(d.id))}
+                  title={designLocked(d.id) ? `${d.name} (Natal Completo)` : d.name}
+                  className={`relative aspect-square rounded-xl bg-white p-1 border-4 cursor-pointer transition-transform hover:scale-105 ${designId === d.id ? "border-[#FFD166]" : "border-transparent"}`}
                 >
-                  <img src={designDataUrl(d, 120)} alt={d.name} className="w-full h-full" draggable={false} />
+                  <img src={designDataUrl(d, 120)} alt={d.name} className={`w-full h-full ${designLocked(d.id) ? "opacity-40" : ""}`} draggable={false} />
+                  {designLocked(d.id) && <span className="absolute inset-0 flex items-center justify-center text-xl">🔒</span>}
                 </button>
               ))}
             </div>
@@ -471,13 +481,14 @@ export default function AtelierEditor({
 
         {tool === "adesivo" ? (
           <div className="grid grid-cols-6 gap-2">
-            {STICKERS.map((s) => (
+            {STICKERS.map((s, i) => (
               <button
                 key={s}
-                onClick={() => setSticker(s)}
-                className={`aspect-square rounded-xl text-2xl border-2 cursor-pointer ${sticker === s ? "border-[#FFD166] bg-white/10" : "border-white/10 bg-white/5"}`}
+                onClick={() => (stickerLocked(i) ? onLocked?.(`O adesivo ${s}`) : setSticker(s))}
+                className={`relative aspect-square rounded-xl text-2xl border-2 cursor-pointer ${sticker === s ? "border-[#FFD166] bg-white/10" : "border-white/10 bg-white/5"}`}
               >
-                {s}
+                <span className={stickerLocked(i) ? "opacity-35" : ""}>{s}</span>
+                {stickerLocked(i) && <span className="absolute bottom-0 right-0.5 text-[11px]">🔒</span>}
               </button>
             ))}
           </div>
@@ -511,12 +522,21 @@ export default function AtelierEditor({
         </div>
 
         <div className="pt-2 border-t border-white/10 space-y-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value.slice(0, 20))}
-            placeholder="Nome do artista (vai na moldura)"
-            className="w-full bg-white/10 border border-white/20 rounded-full px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#FFD166]"
-          />
+          {full ? (
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value.slice(0, 20))}
+              placeholder="Nome do artista (vai na moldura)"
+              className="w-full bg-white/10 border border-white/20 rounded-full px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#FFD166]"
+            />
+          ) : (
+            <button
+              onClick={() => onLocked?.("A moldura com o nome da criança")}
+              className="w-full text-left bg-white/5 border border-dashed border-white/25 rounded-full px-4 py-2.5 text-white/55 text-sm cursor-pointer"
+            >
+              🔒 Nome do artista na moldura (Natal Completo)
+            </button>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <button onClick={download} className="bg-white/10 border border-[#FFD166]/50 text-white rounded-full py-3 text-sm font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer hover:bg-white/15">
               <Download className="w-4 h-4 text-[#FFD166]" /> Baixar

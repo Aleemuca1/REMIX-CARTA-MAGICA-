@@ -497,3 +497,10 @@
 @media (prefers-reduced-motion: reduce) {
   .tree-light, .tree-light-glow, .tree-ornament, .tree-star-glow { animation: none; }
 }
+@keyframes treeSnow {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(14px, 370px); }
+  100% { transform: translate(-6px, 740px); }
+}
+.tree-snow { animation: treeSnow 10s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .tree-snow { display: none; } }

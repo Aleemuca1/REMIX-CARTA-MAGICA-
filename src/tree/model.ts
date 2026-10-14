@@ -1,6 +1,6 @@
 /** Árvore de Natal da Família: enfeites com frases, montada por pais, filhos e avós. */
 
-export type OrnamentType = "bola" | "sino" | "laco" | "doce" | "coracao" | "estrela" | "boneco" | "presente";
+export type OrnamentType = "bola" | "sino" | "laco" | "doce" | "coracao" | "estrela" | "boneco" | "presente" | "brilho" | "anjo";
 
 export type Ornament = {
   id: string;
@@ -26,7 +26,7 @@ export const MAX_ORNAMENTS = 80;
 export const MAX_TEXT = 120;
 export const MAX_AUTHOR = 24;
 
-export const ORNAMENT_TYPES: { type: OrnamentType; label: string; emoji: string }[] = [
+export const ORNAMENT_TYPES: { type: OrnamentType; label: string; emoji: string; pro?: boolean }[] = [
   { type: "bola", label: "Bolinha", emoji: "🔴" },
   { type: "sino", label: "Sino", emoji: "🔔" },
   { type: "laco", label: "Laço", emoji: "🎀" },
@@ -35,7 +35,12 @@ export const ORNAMENT_TYPES: { type: OrnamentType; label: string; emoji: string 
   { type: "estrela", label: "Estrela", emoji: "⭐" },
   { type: "boneco", label: "Boneco de neve", emoji: "⛄" },
   { type: "presente", label: "Presente", emoji: "🎁" },
+  { type: "brilho", label: "Bola de brilho", emoji: "✨", pro: true },
+  { type: "anjo", label: "Anjinho", emoji: "👼", pro: true },
 ];
+
+/** Plano grátis: até 12 enfeites pendurados por quem criou a árvore. */
+export const FREE_ORNAMENTS = 12;
 
 export const ORNAMENT_COLORS = ["#E63946", "#F4A261", "#FFD166", "#2DC653", "#4CC9F0", "#4361EE", "#9B5DE5", "#F72585", "#FFFFFF", "#C0C0C0"];
 

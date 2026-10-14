@@ -7,6 +7,8 @@ import confetti from "canvas-confetti";
 import { X, Printer, Share2, Sparkles, Stamp, Volume2, Square, Download, Lock, Check } from "lucide-react";
 import { Letter } from "../types";
 import { narrate, type Narrator } from "../lib/narration";
+import { musicBox } from "../lib/christmasMusic";
+import { VOICES, voiceById, type VoiceId } from "../lib/voices";
 
 interface LetterViewProps {
   letter: Letter;
@@ -26,6 +28,9 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
   const [toast, setToast] = useState<string | null>(null);
   const [upsell, setUpsell] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [voiceId, setVoiceId] = useState<VoiceId>("noel");
+  const [readIdx, setReadIdx] = useState(-1);
+  const paraRefs = useRef<(HTMLParagraphElement | null)[]>([]);
   useBackClose(true, onClose);
 
   const showToast = (msg: string) => {
@@ -40,21 +45,61 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
       narratorRef.current?.stop();
       narratorRef.current = null;
       setSpeaking("idle");
+      setReadIdx(-1);
       return;
     }
     setSpeaking("loading");
+    // sininhos do trenó anunciando o Papai Noel
+    musicBox.sleighBells(1.6);
     // plano grátis: prévia com os dois primeiros parágrafos
-    const text = isPro ? letter.content : paragraphs.slice(0, 2).join("\n\n");
+    const readParas = isPro ? paragraphs : paragraphs.slice(0, 2);
+    const text = readParas.join("\n\n");
+    // onde começa cada parágrafo (para destacar o trecho que está sendo lido)
+    const total = readParas.reduce((a, p) => a + p.length, 0) || 1;
+    const starts: number[] = [];
+    readParas.reduce((acc, p) => (starts.push(acc / total), acc + p.length), 0);
+    let last = -1;
+    const voice = voiceById(isPro ? voiceId : "noel");
     narratorRef.current = await narrate(
       text,
       letter.childName,
       () => {
         setSpeaking("idle");
+        setReadIdx(-1);
         if (!isPro) setUpsell(true);
       },
       { token: letter.token },
+      {
+        voice,
+        onProgress: (f) => {
+          let idx = 0;
+          for (let k = 0; k < starts.length; k++) if (f >= starts[k]) idx = k;
+          if (idx !== last) {
+            last = idx;
+            setReadIdx(idx);
+            if (idx > 0) musicBox.chime(84 + (idx % 4) * 2, undefined, 0.06);
+            paraRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        },
+      },
     );
     setSpeaking((st) => (st === "loading" ? "playing" : st));
+  };
+
+  const pickVoice = (id: VoiceId) => {
+    const v = voiceById(id);
+    if (v.pro && !isPro) {
+      setUpsell(true);
+      showToast(`A voz ${v.emoji} ${v.label} faz parte do Natal Completo`);
+      return;
+    }
+    if (speaking !== "idle") {
+      narratorRef.current?.stop();
+      narratorRef.current = null;
+      setSpeaking("idle");
+    }
+    setVoiceId(id);
+    musicBox.chime(88, undefined, 0.08);
   };
 
   const handlePdf = async () => {
@@ -166,12 +211,14 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
               {speaking === "idle" ? (
                 <>
                   <Volume2 className="w-4 h-4 text-[#FFD166] relative z-10" />
-                  <span className="relative z-10">{isPro ? "Ouvir o Papai Noel" : "Ouvir prévia da voz"}</span>
+                  <span className="relative z-10">
+                    {isPro ? `Ouvir: ${voiceById(voiceId).label}` : "Ouvir prévia da voz"}
+                  </span>
                 </>
               ) : speaking === "loading" ? (
                 <>
                   <Sparkles className="w-4 h-4 text-[#FFD166] animate-spin" />
-                  <span>Papai Noel limpando a garganta...</span>
+                  <span>🔔 Os sininhos do trenó estão chegando...</span>
                 </>
               ) : (
                 <>
@@ -194,6 +241,37 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
             <ToolButton onClick={handleShare} icon={<Share2 className="w-4 h-4 text-[#FFD166]" />}>
               Compartilhar
             </ToolButton>
+          </div>
+
+          {/* escolha da voz */}
+          <div className="mt-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#9B021A] mb-1.5">Escolha quem vai ler a carta</p>
+            <div className="flex flex-wrap gap-1.5">
+              {VOICES.map((v) => {
+                const locked = v.pro && !isPro;
+                const active = (isPro ? voiceId : "noel") === v.id;
+                return (
+                  <motion.button
+                    key={v.id}
+                    onClick={() => pickVoice(v.id)}
+                    whileTap={{ scale: 0.92 }}
+                    className={`rounded-full px-3 py-1.5 text-xs font-bold inline-flex items-center gap-1 cursor-pointer border transition-colors ${
+                      active
+                        ? "bg-[#9B021A] text-white border-[#9B021A] shadow"
+                        : locked
+                          ? "bg-[#1C2541]/5 text-[#1C2541]/55 border-[#1C2541]/15"
+                          : "bg-white text-[#1C2541] border-[#1C2541]/20 hover:border-[#9B021A]"
+                    }`}
+                    aria-pressed={active}
+                    title={locked ? "Disponível no Natal Completo" : v.label}
+                  >
+                    <span>{v.emoji}</span>
+                    {v.label}
+                    {locked && <Lock className="w-3 h-3" />}
+                  </motion.button>
+                );
+              })}
+            </div>
           </div>
 
           <AnimatePresence>
@@ -250,16 +328,52 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
 
         {/* Letter Body */}
         <div className="font-serif text-sm sm:text-base leading-relaxed space-y-4 text-[#1C2541] whitespace-pre-line my-4">
-          {paragraphs.map((p, i) => (
-            <motion.p
-              key={i}
-              initial={reduce ? false : { opacity: 0, y: 12, filter: "blur(4px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ delay: 0.6 + i * 0.35, duration: 0.6 }}
-            >
-              {p}
-            </motion.p>
-          ))}
+          {paragraphs.map((p, i) => {
+            const reading = readIdx === i;
+            const dim = readIdx >= 0 && !reading;
+            return (
+              <motion.p
+                key={i}
+                ref={(el) => {
+                  paraRefs.current[i] = el;
+                }}
+                initial={reduce ? false : { opacity: 0, y: 12, filter: "blur(4px)" }}
+                animate={{ opacity: dim ? 0.55 : 1, y: 0, filter: "blur(0px)", scale: reading ? 1.015 : 1 }}
+                transition={readIdx >= 0 ? { duration: 0.5 } : { delay: 0.6 + i * 0.35, duration: 0.6 }}
+                className={`relative rounded-xl transition-colors duration-500 ${
+                  reading ? "bg-[#FFD166]/25 shadow-[0_0_0_2px_rgba(255,209,102,0.55)] px-3 py-2 -mx-3" : ""
+                }`}
+              >
+                {reading && (
+                  <>
+                    <motion.span
+                      aria-hidden="true"
+                      className="absolute -left-1 -top-3 text-base select-none pointer-events-none"
+                      animate={{ rotate: [-18, 18, -18], y: [0, -3, 0] }}
+                      transition={{ duration: 0.9, repeat: Infinity }}
+                      data-no-pdf
+                    >
+                      🔔
+                    </motion.span>
+                    {[0, 1, 2].map((k) => (
+                      <motion.span
+                        key={k}
+                        aria-hidden="true"
+                        className="absolute text-[#E9B949] text-xs select-none pointer-events-none"
+                        style={{ right: `${8 + k * 14}%`, top: k % 2 ? "-10px" : "auto", bottom: k % 2 ? "auto" : "-10px" }}
+                        animate={{ opacity: [0, 1, 0], scale: [0.5, 1.2, 0.5], rotate: [0, 90, 180] }}
+                        transition={{ duration: 1.6, repeat: Infinity, delay: k * 0.45 }}
+                        data-no-pdf
+                      >
+                        ✦
+                      </motion.span>
+                    ))}
+                  </>
+                )}
+                {p}
+              </motion.p>
+            );
+          })}
         </div>
 
         {/* Footer with Seals and Signatures */}
@@ -295,6 +409,46 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
         </div>
       </motion.div>
       )}
+      </AnimatePresence>
+
+      {/* selo "lendo agora", com o Papai Noel balançando e sininhos */}
+      <AnimatePresence>
+        {speaking === "playing" && (
+          <motion.div
+            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[65] flex items-center gap-3 bg-[#0B132B]/95 text-white rounded-full pl-2 pr-2 py-2 border border-[#FFD166]/60 shadow-2xl backdrop-blur print:hidden"
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 22 }}
+            data-no-pdf
+          >
+            <motion.span
+              className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D90429] to-[#9B021A] flex items-center justify-center text-xl border border-[#FFD166]/60"
+              animate={{ rotate: [-8, 8, -8], y: [0, -2, 0] }}
+              transition={{ duration: 1.1, repeat: Infinity }}
+              aria-hidden="true"
+            >
+              {voiceById(isPro ? voiceId : "noel").emoji}
+            </motion.span>
+            <div className="text-xs sm:text-sm leading-tight">
+              <p className="font-bold">{voiceById(isPro ? voiceId : "noel").label} está lendo...</p>
+              <span className="flex items-end gap-[2px] h-3 mt-1" aria-hidden="true">
+                {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                  <span key={i} className="eq-bar w-[3px] bg-[#FFD166] rounded-sm" style={{ animationDelay: `${i * 0.1}s` }} />
+                ))}
+              </span>
+            </div>
+            <motion.span aria-hidden="true" animate={{ rotate: [-20, 20, -20] }} transition={{ duration: 0.6, repeat: Infinity }}>
+              🔔
+            </motion.span>
+            <button
+              onClick={handleListen}
+              className="ml-1 rounded-full bg-white/10 hover:bg-white/20 px-3 py-2 text-xs font-bold cursor-pointer"
+            >
+              Parar
+            </button>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       <AnimatePresence>

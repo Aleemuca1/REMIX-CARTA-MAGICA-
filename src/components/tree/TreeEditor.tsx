@@ -7,8 +7,11 @@ import { useBackClose } from "../../lib/backClose";
 import { musicBox } from "../../lib/christmasMusic";
 import TreeSvg, { OrnamentShape } from "./TreeSvg";
 import CeiaMode from "./CeiaMode";
+import ProUpsell from "../ProUpsell";
+import { hasFullAccess } from "../../advent/access";
 import {
   AUTHOR_SUGGESTIONS,
+  FREE_ORNAMENTS,
   MAX_AUTHOR,
   MAX_ORNAMENTS,
   MAX_TEXT,
@@ -30,7 +33,15 @@ import { getChildName } from "../../advent/access";
 
 const GOAL = 8; // frases para a estrela brilhar
 
-export default function TreeEditor({ onClose, sharedToken }: { onClose: () => void; sharedToken?: string }) {
+export default function TreeEditor({
+  onClose,
+  sharedToken,
+  onUpgrade,
+}: {
+  onClose: () => void;
+  sharedToken?: string;
+  onUpgrade?: () => void;
+}) {
   useBackClose(true, onClose);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [tree, setTree] = useState<TreeState>(() => loadLocal());
@@ -47,6 +58,9 @@ export default function TreeEditor({ onClose, sharedToken }: { onClose: () => vo
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const celebrated = useRef(false);
+  const [bubble, setBubble] = useState<Ornament | null>(null);
+  const [full] = useState(() => hasFullAccess());
+  const [upsell, setUpsell] = useState<{ title: string; text: string } | null>(null);
 
   const say = (m: string) => {
     setToast(m);
@@ -76,6 +90,28 @@ export default function TreeEditor({ onClose, sharedToken }: { onClose: () => vo
   }, [sharedToken]);
 
   const messages = tree.ornaments.filter((o) => o.text).length;
+
+  // frases "saindo" dos enfeites de tempos em tempos, como balõezinhos
+  useEffect(() => {
+    const withText = tree.ornaments.filter((o) => o.text);
+    if (!withText.length) {
+      setBubble(null);
+      return;
+    }
+    let k = Math.floor(Math.random() * withText.length);
+    const timers: number[] = [];
+    const cycle = () => {
+      setBubble(withText[k % withText.length]);
+      k++;
+      timers.push(window.setTimeout(() => setBubble(null), 4200));
+    };
+    timers.push(window.setTimeout(cycle, 1200));
+    const iv = window.setInterval(cycle, 5600);
+    return () => {
+      timers.forEach(clearTimeout);
+      clearInterval(iv);
+    };
+  }, [tree.ornaments]);
   const isOwner = !visitor;
 
   useEffect(() => {
@@ -109,6 +145,17 @@ export default function TreeEditor({ onClose, sharedToken }: { onClose: () => vo
     const { x, y } = toView(e);
     if (tree.ornaments.length >= MAX_ORNAMENTS) {
       say("A árvore está lotada! Que família amorosa 💛");
+      return;
+    }
+    if (!visitor && !full && tree.ornaments.length >= FREE_ORNAMENTS) {
+      setUpsell({
+        title: "Sua árvore está cheia de amor! 💛",
+        text: `No plano grátis cabem ${FREE_ORNAMENTS} enfeites. Com o Natal Completo a árvore fica ilimitada, ganha enfeites especiais e o Modo Ceia com a voz do Papai Noel lendo as frases da família.`,
+      });
+      return;
+    }
+    if (ORNAMENT_TYPES.find((t) => t.type === type)?.pro && !full) {
+      setUpsell({ title: "Enfeite especial ✨", text: "A bola de brilho e o anjinho fazem parte do Natal Completo." });
       return;
     }
     if (!canPlace(type, x, y)) {
@@ -226,7 +273,8 @@ export default function TreeEditor({ onClose, sharedToken }: { onClose: () => vo
         <div className="flex items-center justify-between gap-2 mb-3">
           <BackButton onClick={onClose} />
           <div className="text-xs sm:text-sm text-[#EDF2F4]/80 font-semibold text-right">
-            🎄 {tree.ornaments.length} enfeites · 💌 {messages} {messages === 1 ? "frase" : "frases"}
+            🎄 {tree.ornaments.length}
+            {!visitor && !full ? `/${FREE_ORNAMENTS}` : ""} enfeites · 💌 {messages} {messages === 1 ? "frase" : "frases"}
           </div>
         </div>
 
@@ -265,6 +313,26 @@ export default function TreeEditor({ onClose, sharedToken }: { onClose: () => vo
                 onOrnamentClick={(o) => setViewing(o)}
                 className="w-full h-auto block touch-manipulation select-none cursor-crosshair"
               />
+              <AnimatePresence>
+                {bubble && !pending && !viewing && (
+                  <motion.div
+                    key={bubble.id}
+                    aria-live="polite"
+                    className="absolute z-10 max-w-[62%] text-left bg-[#FFFDF5] text-[#1C2541] rounded-2xl rounded-bl-sm shadow-xl border-2 border-[#FFD166] px-3 py-2 pointer-events-none"
+                    style={{
+                      left: `${Math.min(70, Math.max(4, (bubble.x / VIEW_W) * 100 - 6))}%`,
+                      bottom: `${100 - (bubble.y / VIEW_H) * 100 + 5}%`,
+                    }}
+                    initial={{ opacity: 0, y: 10, scale: 0.8 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.9 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                  >
+                    <span className="block font-serif italic text-[11px] sm:text-xs leading-snug line-clamp-3">“{bubble.text}”</span>
+                    {bubble.author && <span className="block text-[10px] font-bold text-[#9B021A] mt-0.5">— {bubble.author}</span>}
+                  </motion.div>
+                )}
+              </AnimatePresence>
               {loading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white font-semibold">Buscando a árvore no Polo Norte...</div>
               )}
@@ -284,6 +352,7 @@ export default function TreeEditor({ onClose, sharedToken }: { onClose: () => vo
               </div>
               <span>{messages >= GOAL ? "Estrela acesa!" : `${GOAL - messages} frases para acender a estrela`}</span>
             </div>
+
           </div>
 
           {/* painel */}
@@ -294,7 +363,13 @@ export default function TreeEditor({ onClose, sharedToken }: { onClose: () => vo
                 {ORNAMENT_TYPES.map((t) => (
                   <button
                     key={t.type}
-                    onClick={() => setType(t.type)}
+                    onClick={() => {
+                      if (t.pro && !full) {
+                        setUpsell({ title: `${t.emoji} ${t.label}`, text: "Este enfeite especial faz parte do Natal Completo." });
+                        return;
+                      }
+                      setType(t.type);
+                    }}
                     className={`rounded-xl p-1.5 border flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${
                       type === t.type ? "bg-white/15 border-[#FFD166]" : "bg-white/5 border-white/10 hover:border-white/30"
                     }`}
@@ -303,7 +378,10 @@ export default function TreeEditor({ onClose, sharedToken }: { onClose: () => vo
                     <svg viewBox="-30 -34 60 60" className="w-10 h-10">
                       <OrnamentShape o={{ id: t.type, type: t.type, color, x: 0, y: 0 }} />
                     </svg>
-                    <span className="text-[10px] sm:text-[11px] text-white/85 leading-tight text-center">{t.label}</span>
+                    <span className="text-[10px] sm:text-[11px] text-white/85 leading-tight text-center">
+                      {t.label}
+                      {t.pro && !full && " 🔒"}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -347,6 +425,34 @@ export default function TreeEditor({ onClose, sharedToken }: { onClose: () => vo
           </div>
         </div>
 
+        {/* mural com todas as frases */}
+        {messages > 0 && (
+          <div className="mt-5">
+            <p className="text-xs font-bold uppercase tracking-widest text-[#FFD166] mb-2">💌 Mural de frases da família ({messages})</p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-1">
+              {tree.ornaments
+                .filter((o) => o.text)
+                .slice()
+                .reverse()
+                .map((o) => (
+                  <button
+                    key={o.id}
+                    onClick={() => setViewing(o)}
+                    className="flex items-start gap-2 text-left bg-[#FFFDF5] text-[#1C2541] rounded-xl p-2.5 border border-[#FFD166]/60 hover:shadow-lg cursor-pointer"
+                  >
+                    <svg viewBox="-30 -34 60 60" className="w-8 h-8 shrink-0">
+                      <OrnamentShape o={o} showName={false} />
+                    </svg>
+                    <span className="min-w-0">
+                      <span className="block font-serif italic text-xs leading-snug line-clamp-3">“{o.text}”</span>
+                      {o.author && <span className="block text-[10px] font-bold text-[#9B021A] mt-0.5">— {o.author}</span>}
+                    </span>
+                  </button>
+                ))}
+            </div>
+          </div>
+        )}
+
         <AnimatePresence>
           {pending && <PhraseDialog key="p" ornament={pending} childName={childName} onCancel={() => setPending(null)} onSave={confirmPending} />}
           {viewing && (
@@ -359,7 +465,38 @@ export default function TreeEditor({ onClose, sharedToken }: { onClose: () => vo
             />
           )}
           {share && tree.token && <ShareDialog key="s" token={tree.token} title={tree.title} onClose={() => setShare(false)} />}
-          {ceia && <CeiaMode key="c" title={tree.title} ornaments={tree.ornaments.filter((o) => o.text)} onClose={() => setCeia(false)} />}
+          {ceia && (
+            <CeiaMode
+              key="c"
+              title={tree.title}
+              ornaments={tree.ornaments.filter((o) => o.text)}
+              onClose={() => setCeia(false)}
+              full={full}
+              treeToken={tree.token}
+              onLocked={() =>
+                setUpsell({
+                  title: "A voz do Papai Noel na ceia 🎅",
+                  text: "Com o Natal Completo o Papai Noel lê em voz alta cada frase da família no Modo Ceia.",
+                })
+              }
+            />
+          )}
+          {upsell && (
+            <ProUpsell
+              key="u"
+              title={upsell.title}
+              text={upsell.text}
+              onClose={() => setUpsell(null)}
+              onUpgrade={
+                onUpgrade
+                  ? () => {
+                      setUpsell(null);
+                      setTimeout(onUpgrade, 120);
+                    }
+                  : undefined
+              }
+            />
+          )}
         </AnimatePresence>
 
         <AnimatePresence>
@@ -435,7 +572,7 @@ function PhraseDialog({
     <Sheet onClose={onCancel}>
       <div className="flex items-center gap-3 mb-3">
         <svg viewBox="-30 -34 60 60" className="w-12 h-12 shrink-0">
-          <OrnamentShape o={ornament} />
+          <OrnamentShape o={ornament} showName={false} />
         </svg>
         <div>
           <h4 className="font-cinzel text-lg font-bold text-white">Escreva uma frase de carinho</h4>
@@ -516,7 +653,7 @@ function ViewDialog({ o, canRemove, onRemove, onClose }: { o: Ornament; canRemov
     <Sheet onClose={onClose}>
       <div className="text-center">
         <svg viewBox="-30 -34 60 60" className="w-16 h-16 mx-auto">
-          <OrnamentShape o={o} />
+          <OrnamentShape o={o} showName={false} />
         </svg>
         {o.text ? (
           <div className="parchment-bg rounded-2xl p-5 mt-2 text-[#1C2541]">

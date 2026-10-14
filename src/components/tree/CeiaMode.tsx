@@ -6,9 +6,26 @@ import { useBackClose } from "../../lib/backClose";
 import { musicBox } from "../../lib/christmasMusic";
 import { OrnamentShape } from "./TreeSvg";
 import type { Ornament } from "../../tree/model";
+import { narrate, type Narrator } from "../../lib/narration";
+import { VOICES } from "../../lib/voices";
+import { useRef } from "react";
 
 /** Modo Ceia: as frases da árvore aparecem uma a uma, em tela cheia, para a família ler junta. */
-export default function CeiaMode({ title, ornaments, onClose }: { title: string; ornaments: Ornament[]; onClose: () => void }) {
+export default function CeiaMode({
+  title,
+  ornaments,
+  onClose,
+  full = false,
+  treeToken,
+  onLocked,
+}: {
+  title: string;
+  ornaments: Ornament[];
+  onClose: () => void;
+  full?: boolean;
+  treeToken?: string;
+  onLocked?: () => void;
+}) {
   useBackClose(true, onClose);
   const [i, setI] = useState(0);
   const [auto, setAuto] = useState(true);
@@ -26,15 +43,35 @@ export default function CeiaMode({ title, ornaments, onClose }: { title: string;
     return () => clearTimeout(t);
   }, [auto, i, n]);
 
-  useEffect(() => () => window.speechSynthesis?.cancel(), []);
+  const nar = useRef<Narrator | null>(null);
+  const [talking, setTalking] = useState(false);
+  useEffect(() => () => nar.current?.stop(), []);
+  useEffect(() => {
+    nar.current?.stop();
+    nar.current = null;
+  }, [i]);
 
-  const speak = () => {
-    if (!cur?.text || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(`${cur.text}${cur.author ? `. De ${cur.author}.` : ""}`);
-    u.lang = "pt-BR";
-    u.rate = 0.92;
-    window.speechSynthesis.speak(u);
+  // voz do Papai Noel lendo a frase (Natal Completo)
+  const speak = async () => {
+    if (!cur?.text) return;
+    if (!full) {
+      setAuto(false);
+      onLocked?.();
+      return;
+    }
+    if (talking) {
+      nar.current?.stop();
+      return;
+    }
+    setAuto(false);
+    setTalking(true);
+    nar.current = await narrate(
+      `${cur.text}${cur.author ? `\n\nCom carinho, ${cur.author}.` : ""}`,
+      cur.author || "",
+      () => setTalking(false),
+      treeToken ? { treeToken, ornamentId: cur.id } : undefined,
+      { voice: VOICES[0] },
+    );
   };
 
   if (!cur) return null;
@@ -77,7 +114,7 @@ export default function CeiaMode({ title, ornaments, onClose }: { title: string;
           transition={{ duration: 0.6 }}
         >
           <svg viewBox="-30 -34 60 60" className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4">
-            <OrnamentShape o={cur} />
+            <OrnamentShape o={cur} showName={false} />
           </svg>
           <p className="font-serif italic text-white text-2xl sm:text-4xl md:text-5xl leading-snug">“{cur.text}”</p>
           {cur.author && <p className="mt-5 text-[#FFD166] font-bold text-lg sm:text-2xl">— {cur.author}</p>}
@@ -91,8 +128,8 @@ export default function CeiaMode({ title, ornaments, onClose }: { title: string;
         <RoundBtn onClick={() => setAuto((v) => !v)} label={auto ? "Pausar" : "Passar sozinho"}>
           {auto ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
         </RoundBtn>
-        <RoundBtn onClick={speak} label="Ouvir">
-          <Volume2 className="w-5 h-5" />
+        <RoundBtn onClick={speak} label={full ? "Papai Noel lê a frase" : "Voz do Papai Noel (Natal Completo)"}>
+          {talking ? <span className="text-lg">🔊</span> : full ? <Volume2 className="w-5 h-5" /> : <span className="text-base">🔒</span>}
         </RoundBtn>
         <RoundBtn onClick={() => go(1)} label="Próxima">
           <ChevronRight className="w-6 h-6" />

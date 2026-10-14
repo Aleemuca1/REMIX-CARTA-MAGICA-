@@ -7,6 +7,7 @@ import { X, Play, RotateCcw, Sparkles, Trophy } from "lucide-react";
 import Reveal from "./Reveal";
 import { DeliveryGame, type GameResult } from "../game/deliveryGame";
 import { musicBox } from "../lib/christmasMusic";
+import { loadFaceImages, loadFamily } from "../family/store";
 
 const BEST_KEY = "carta-magica-best";
 const readBest = () => {
@@ -150,6 +151,14 @@ export function GameModal({
     const game = new DeliveryGame(canvas);
     gameRef.current = game;
     if (import.meta.env.DEV) (window as any).__santaGame = game;
+    // a família do "Família no Trenó" viaja junto
+    const fam = loadFamily();
+    if (fam.inGame && fam.members.length) {
+      loadFaceImages(fam.members).then((imgs) => {
+        game.passengers = imgs;
+        game.passengerNames = fam.members.map((m) => m.name);
+      });
+    }
     game.onSound = (kind, streak) => {
       if (kind === "hit" || kind === "perfect") musicBox.chime(HIT_NOTES[Math.min(streak - 1, HIT_NOTES.length - 1)], undefined, 0.18);
       if (kind === "perfect") setTimeout(() => musicBox.chime(96, undefined, 0.1), 70);

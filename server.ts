@@ -8,6 +8,7 @@ import * as db from "./db";
 import { randomBytes } from "crypto";
 import * as asaas from "./asaas";
 import { ADVENT_DAYS } from "./src/advent/days";
+import { voiceById, voiceForSender } from "./src/lib/voices";
 import * as mailer from "./mailer";
 import { createHash, timingSafeEqual } from "crypto";
 import { MAX_AUTHOR, MAX_ORNAMENTS, MAX_TEXT, ORNAMENT_TYPES, VIEW_H, VIEW_W, sanitizeText } from "./src/tree/model";
@@ -314,18 +315,28 @@ DIRETRIZES DE SEGURAN\xC7A E \xC9TICA:
 const ttsCache = new Map<string, string>();
 app.post("/api/tts", async (req, res) => {
   try {
-    const { token, adventDay, name, voice = "Fenrir" } = req.body || {};
+    const { token, adventDay, name, voiceId, treeToken, ornamentId } = req.body || {};
+    let voice = voiceById(voiceId);
     // a voz só é gerada para textos do próprio site (carta salva ou recado do calendário),
     // nunca para um texto qualquer vindo do navegador
     let text = "";
     let childName = "";
-    if (adventDay) {
+    if (treeToken) {
+      // Modo Ceia da árvore: o Papai Noel lê a frase de um enfeite
+      const t = await db.findTree(String(treeToken).toLowerCase());
+      const o: any = t?.ornaments.find((x: any) => x.id === ornamentId);
+      if (!o?.text) return res.status(404).json({ error: "Frase n\xE3o encontrada." });
+      childName = String(o.author || "");
+      text = `${o.text}${o.author ? `\n\nCom carinho, ${o.author}.` : ""}`;
+      voice = voiceById("noel");
+    } else if (adventDay) {
       const d = ADVENT_DAYS.find((x) => x.day === Number(adventDay));
       if (!d || d.activity.type !== "message") {
         return res.status(404).json({ error: "Recado n\xE3o encontrado." });
       }
       childName = String(name || "").replace(/[^\p{L} ]/gu, "").trim().slice(0, 20) || "crian\xE7a querida";
       text = d.activity.text.replace(/\{nome\}/g, childName);
+      voice = voiceForSender(d.activity.from);
     } else {
       const letterRec = await db.findLetter(String(token || ""));
       if (!letterRec) {
@@ -335,6 +346,8 @@ app.post("/api/tts", async (req, res) => {
       const paras = String(letterRec.content || "").split(/\n\s*\n/).filter(Boolean);
       const paidVoice = letterRec.plan === "pro" || letterRec.plan === "natal";
       text = paidVoice ? letterRec.content : paras.slice(0, 2).join("\n\n");
+      // outras vozes são do plano pago
+      if (!paidVoice) voice = voiceById("noel");
     }
     if (!text) {
       return res
@@ -342,7 +355,8 @@ app.post("/api/tts", async (req, res) => {
         .json({ error: "Texto n\xE3o fornecido para s\xEDntese de voz." });
     }
     const ai = getGeminiClient();
-    let audioBase64 = ttsCache.get(text) ?? null;
+    const cacheKey = `${voice.id}|${text}`;
+    let audioBase64 = ttsCache.get(cacheKey) ?? null;
     let provider = audioBase64 ? "gemini_tts" : "web_speech_fallback";
     if (ai && !audioBase64) {
       try {
@@ -352,7 +366,7 @@ app.post("/api/tts", async (req, res) => {
             {
               parts: [
                 {
-                  text: `Com voz profunda, calorosa, lenta, acolhedora e paternal de Papai Noel falando em portugu\xEAs do Brasil: ${String(text).slice(0, 2500)}`,
+                  text: `${voice.style} Fale em português do Brasil, com naturalidade. Texto:\n\n${String(text).slice(0, 2500)}`,
                 },
               ],
             },
@@ -362,7 +376,7 @@ app.post("/api/tts", async (req, res) => {
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
-                  voiceName: voice === "Fenrir" ? "Fenrir" : "Puck",
+                  voiceName: voice.gemini,
                 },
               },
             },
@@ -373,7 +387,7 @@ app.post("/api/tts", async (req, res) => {
           audioBase64 = part.inlineData.data;
           provider = "gemini_tts";
           if (ttsCache.size > 150) ttsCache.delete(ttsCache.keys().next().value as string);
-          ttsCache.set(text, audioBase64 as string);
+          ttsCache.set(cacheKey, audioBase64 as string);
         }
       } catch (ttsErr) {
         console.warn(

@@ -6,10 +6,11 @@ import { X, Palette } from "lucide-react";
 import Reveal from "../Reveal";
 import AtelierEditor from "./AtelierEditor";
 import { DESIGNS, designDataUrl } from "../../atelier/designs";
-import { getChildName } from "../../advent/access";
+import { getChildName, hasFullAccess } from "../../advent/access";
+import ProUpsell from "../ProUpsell";
 
 /** Seção "Ateliê de Natal": colorir desenhos ou desenhar livre, baixar e compartilhar. */
-export default function AtelierSection() {
+export default function AtelierSection({ onUpgrade }: { onUpgrade?: () => void }) {
   const [open, setOpen] = useState(false);
   const preview = DESIGNS.filter((d) => !d.exclusive).slice(0, 6);
 
@@ -62,7 +63,21 @@ export default function AtelierSection() {
         </div>
       </Reveal>
 
-      <AnimatePresence>{open && <AtelierModal onClose={() => setOpen(false)} />}</AnimatePresence>
+      <AnimatePresence>
+        {open && (
+          <AtelierModal
+            onClose={() => setOpen(false)}
+            onUpgrade={
+              onUpgrade
+                ? () => {
+                    setOpen(false);
+                    setTimeout(onUpgrade, 250);
+                  }
+                : undefined
+            }
+          />
+        )}
+      </AnimatePresence>
     </section>
   );
 }
@@ -74,7 +89,9 @@ export function AtelierModal({
   allowExclusive,
   onDone,
   title = "Ateliê de Natal",
+  onUpgrade,
 }: {
+  onUpgrade?: () => void;
   onClose: () => void;
   designId?: string;
   lockDesign?: boolean;
@@ -82,6 +99,8 @@ export function AtelierModal({
   onDone?: () => void;
   title?: string;
 }) {
+  const [full] = useState(() => hasFullAccess());
+  const [locked, setLocked] = useState<string | null>(null);
   useBackClose(true, onClose);
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -109,7 +128,32 @@ export function AtelierModal({
           <h3 className="font-cinzel text-xl sm:text-2xl font-bold text-white">🎨 {title}</h3>
           <BackButton onClick={onClose} />
         </div>
-        <AtelierEditor initialDesignId={designId} lockDesign={lockDesign} allowExclusive={allowExclusive} childName={getChildName()} onDone={onDone} />
+        <AtelierEditor
+          initialDesignId={designId}
+          lockDesign={lockDesign}
+          allowExclusive={allowExclusive}
+          childName={getChildName()}
+          onDone={onDone}
+          full={full}
+          onLocked={(what) => setLocked(what)}
+        />
+        <AnimatePresence>
+          {locked && (
+            <ProUpsell
+              title="Exclusivo do Natal Completo ✨"
+              text={`${locked} faz parte do Natal Completo, junto com mais desenhos, adesivos especiais e a moldura com o nome da criança.`}
+              onClose={() => setLocked(null)}
+              onUpgrade={
+                onUpgrade
+                  ? () => {
+                      setLocked(null);
+                      onUpgrade();
+                    }
+                  : undefined
+              }
+            />
+          )}
+        </AnimatePresence>
       </motion.div>
     </motion.div>
   );

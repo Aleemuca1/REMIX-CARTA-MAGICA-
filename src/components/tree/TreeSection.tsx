@@ -20,7 +20,7 @@ const SAMPLE: Ornament[] = [
 ];
 
 /** Seção "Árvore de Natal da Família": todos penduram enfeites com frases de carinho. */
-export default function TreeSection() {
+export default function TreeSection({ onUpgrade }: { onUpgrade?: () => void }) {
   const [open, setOpen] = useState(false);
   const [sharedToken, setSharedToken] = useState<string | undefined>();
 
@@ -85,7 +85,19 @@ export default function TreeSection() {
         </div>
       </Reveal>
 
-      <AnimatePresence>{open && <TreeEditor key={sharedToken || "local"} sharedToken={sharedToken} onClose={close} />}</AnimatePresence>
+      <AnimatePresence>{open && <TreeEditor
+            key={sharedToken || "local"}
+            sharedToken={sharedToken}
+            onClose={close}
+            onUpgrade={
+              onUpgrade
+                ? () => {
+                    close();
+                    setTimeout(onUpgrade, 250);
+                  }
+                : undefined
+            }
+          />}</AnimatePresence>
     </section>
   );
 }

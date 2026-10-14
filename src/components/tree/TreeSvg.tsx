@@ -34,10 +34,32 @@ function lightPoints() {
   return pts;
 }
 const GARLANDS = garlands();
+const FLAKES = Array.from({ length: 46 }, (_, i) => ({
+  x: (i * 131 + 17) % VIEW_W,
+  r: 1.4 + ((i * 7) % 5) * 0.55,
+  dur: 7 + ((i * 13) % 9),
+  delay: -((i * 37) % 160) / 10,
+  o: 0.55 + ((i * 3) % 5) * 0.09,
+}));
 const LIGHTS = lightPoints();
 
 /** Desenha um enfeite. Coordenadas centradas no ponto (x, y). */
-export function OrnamentShape({ o, selected }: { o: Ornament; selected?: boolean }) {
+/** Nome pequeno de quem pendurou, embaixo do enfeite. */
+function NameTag({ name, y }: { name: string; y: number }) {
+  const n = name.trim().split(/\s+/)[0].slice(0, 12);
+  if (!n) return null;
+  const w = n.length * 6.4 + 12;
+  return (
+    <g transform={`translate(0,${y})`} pointerEvents="none">
+      <rect x={-w / 2} y={-8} width={w} height={15} rx={7.5} fill="rgba(11,19,43,0.78)" stroke="rgba(255,209,102,0.7)" strokeWidth={0.8} />
+      <text x={0} y={3.2} fontSize={10} textAnchor="middle" fill="#FFF6D8" fontFamily="Arial, Helvetica, sans-serif" fontWeight="bold">
+        {n}
+      </text>
+    </g>
+  );
+}
+
+export function OrnamentShape({ o, selected, showName = true }: { o: Ornament; selected?: boolean; showName?: boolean }) {
   const c = o.color;
   const hasText = Boolean(o.text);
   const ring = selected ? <circle r={30} fill="none" stroke="#FFD166" strokeWidth={3} strokeDasharray="5 4" /> : null;
@@ -131,6 +153,43 @@ export function OrnamentShape({ o, selected }: { o: Ornament; selected?: boolean
         </g>
       );
       break;
+    case "brilho":
+      body = (
+        <g>
+          <line x1={0} y1={-32} x2={0} y2={-20} stroke="#C9A227" strokeWidth={1.5} />
+          <rect x={-5} y={-23} width={10} height={6} rx={1.5} fill="#E9C46A" />
+          <circle r={18} fill="#E9B949" stroke="#A67C00" strokeWidth={1.2} />
+          <circle r={18} fill={c} opacity={0.35} />
+          {[
+            [-8, -6, 2.4],
+            [6, -9, 1.8],
+            [9, 4, 2.2],
+            [-3, 9, 1.6],
+            [-11, 5, 1.4],
+            [2, 0, 1.3],
+            [12, -2, 1.2],
+          ].map(([x, y, r], i) => (
+            <circle key={i} cx={x} cy={y} r={r} fill="#FFFBEA" opacity={0.9} />
+          ))}
+          <path d="M14,-20 L15.5,-15 L20,-14 L15.5,-12.5 L14,-8 L12.5,-12.5 L8,-14 L12.5,-15 Z" fill="#FFFFFF" />
+          <path d="M-17,10 L-16,13 L-13,14 L-16,15 L-17,18 L-18,15 L-21,14 L-18,13 Z" fill="#FFFFFF" />
+        </g>
+      );
+      break;
+    case "anjo":
+      body = (
+        <g>
+          <path d="M-4,-2 C-20,-14 -26,4 -10,8 Z" fill="#FFFFFF" stroke="#C9D3E3" />
+          <path d="M4,-2 C20,-14 26,4 10,8 Z" fill="#FFFFFF" stroke="#C9D3E3" />
+          <path d="M0,-6 L13,20 L-13,20 Z" fill={c} stroke="rgba(0,0,0,.25)" />
+          <circle cy={-11} r={7} fill="#F6D2B0" stroke="rgba(0,0,0,.2)" />
+          <path d="M-7,-13 Q0,-22 7,-13 Q4,-17 0,-17 Q-4,-17 -7,-13 Z" fill="#E9C46A" />
+          <ellipse cy={-21} rx={8} ry={2.6} fill="none" stroke="#FFD166" strokeWidth={2} />
+          <circle cx={-2.4} cy={-11} r={0.9} fill="#1C2541" />
+          <circle cx={2.4} cy={-11} r={0.9} fill="#1C2541" />
+        </g>
+      );
+      break;
     case "presente":
       body = (
         <g>
@@ -147,6 +206,7 @@ export function OrnamentShape({ o, selected }: { o: Ornament; selected?: boolean
       {ring}
       {body}
       {tag}
+      {showName && o.author && <NameTag name={o.author} y={o.type === "presente" ? 30 : 27} />}
     </g>
   );
 }
@@ -316,6 +376,24 @@ const TreeSvg = forwardRef<SVGSVGElement, Props>(function TreeSvg(
           </g>
         </g>
       ))}
+
+      {/* neve caindo na frente da árvore */}
+      {!staticMode && (
+        <g pointerEvents="none">
+          {FLAKES.map((f, i) => (
+            <circle
+              key={i}
+              cx={f.x}
+              cy={-10}
+              r={f.r}
+              fill="#FFFFFF"
+              opacity={f.o}
+              className="tree-snow"
+              style={{ animationDuration: `${f.dur}s`, animationDelay: `${f.delay}s` }}
+            />
+          ))}
+        </g>
+      )}
 
       {ghost && (
         <g transform={`translate(${ghost.x},${ghost.y})`} opacity={0.55} pointerEvents="none">

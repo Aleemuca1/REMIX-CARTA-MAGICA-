@@ -4,6 +4,7 @@ import confetti from "canvas-confetti";
 import { Volume2, Square, Check, RotateCcw } from "lucide-react";
 import { musicBox } from "../../lib/christmasMusic";
 import { narrate, type Narrator } from "../../lib/narration";
+import { voiceForSender } from "../../lib/voices";
 import SnowmanBuilder from "./SnowmanBuilder";
 
 type Done = () => void;
@@ -44,7 +45,7 @@ export function MessageActivity({
       return;
     }
     setState("loading");
-    nar.current = await narrate(text, "", () => setState("idle"), { adventDay: day, name });
+    nar.current = await narrate(text, "", () => setState("idle"), { adventDay: day, name }, { voice: voiceForSender(from) });
     setState((s) => (s === "loading" ? "playing" : s));
   };
   return (

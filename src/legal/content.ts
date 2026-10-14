@@ -117,6 +117,7 @@ export const PRIVACIDADE: LegalDoc = {
         "e-mail do comprador (recebido do Asaas), usado só para enviar o link da carta e o código de acesso da compra;",
         "código de acesso gerado para cada compra, que permite abrir o plano pago em outro aparelho.",
         "Árvore de Natal da Família: o nome da árvore, os enfeites, as frases e o nome de quem escreveu. Ficam só no seu aparelho até você tocar em “Chamar a família”; a partir daí ficam guardados no nosso banco de dados e qualquer pessoa com o link pode ver e adicionar enfeites. Não escreva sobrenomes, endereços ou telefones nas frases.",
+        "Família no Trenó: as fotos que você escolhe são recortadas e guardadas apenas no seu próprio aparelho (no navegador). Elas não são enviadas para os nossos servidores nem para terceiros. A foto mágica e o vídeo são gerados no seu aparelho e só são compartilhados se você mesmo enviar.",
       ],
     },
     {
@@ -238,6 +239,7 @@ export const COOKIES: LegalDoc = {
         "carta-magica-nome — nome da criança digitado no calendário ou no Ateliê, para não precisar digitar de novo;",
         "carta-magica-codigo — código de acesso da compra, para você poder consultá-lo e usar em outro aparelho;",
         "carta-magica-arvore — os enfeites e frases da sua Árvore de Natal da Família e a chave que permite a você (e só a você) tirar enfeites;",
+        "carta-magica-familia — as fotos (rostinhos recortados) e os nomes que você colocou em “Família no Trenó”. Ficam só neste aparelho e você pode apagar quando quiser;",
         "carta-magica-best — recorde do jogo Entrega Relâmpago;",
         "carta-magica-cookies — lembra que você já viu este aviso.",
       ],

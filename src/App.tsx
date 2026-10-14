@@ -13,6 +13,8 @@ import FAQSection from "./components/FAQSection";
 import GiftSurprise from "./components/GiftSurprise";
 import MusicToggle from "./components/MusicToggle";
 import SantaGame from "./components/SantaGame";
+import PolarBearGame from "./components/PolarBearGame";
+import FamilySection from "./components/family/FamilySection";
 import SnowDivider from "./components/SnowDivider";
 import Footer from "./components/Footer";
 import SnowToggle from "./components/SnowToggle";
@@ -130,11 +132,17 @@ export default function App() {
         {/* Jogo de Natal */}
         <SantaGame onCreateLetter={() => handleStartWizard("free")} />
 
+        {/* Jogo do ursinho polar */}
+        <PolarBearGame />
+
+        {/* Família no trenó (fotos ficam só no aparelho) */}
+        <FamilySection onUpgrade={() => handleStartWizard("natal")} />
+
         {/* Ateliê de Natal: colorir e desenhar */}
-        <AtelierSection />
+        <AtelierSection onUpgrade={() => handleStartWizard("natal")} />
 
         {/* Árvore de Natal da Família: enfeites com frases */}
-        <TreeSection />
+        <TreeSection onUpgrade={() => handleStartWizard("natal")} />
 
         {/* Pricing & Value Section */}
         <SnowDivider />
