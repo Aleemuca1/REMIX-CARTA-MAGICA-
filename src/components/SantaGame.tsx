@@ -8,6 +8,8 @@ import Reveal from "./Reveal";
 import { DeliveryGame, type GameResult } from "../game/deliveryGame";
 import { musicBox } from "../lib/christmasMusic";
 import { loadFaceImages, loadFamily } from "../family/store";
+import SantaCongrats from "./SantaCongrats";
+import { loadPlayer, savePlayer, medalFor, type Medal } from "../lib/player";
 
 const BEST_KEY = "carta-magica-best";
 const readBest = () => {
@@ -25,13 +27,14 @@ const saveBest = (v: number) => {
   }
 };
 
-function rankFor(score: number) {
-  if (score >= 2500) return { title: "Papai Noel Honorário", emoji: "🎅" };
-  if (score >= 1500) return { title: "Chefe do Trenó", emoji: "🛷" };
-  if (score >= 800) return { title: "Rena Veloz", emoji: "🦌" };
-  if (score >= 300) return { title: "Duende Entregador", emoji: "🧝" };
-  return { title: "Duende Aprendiz", emoji: "✨" };
-}
+export const SANTA_MEDALS: Medal[] = [
+  { min: 0, title: "Duende Aprendiz", emoji: "✨" },
+  { min: 300, title: "Duende Entregador", emoji: "🧝" },
+  { min: 800, title: "Rena Veloz", emoji: "🦌" },
+  { min: 1500, title: "Chefe do Trenó", emoji: "🛷" },
+  { min: 2500, title: "Papai Noel Honorário", emoji: "🎅" },
+];
+const rankFor = (score: number) => medalFor(SANTA_MEDALS, score);
 
 // Escalas pentatônicas para os sons de acerto subirem com o combo
 const HIT_NOTES = [72, 74, 76, 79, 81, 84, 86, 88, 91, 93];
@@ -139,7 +142,7 @@ export function GameModal({
   const gameRef = useRef<DeliveryGame | null>(null);
   const [phase, setPhase] = useState<"intro" | "count" | "play" | "over">("intro");
   const [count, setCount] = useState(3);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(loadPlayer);
   const [easy, setEasy] = useState(false);
   const [result, setResult] = useState<GameResult | null>(null);
   const [best, setBest] = useState(readBest);
@@ -194,6 +197,7 @@ export function GameModal({
   const easyRef = useRef(false);
   easyRef.current = easy;
   const begin = () => {
+    if (name.trim()) savePlayer(name);
     setPhase("count");
     setCount(3);
     let c = 3;
@@ -319,42 +323,30 @@ export function GameModal({
 
           {phase === "over" && result && rank && (
             <Overlay key="over">
-              <motion.div className="text-6xl mb-1" initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 260, damping: 12 }}>
-                {rank.emoji}
-              </motion.div>
-              <p className="text-xs uppercase tracking-widest text-[#FFD166] font-bold">Ho Ho Ho! Parabéns, {pilot}!</p>
-              <h3 className="font-cinzel text-2xl sm:text-3xl font-bold text-white mt-1">{rank.title}</h3>
-              <motion.p className="font-cinzel text-5xl sm:text-6xl font-extrabold text-[#FFD166] my-2" initial={{ scale: 0.5 }} animate={{ scale: 1 }}>
-                {result.score}
-              </motion.p>
-              {newBest && (
-                <p className="inline-flex items-center gap-1 text-xs font-bold text-[#0B132B] bg-[#FFD166] rounded-full px-3 py-1 mb-2">
-                  <Trophy className="w-3.5 h-3.5" /> Novo recorde!
-                </p>
-              )}
-              <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center my-3 text-white">
-                <Stat label="presentes" value={result.delivered} />
-                <Stat label="perfeitos" value={result.perfect} />
-                <Stat label="maior combo" value={result.bestStreak} />
-              </div>
-              <p className="text-xs sm:text-sm text-[#EDF2F4]/75 max-w-sm mb-4">
-                O Papai Noel viu tudo pelo telescópio! Que tal receber uma carta dele contando essa conquista?
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button onClick={begin} className="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-bold px-6 py-3 rounded-full inline-flex items-center justify-center gap-2 cursor-pointer" id="game-retry-btn">
-                  <RotateCcw className="w-4 h-4" /> Jogar de novo
-                </button>
-                <button
-                  onClick={() => {
-                    onClose();
-                    onCreateLetter();
-                  }}
-                  className="bg-gradient-to-r from-[#D90429] via-[#EF233C] to-[#D90429] text-white font-bold px-6 py-3 rounded-full inline-flex items-center justify-center gap-2 border border-[#FFD166]/50 btn-shine cursor-pointer"
-                >
-                  <Sparkles className="w-4 h-4 text-[#FFD166] relative z-10" />
-                  <span className="relative z-10">Criar carta do Papai Noel</span>
-                </button>
-              </div>
+              <SantaCongrats
+                game="Entrega Relâmpago"
+                anchor="jogo"
+                player={name}
+                onPlayer={setName}
+                score={result.score}
+                best={best}
+                newBest={newBest}
+                medals={SANTA_MEDALS}
+                feat={result.delivered > 0 ? `entregou ${result.delivered} ${result.delivered === 1 ? "presente" : "presentes"} nas chaminés` : "voou com o trenó pelo céu de Natal"}
+                stats={[
+                  ["🎁", result.delivered, "presentes"],
+                  ["⭐", result.perfect, "perfeitos"],
+                  ["🔥", result.bestStreak, "maior combo"],
+                ]}
+                accent="#FFD166"
+                retryId="game-retry-btn"
+                onRetry={begin}
+                getSnapshot={() => canvasRef.current}
+                onLetter={() => {
+                  onClose();
+                  onCreateLetter();
+                }}
+              />
             </Overlay>
           )}
         </AnimatePresence>

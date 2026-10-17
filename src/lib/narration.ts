@@ -5,7 +5,7 @@
  */
 import { VOICES, type Voice } from "./voices";
 
-function pcmBase64ToWavUrl(b64: string, sampleRate = 24000) {
+export function pcmBase64ToWavBlob(b64: string, sampleRate = 24000) {
   const bin = atob(b64);
   const pcm = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) pcm[i] = bin.charCodeAt(i);
@@ -25,7 +25,27 @@ function pcmBase64ToWavUrl(b64: string, sampleRate = 24000) {
   v.setUint16(34, 16, true);
   w(36, "data");
   v.setUint32(40, pcm.length, true);
-  return URL.createObjectURL(new Blob([header, pcm], { type: "audio/wav" }));
+  return new Blob([header, pcm], { type: "audio/wav" });
+}
+
+function pcmBase64ToWavUrl(b64: string) {
+  return URL.createObjectURL(pcmBase64ToWavBlob(b64));
+}
+
+/** Busca o áudio da voz (WAV) para baixar ou gravar em vídeo. Devolve null se o servidor de voz não estiver ativo. */
+export async function fetchNarrationAudio(source: Source, voice?: Voice): Promise<Blob | null> {
+  try {
+    const res = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...source, voiceId: (voice ?? VOICES[0]).id }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.audioBase64 ? pcmBase64ToWavBlob(data.audioBase64) : null;
+  } catch {
+    return null;
+  }
 }
 
 export type Narrator = { stop: () => void };

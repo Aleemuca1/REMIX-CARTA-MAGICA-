@@ -7,6 +7,8 @@ import BackButton from "./BackButton";
 import { useBackClose } from "../lib/backClose";
 import { musicBox } from "../lib/christmasMusic";
 import { PolarGame, type PolarResult } from "../game/polarGame";
+import SantaCongrats from "./SantaCongrats";
+import { loadPlayer, savePlayer, medalFor, type Medal } from "../lib/player";
 
 const BEST_KEY = "carta-magica-urso-best";
 const readBest = () => {
@@ -24,16 +26,17 @@ const saveBest = (v: number) => {
   }
 };
 
-function medal(score: number) {
-  if (score >= 3000) return { title: "Rei do Gelo", emoji: "👑" };
-  if (score >= 1800) return { title: "Escorregador Lendário", emoji: "🏆" };
-  if (score >= 900) return { title: "Ursinho Veloz", emoji: "🐻‍❄️" };
-  if (score >= 350) return { title: "Patinador do Polo", emoji: "⛸️" };
-  return { title: "Filhote Corajoso", emoji: "🐾" };
-}
+export const BEAR_MEDALS: Medal[] = [
+  { min: 0, title: "Filhote Corajoso", emoji: "🐾" },
+  { min: 350, title: "Patinador do Polo", emoji: "⛸️" },
+  { min: 900, title: "Ursinho Veloz", emoji: "🐻‍❄️" },
+  { min: 1800, title: "Escorregador Lendário", emoji: "🏆" },
+  { min: 3000, title: "Rei do Gelo", emoji: "👑" },
+];
+const medal = (score: number) => medalFor(BEAR_MEDALS, score);
 
 /** Seção da landing: "Escorrega do Ursinho Polar". */
-export default function PolarBearGame() {
+export default function PolarBearGame({ onCreateLetter }: { onCreateLetter?: () => void }) {
   const [open, setOpen] = useState(false);
   return (
     <section className="py-16 md:py-24 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto" id="urso">
@@ -73,7 +76,7 @@ export default function PolarBearGame() {
           </div>
         </div>
       </Reveal>
-      <AnimatePresence>{open && <BearModal onClose={() => setOpen(false)} />}</AnimatePresence>
+      <AnimatePresence>{open && <BearModal onClose={() => setOpen(false)} onCreateLetter={onCreateLetter} />}</AnimatePresence>
     </section>
   );
 }
@@ -119,13 +122,14 @@ function BearPreview() {
 const JUMP_NOTES = [76, 79];
 const FISH_NOTES = [84, 86, 88, 91];
 
-function BearModal({ onClose }: { onClose: () => void }) {
+function BearModal({ onClose, onCreateLetter }: { onClose: () => void; onCreateLetter?: () => void }) {
   useBackClose(true, onClose);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const gameRef = useRef<PolarGame | null>(null);
   const [phase, setPhase] = useState<"intro" | "count" | "play" | "over">("intro");
   const [count, setCount] = useState(3);
   const [easy, setEasy] = useState(false);
+  const [name, setName] = useState(loadPlayer);
   const [hud, setHud] = useState({ score: 0, hearts: 3, meters: 0, star: 0 });
   const [result, setResult] = useState<PolarResult | null>(null);
   const [best, setBest] = useState(readBest);
@@ -178,6 +182,7 @@ function BearModal({ onClose }: { onClose: () => void }) {
     const g = gameRef.current;
     if (!g) return;
     g.easy = easy;
+    if (name.trim()) savePlayer(name);
     setResult(null);
     setNewBest(false);
     setPhase("count");
@@ -196,7 +201,7 @@ function BearModal({ onClose }: { onClose: () => void }) {
         g.start();
       }
     }, 650);
-  }, [easy]);
+  }, [easy, name]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -285,6 +290,15 @@ function BearModal({ onClose }: { onClose: () => void }) {
                   </button>
                 ))}
               </div>
+              <label className="text-xs text-[#4CC9F0] font-bold uppercase tracking-wider mb-1">Seu nome</label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value.slice(0, 20))}
+                placeholder="Ex: Sofia"
+                className="bg-white/10 border border-white/30 rounded-full px-5 py-2.5 text-white text-center mb-4 focus:outline-none focus:border-[#4CC9F0] w-60"
+                onKeyDown={(e) => e.key === "Enter" && begin()}
+                id="bear-name"
+              />
               <button
                 onClick={begin}
                 className="bg-gradient-to-r from-[#4CC9F0] to-[#4361EE] text-white font-extrabold px-10 py-4 rounded-full text-lg inline-flex items-center gap-2 shadow-lg border border-[#FFD166]/50 btn-shine cursor-pointer"
@@ -311,39 +325,27 @@ function BearModal({ onClose }: { onClose: () => void }) {
 
           {phase === "over" && result && m && (
             <Overlay key="over">
-              <motion.div className="text-6xl mb-1" initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 260, damping: 12 }}>
-                {m.emoji}
-              </motion.div>
-              <p className="text-[#4CC9F0] font-bold uppercase tracking-widest text-xs mb-1">{m.title}</p>
-              <h3 className="font-cinzel text-4xl sm:text-5xl font-extrabold text-white mb-1">{result.score}</h3>
-              {newBest ? (
-                <p className="text-[#FFD166] font-bold mb-3 inline-flex items-center gap-1">
-                  <Trophy className="w-4 h-4" /> Novo recorde!
-                </p>
-              ) : (
-                <p className="text-white/60 text-sm mb-3">Recorde: {best}</p>
-              )}
-              <div className="grid grid-cols-3 gap-2 mb-5 w-full max-w-sm">
-                {[
+              <SantaCongrats
+                game="Escorrega do Ursinho"
+                anchor="urso"
+                player={name}
+                onPlayer={setName}
+                score={result.score}
+                best={best}
+                newBest={newBest}
+                medals={BEAR_MEDALS}
+                feat={result.fish > 0 ? `pegou ${result.fish} ${result.fish === 1 ? "peixinho" : "peixinhos"} e escorregou ${result.meters} metros no gelo` : `escorregou ${result.meters} metros no gelo com o ursinho`}
+                stats={[
                   ["🐟", result.fish, "peixes"],
                   ["🎁", result.gifts, "presentes"],
                   ["🏁", result.meters, "metros"],
-                ].map(([e, v, l]) => (
-                  <div key={String(l)} className="bg-white/10 rounded-2xl p-2">
-                    <div className="text-xl">{e}</div>
-                    <div className="text-white font-extrabold">{v}</div>
-                    <div className="text-[10px] text-white/60">{l}</div>
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={begin}
-                className="bg-gradient-to-r from-[#4CC9F0] to-[#4361EE] text-white font-extrabold px-8 py-3.5 rounded-full inline-flex items-center gap-2 border border-[#FFD166]/50 btn-shine cursor-pointer"
-                id="bear-retry-btn"
-              >
-                <RotateCcw className="w-5 h-5 relative z-10" />
-                <span className="relative z-10">Jogar de novo</span>
-              </button>
+                ]}
+                accent="#4CC9F0"
+                retryId="bear-retry-btn"
+                onRetry={begin}
+                getSnapshot={() => canvasRef.current}
+                onLetter={onCreateLetter ? () => { onClose(); onCreateLetter(); } : undefined}
+              />
             </Overlay>
           )}
         </AnimatePresence>

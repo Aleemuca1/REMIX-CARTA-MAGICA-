@@ -63,7 +63,7 @@ export class PolarGame {
     return this.H / 450; // unidade de escala
   }
   private get bearX() {
-    return this.W * 0.2;
+    return Math.max(this.W * 0.2, 96 * this.u);
   }
 
   resize() {
@@ -300,71 +300,164 @@ export class PolarGame {
   }
 
   // ------------------------------------------------------------------ desenho
+  /** número pseudoaleatório estável para cada índice (montanhas e icebergs não "pulam" ao rolar) */
+  private hash(i: number) {
+    const s = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+    return s - Math.floor(s);
+  }
+
   private draw(dt: number) {
     const c = this.ctx;
     const { W, H } = this;
     const u = this.u;
     const gy = this.ground;
     const scroll = this.dist * 20;
+    const t = this.time + performance.now() / 1000 * (this.running ? 0 : 1);
 
-    // céu com aurora
+    // ---- céu polar
     const sky = c.createLinearGradient(0, 0, 0, gy);
-    sky.addColorStop(0, "#071030");
-    sky.addColorStop(0.6, "#14295A");
-    sky.addColorStop(1, "#2D4E86");
+    sky.addColorStop(0, "#030716");
+    sky.addColorStop(0.45, "#0B1A3F");
+    sky.addColorStop(0.8, "#1D3A6E");
+    sky.addColorStop(1, "#3A5F95");
     c.fillStyle = sky;
     c.fillRect(0, 0, W, H);
-    for (let k = 0; k < 3; k++) {
+
+    // estrelas piscando
+    for (let i = 0; i < 70; i++) {
+      const sx = this.hash(i) * W;
+      const sy = this.hash(i + 100) * gy * 0.55;
+      const tw = 0.45 + 0.55 * Math.abs(Math.sin(t * (0.8 + this.hash(i + 200) * 2) + i));
+      c.globalAlpha = tw * 0.9;
+      c.fillStyle = "#FFFFFF";
+      c.fillRect(sx, sy, (this.hash(i + 300) > 0.85 ? 2 : 1.2) * u, (this.hash(i + 300) > 0.85 ? 2 : 1.2) * u);
+    }
+    c.globalAlpha = 1;
+
+    // aurora boreal em cortinas
+    this.aurora(t, u);
+
+    // lua com halo e crateras
+    const mx = W * 0.84,
+      my = H * 0.15,
+      mr = 22 * u;
+    const halo = c.createRadialGradient(mx, my, mr, mx, my, mr * 4.5);
+    halo.addColorStop(0, "rgba(220,235,255,0.35)");
+    halo.addColorStop(1, "rgba(220,235,255,0)");
+    c.fillStyle = halo;
+    c.beginPath();
+    c.arc(mx, my, mr * 4.5, 0, Math.PI * 2);
+    c.fill();
+    const moon = c.createRadialGradient(mx - mr * 0.3, my - mr * 0.3, mr * 0.2, mx, my, mr);
+    moon.addColorStop(0, "#FFFFFF");
+    moon.addColorStop(1, "#DCE6F2");
+    c.fillStyle = moon;
+    c.beginPath();
+    c.arc(mx, my, mr, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = "rgba(150,170,200,0.35)";
+    for (const [dx, dy, r] of [
+      [-0.3, -0.2, 0.22],
+      [0.25, 0.15, 0.16],
+      [-0.05, 0.4, 0.12],
+      [0.35, -0.35, 0.09],
+    ]) {
       c.beginPath();
-      const base = H * (0.18 + k * 0.07);
-      c.moveTo(0, base);
-      for (let x = 0; x <= W; x += 20) {
-        c.lineTo(x, base + Math.sin(x / (120 + k * 40) + this.time * (0.4 + k * 0.15)) * 18 * u);
-      }
-      c.lineTo(W, base + 50 * u);
-      c.lineTo(0, base + 50 * u);
-      c.closePath();
-      c.fillStyle = ["rgba(45,198,83,0.16)", "rgba(76,201,240,0.13)", "rgba(155,93,229,0.1)"][k];
+      c.arc(mx + dx * mr, my + dy * mr, r * mr, 0, Math.PI * 2);
       c.fill();
     }
-    // lua
-    c.fillStyle = "rgba(255,246,213,0.95)";
-    c.beginPath();
-    c.arc(W * 0.82, H * 0.17, 26 * u, 0, Math.PI * 2);
-    c.fill();
 
-    // montanhas (paralaxe)
-    this.mountains(scroll * 0.1, gy - 120 * u, 160 * u, "#3B5C93", 260 * u);
-    this.mountains(scroll * 0.25, gy - 60 * u, 110 * u, "#5C7FB8", 190 * u);
-    // iglus e pinheiros ao fundo
-    const off = (scroll * 0.45) % (420 * u);
-    for (let x = -off; x < W + 420 * u; x += 420 * u) {
-      this.igloo(x + 120 * u, gy - 4 * u, u);
-      this.pine(x + 300 * u, gy - 2 * u, u * 0.9);
-      this.pine(x + 340 * u, gy - 2 * u, u * 0.7);
+    // ---- geleiras ao fundo (com lado iluminado e lado na sombra)
+    this.glaciers(scroll * 0.06, gy - 95 * u, 150 * u, 230 * u, ["#2E4B7D", "#1F3763", "#C9DAF0"], 1);
+    this.glaciers(scroll * 0.16, gy - 50 * u, 105 * u, 170 * u, ["#4B6EA6", "#355585", "#E4EEFA"], 7);
+
+    // ---- mar gelado com icebergs e reflexos
+    const seaTop = gy - 34 * u;
+    const sea = c.createLinearGradient(0, seaTop, 0, gy);
+    sea.addColorStop(0, "#1B3D6E");
+    sea.addColorStop(1, "#0E2850");
+    c.fillStyle = sea;
+    c.fillRect(0, seaTop, W, gy - seaTop);
+    // brilho da lua na água
+    c.fillStyle = "rgba(220,235,255,0.25)";
+    for (let k = 0; k < 6; k++) {
+      const wy = seaTop + 4 * u + k * 5 * u;
+      const ww = (40 - k * 4) * u * (1 + 0.2 * Math.sin(t * 2 + k));
+      c.fillRect(mx - ww / 2 + Math.sin(t * 1.5 + k) * 6 * u, wy, ww, 1.6 * u);
     }
-
-    // chão de gelo
-    const ice = c.createLinearGradient(0, gy, 0, H);
-    ice.addColorStop(0, "#E8F4FF");
-    ice.addColorStop(1, "#B9D6F2");
-    c.fillStyle = ice;
-    c.fillRect(0, gy, W, H - gy);
-    c.strokeStyle = "rgba(120,170,220,0.5)";
-    c.lineWidth = 2;
-    const lo = scroll % (90 * u);
-    for (let x = -lo; x < W; x += 90 * u) {
+    // ondinhas
+    c.strokeStyle = "rgba(160,200,240,0.25)";
+    c.lineWidth = 1;
+    const wo = (scroll * 0.3) % (60 * u);
+    for (let k = 0; k < 3; k++) {
+      const wy = seaTop + (8 + k * 9) * u;
       c.beginPath();
-      c.moveTo(x, gy + 18 * u);
-      c.lineTo(x + 40 * u, gy + 18 * u);
-      c.moveTo(x + 30 * u, gy + 40 * u);
-      c.lineTo(x + 75 * u, gy + 40 * u);
+      for (let x = -wo - 60 * u; x < W; x += 60 * u) {
+        c.moveTo(x + k * 20 * u, wy);
+        c.quadraticCurveTo(x + k * 20 * u + 10 * u, wy - 2 * u, x + k * 20 * u + 20 * u, wy);
+      }
       c.stroke();
     }
+    // icebergs flutuando
+    const span = 300 * u;
+    const io = (scroll * 0.3) % span;
+    const i0 = Math.floor((scroll * 0.3) / span);
+    for (let k = -1; k < W / span + 2; k++) {
+      const h = this.hash(i0 + k + 50);
+      if (h < 0.35) continue;
+      this.iceberg(k * span - io + h * 120 * u, seaTop + 10 * u, (0.6 + h * 0.6) * u, t);
+    }
 
-    // itens
+    // ---- placa de gelo (chão)
+    const ice = c.createLinearGradient(0, gy, 0, H);
+    ice.addColorStop(0, "#F7FBFF");
+    ice.addColorStop(0.25, "#DCEBFA");
+    ice.addColorStop(1, "#A9C8E8");
+    c.fillStyle = ice;
+    c.fillRect(0, gy - 2 * u, W, H - gy + 2 * u);
+    // borda com neve fofa
+    c.fillStyle = "#FFFFFF";
+    const bo = scroll % (46 * u);
+    c.beginPath();
+    c.moveTo(0, gy + 4 * u);
+    for (let x = -bo - 46 * u; x < W + 46 * u; x += 46 * u) c.quadraticCurveTo(x + 23 * u, gy - 6 * u, x + 46 * u, gy + 2 * u);
+    c.lineTo(W, gy + 8 * u);
+    c.lineTo(0, gy + 8 * u);
+    c.fill();
+    // rachaduras e marcas do gelo
+    const co = scroll % (220 * u);
+    const ci = Math.floor(scroll / (220 * u));
+    c.strokeStyle = "rgba(110,155,205,0.45)";
+    c.lineWidth = 1.2 * u;
+    for (let k = 0; k < W / (220 * u) + 2; k++) {
+      const x = k * 220 * u - co;
+      const h = this.hash(ci + k);
+      const y0 = gy + (20 + h * 30) * u;
+      c.beginPath();
+      c.moveTo(x, y0);
+      c.lineTo(x + 30 * u, y0 + 6 * u);
+      c.lineTo(x + 52 * u, y0 + 2 * u);
+      c.lineTo(x + 80 * u, y0 + 10 * u);
+      c.moveTo(x + 30 * u, y0 + 6 * u);
+      c.lineTo(x + 38 * u, y0 + 18 * u);
+      c.stroke();
+      // faixas brilhantes
+      c.fillStyle = "rgba(255,255,255,0.55)";
+      c.fillRect(x + 110 * u, gy + (14 + h * 40) * u, 50 * u * (0.5 + h), 2 * u);
+    }
+    // cintilância no gelo
+    for (let k = 0; k < 14; k++) {
+      const sx = ((this.hash(k + 400) * W * 1.5 - scroll) % W + W) % W;
+      const sy = gy + 10 * u + this.hash(k + 500) * (H - gy - 16 * u);
+      const a = Math.max(0, Math.sin(t * 3 + k * 1.7));
+      if (a < 0.6) continue;
+      c.globalAlpha = (a - 0.6) * 2.5;
+      this.sparkle(sx, sy, 4 * u);
+    }
+    c.globalAlpha = 1;
+
+    // itens e obstáculos
     for (const it of this.items) this.item(it, u);
-    // obstáculos
     for (const o of this.obst) this.obstacle(o, u);
 
     // ursinho
@@ -392,17 +485,26 @@ export class PolarGame {
       c.globalAlpha = 1;
     }
 
-    // neve
-    c.fillStyle = "rgba(255,255,255,0.85)";
+    // neve (em duas profundidades)
     for (const f of this.flakes) {
       f.y += (f.s * dt * 60) / H + 0.0005;
-      f.x -= ((this.speed * u * dt) / W) * 0.25;
+      f.x -= ((this.speed * u * dt) / W) * (0.15 + f.r * 0.08);
       if (f.y > 1) f.y = 0;
       if (f.x < 0) f.x = 1;
+      c.globalAlpha = 0.5 + f.r * 0.18;
+      c.fillStyle = "#FFFFFF";
       c.beginPath();
-      c.arc(f.x * W, f.y * H, f.r * u, 0, Math.PI * 2);
+      c.arc(f.x * W + Math.sin(t + f.y * 10) * 3 * u, f.y * H, f.r * u, 0, Math.PI * 2);
       c.fill();
     }
+    c.globalAlpha = 1;
+
+    // vinheta suave nas bordas
+    const vg = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.max(W, H) * 0.75);
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(2,6,20,0.35)");
+    c.fillStyle = vg;
+    c.fillRect(0, 0, W, H);
 
     // aviso central
     if (this.announce) {
@@ -419,75 +521,127 @@ export class PolarGame {
     }
   }
 
-  private mountains(offset: number, baseY: number, height: number, color: string, span: number) {
+  private aurora(t: number, u: number) {
     const c = this.ctx;
-    const o = offset % span;
-    c.fillStyle = color;
-    c.beginPath();
-    c.moveTo(-span, this.ground);
-    for (let x = -o - span; x < this.W + span; x += span) {
-      c.lineTo(x, baseY + height * 0.5);
-      c.lineTo(x + span * 0.5, baseY - height * 0.3);
-      c.lineTo(x + span, baseY + height * 0.5);
-    }
-    c.lineTo(this.W + span, this.ground);
-    c.closePath();
-    c.fill();
-    // neve nos picos
-    c.fillStyle = "rgba(255,255,255,0.85)";
-    for (let x = -o - span; x < this.W + span; x += span) {
-      const px = x + span * 0.5;
-      const py = baseY - height * 0.3;
+    const { W, H } = this;
+    const bands: [number, number, string, string][] = [
+      [H * 0.08, 110 * u, "rgba(80,255,170,", "0"],
+      [H * 0.16, 80 * u, "rgba(120,200,255,", "1"],
+    ];
+    c.save();
+    c.globalCompositeOperation = "lighter";
+    bands.forEach(([top, h, col], b) => {
+      const g = c.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, col + "0)");
+      g.addColorStop(0.35, col + (b ? "0.16)" : "0.22)"));
+      g.addColorStop(1, col + "0)");
+      c.fillStyle = g;
+      const step = 5 * u;
+      for (let x = 0; x < W; x += step) {
+        const wave = Math.sin(x / (160 * u) + t * (0.35 + b * 0.2)) * 22 * u + Math.sin(x / (55 * u) - t * 0.6) * 7 * u;
+        const ray = 0.45 + 0.55 * Math.abs(Math.sin(x / (23 * u) + t * 0.9 + b));
+        c.globalAlpha = ray;
+        c.save();
+        c.translate(x, top + wave);
+        c.fillRect(-1, 0, step + 2, h * (0.7 + 0.3 * ray));
+        c.restore();
+      }
+    });
+    c.restore();
+    c.globalAlpha = 1;
+  }
+
+  /** Cadeia de geleiras: picos irregulares, face clara (lua) e face na sombra. */
+  private glaciers(offset: number, baseY: number, height: number, span: number, [light, dark, snow]: string[], seed: number) {
+    const c = this.ctx;
+    const gy = this.ground;
+    const i0 = Math.floor(offset / span);
+    const o = offset - i0 * span;
+    for (let k = -1; k < this.W / span + 2; k++) {
+      const h = this.hash(i0 + k + seed * 31);
+      const px = k * span - o + span * (0.3 + h * 0.4);
+      const ph = height * (0.55 + h * 0.45);
+      const py = baseY - ph * 0.45;
+      const lx = px - span * (0.55 + h * 0.2);
+      const rx = px + span * (0.55 + (1 - h) * 0.2);
+      // face iluminada (direita, voltada para a lua)
+      c.fillStyle = light;
       c.beginPath();
       c.moveTo(px, py);
-      c.lineTo(px - span * 0.12, py + height * 0.16);
-      c.lineTo(px + span * 0.12, py + height * 0.16);
+      c.lineTo(px + span * 0.12, py + ph * 0.3);
+      c.lineTo(rx, gy);
+      c.lineTo(px, gy);
+      c.closePath();
+      c.fill();
+      // face na sombra
+      c.fillStyle = dark;
+      c.beginPath();
+      c.moveTo(px, py);
+      c.lineTo(px - span * 0.1, py + ph * 0.25);
+      c.lineTo(px - span * 0.06, py + ph * 0.45);
+      c.lineTo(lx, gy);
+      c.lineTo(px, gy);
+      c.closePath();
+      c.fill();
+      // neve no pico (irregular)
+      c.fillStyle = snow;
+      c.beginPath();
+      c.moveTo(px, py);
+      c.lineTo(px + span * 0.11, py + ph * 0.24);
+      c.lineTo(px + span * 0.05, py + ph * 0.2);
+      c.lineTo(px, py + ph * 0.3);
+      c.lineTo(px - span * 0.04, py + ph * 0.19);
+      c.lineTo(px - span * 0.09, py + ph * 0.22);
       c.closePath();
       c.fill();
     }
   }
 
-  private igloo(x: number, y: number, u: number) {
+  private iceberg(x: number, waterY: number, s: number, t: number) {
     const c = this.ctx;
-    c.fillStyle = "#F2F8FF";
+    const bob = Math.sin(t * 1.2 + x * 0.01) * 1.5 * s;
+    const y = waterY + bob;
+    // reflexo
+    c.fillStyle = "rgba(200,225,255,0.18)";
     c.beginPath();
-    c.arc(x, y, 34 * u, Math.PI, 0);
+    c.moveTo(x - 30 * s, y);
+    c.lineTo(x + 34 * s, y);
+    c.lineTo(x + 18 * s, y + 16 * s);
+    c.lineTo(x - 14 * s, y + 18 * s);
+    c.closePath();
     c.fill();
-    c.strokeStyle = "rgba(140,180,220,0.6)";
-    c.lineWidth = 1.5;
-    for (let k = 1; k < 3; k++) {
-      c.beginPath();
-      c.arc(x, y, 34 * u, Math.PI, 0);
-      c.moveTo(x - 34 * u, y - k * 11 * u);
-      c.lineTo(x + 34 * u, y - k * 11 * u);
-      c.stroke();
-    }
-    c.fillStyle = "#2D4E86";
+    // corpo
+    c.fillStyle = "#EAF4FF";
     c.beginPath();
-    c.arc(x + 12 * u, y, 10 * u, Math.PI, 0);
+    c.moveTo(x - 30 * s, y);
+    c.lineTo(x - 18 * s, y - 22 * s);
+    c.lineTo(x - 4 * s, y - 30 * s);
+    c.lineTo(x + 12 * s, y - 20 * s);
+    c.lineTo(x + 34 * s, y);
+    c.closePath();
     c.fill();
-    c.fillStyle = "rgba(255,209,102,0.6)";
+    c.fillStyle = "#A9C6E6";
     c.beginPath();
-    c.arc(x + 12 * u, y, 6 * u, Math.PI, 0);
+    c.moveTo(x - 4 * s, y - 30 * s);
+    c.lineTo(x + 12 * s, y - 20 * s);
+    c.lineTo(x + 34 * s, y);
+    c.lineTo(x + 6 * s, y);
+    c.closePath();
     c.fill();
   }
 
-  private pine(x: number, y: number, s: number) {
+  private sparkle(x: number, y: number, r: number) {
     const c = this.ctx;
-    c.fillStyle = "#1E5B3A";
-    for (let k = 0; k < 3; k++) {
-      c.beginPath();
-      c.moveTo(x, y - (70 - k * 18) * s);
-      c.lineTo(x - (22 + k * 6) * s, y - (30 - k * 14) * s);
-      c.lineTo(x + (22 + k * 6) * s, y - (30 - k * 14) * s);
-      c.closePath();
-      c.fill();
-    }
     c.fillStyle = "#FFFFFF";
     c.beginPath();
-    c.moveTo(x, y - 70 * s);
-    c.lineTo(x - 8 * s, y - 56 * s);
-    c.lineTo(x + 8 * s, y - 56 * s);
+    c.moveTo(x, y - r);
+    c.lineTo(x + r * 0.22, y - r * 0.22);
+    c.lineTo(x + r, y);
+    c.lineTo(x + r * 0.22, y + r * 0.22);
+    c.lineTo(x, y + r);
+    c.lineTo(x - r * 0.22, y + r * 0.22);
+    c.lineTo(x - r, y);
+    c.lineTo(x - r * 0.22, y - r * 0.22);
     c.closePath();
     c.fill();
   }
@@ -499,29 +653,56 @@ export class PolarGame {
     c.save();
     c.translate(x, y);
     if (it.kind === "peixe") {
+      // peixe do Ártico prateado-azulado, com brilho
       c.rotate(Math.sin(it.t * 6) * 0.2);
-      c.fillStyle = "#FF9F1C";
+      const glow = c.createRadialGradient(0, 0, 2, 0, 0, 22 * u);
+      glow.addColorStop(0, "rgba(255,240,200,0.35)");
+      glow.addColorStop(1, "rgba(255,240,200,0)");
+      c.fillStyle = glow;
       c.beginPath();
-      c.ellipse(0, 0, 12 * u, 7 * u, 0, 0, Math.PI * 2);
+      c.arc(0, 0, 22 * u, 0, Math.PI * 2);
       c.fill();
+      const body = c.createLinearGradient(0, -8 * u, 0, 8 * u);
+      body.addColorStop(0, "#3D6FA8");
+      body.addColorStop(0.45, "#9EC3E6");
+      body.addColorStop(0.55, "#F0D9B5");
+      body.addColorStop(1, "#E8E2D6");
+      c.fillStyle = body;
       c.beginPath();
-      c.moveTo(10 * u, 0);
-      c.lineTo(19 * u, -7 * u);
-      c.lineTo(19 * u, 7 * u);
-      c.closePath();
+      c.moveTo(-14 * u, 0);
+      c.quadraticCurveTo(-4 * u, -10 * u, 10 * u, -2 * u);
+      c.lineTo(20 * u, -8 * u);
+      c.lineTo(17 * u, 0);
+      c.lineTo(20 * u, 8 * u);
+      c.lineTo(10 * u, 2 * u);
+      c.quadraticCurveTo(-4 * u, 10 * u, -14 * u, 0);
+      c.fill();
+      c.strokeStyle = "rgba(30,60,110,0.6)";
+      c.lineWidth = 1;
+      c.stroke();
+      c.fillStyle = "#FF8A5B";
+      c.beginPath();
+      c.moveTo(-2 * u, -6 * u);
+      c.lineTo(4 * u, -11 * u);
+      c.lineTo(6 * u, -4 * u);
       c.fill();
       c.fillStyle = "#FFFFFF";
       c.beginPath();
-      c.arc(-6 * u, -2 * u, 2.4 * u, 0, Math.PI * 2);
+      c.arc(-8 * u, -1.5 * u, 2.4 * u, 0, Math.PI * 2);
       c.fill();
-      c.fillStyle = "#1C2541";
+      c.fillStyle = "#0B132B";
       c.beginPath();
-      c.arc(-6.5 * u, -2 * u, 1.2 * u, 0, Math.PI * 2);
+      c.arc(-8.4 * u, -1.5 * u, 1.3 * u, 0, Math.PI * 2);
       c.fill();
     } else if (it.kind === "presente") {
       c.rotate(Math.sin(it.t * 3) * 0.12);
-      c.fillStyle = "#EF233C";
-      c.fillRect(-14 * u, -12 * u, 28 * u, 24 * u);
+      const g = c.createLinearGradient(-14 * u, -12 * u, 14 * u, 12 * u);
+      g.addColorStop(0, "#FF4D5E");
+      g.addColorStop(1, "#B5102A");
+      c.fillStyle = g;
+      c.beginPath();
+      c.roundRect(-14 * u, -12 * u, 28 * u, 24 * u, 3 * u);
+      c.fill();
       c.fillStyle = "#FFD166";
       c.fillRect(-3 * u, -12 * u, 6 * u, 24 * u);
       c.fillRect(-14 * u, -3 * u, 28 * u, 6 * u);
@@ -529,6 +710,8 @@ export class PolarGame {
       c.ellipse(-6 * u, -15 * u, 6 * u, 4 * u, -0.5, 0, Math.PI * 2);
       c.ellipse(6 * u, -15 * u, 6 * u, 4 * u, 0.5, 0, Math.PI * 2);
       c.fill();
+      c.fillStyle = "rgba(255,255,255,0.35)";
+      c.fillRect(-12 * u, -10 * u, 6 * u, 3 * u);
     } else if (it.kind === "estrela") {
       c.rotate(it.t * 2);
       const glow = c.createRadialGradient(0, 0, 2, 0, 0, 30 * u);
@@ -565,45 +748,94 @@ export class PolarGame {
     c.closePath();
   }
 
+  private groundShadow(x: number, w: number) {
+    const c = this.ctx;
+    const g = c.createRadialGradient(x, this.ground + 2 * this.u, 0, x, this.ground + 2 * this.u, w);
+    g.addColorStop(0, "rgba(40,80,140,0.35)");
+    g.addColorStop(1, "rgba(40,80,140,0)");
+    c.fillStyle = g;
+    c.beginPath();
+    c.ellipse(x, this.ground + 2 * this.u, w, w * 0.18, 0, 0, Math.PI * 2);
+    c.fill();
+  }
+
   private obstacle(o: Obst, u: number) {
     const c = this.ctx;
     const x = o.x;
     const gy = this.ground;
     c.save();
     if (o.hit) c.globalAlpha = 0.35;
+    this.groundShadow(x, o.w * 0.75);
     if (o.kind === "bloco") {
-      const g = c.createLinearGradient(x - o.w / 2, gy - o.h, x + o.w / 2, gy);
-      g.addColorStop(0, "#DFF3FF");
-      g.addColorStop(1, "#7FB6E6");
+      // bloco de gelo translúcido com facetas
+      const l = x - o.w / 2,
+        top = gy - o.h;
+      const g = c.createLinearGradient(l, top, l + o.w, gy);
+      g.addColorStop(0, "rgba(235,248,255,0.95)");
+      g.addColorStop(0.5, "rgba(150,205,240,0.92)");
+      g.addColorStop(1, "rgba(90,150,210,0.95)");
       c.fillStyle = g;
       c.beginPath();
-      c.roundRect(x - o.w / 2, gy - o.h, o.w, o.h, 6 * u);
+      c.moveTo(l + 4 * u, gy);
+      c.lineTo(l, top + 10 * u);
+      c.lineTo(l + 10 * u, top);
+      c.lineTo(l + o.w - 6 * u, top + 3 * u);
+      c.lineTo(l + o.w, top + 14 * u);
+      c.lineTo(l + o.w - 3 * u, gy);
+      c.closePath();
       c.fill();
-      c.strokeStyle = "rgba(255,255,255,0.9)";
-      c.lineWidth = 2;
+      c.fillStyle = "rgba(255,255,255,0.55)";
       c.beginPath();
-      c.moveTo(x - o.w / 2 + 8 * u, gy - o.h + 8 * u);
-      c.lineTo(x - o.w / 2 + 18 * u, gy - o.h + 8 * u);
-      c.stroke();
-    } else if (o.kind === "boneco") {
-      c.fillStyle = "#FFFFFF";
-      c.strokeStyle = "#B8C4D6";
+      c.moveTo(l + 10 * u, top);
+      c.lineTo(l + o.w - 6 * u, top + 3 * u);
+      c.lineTo(l + o.w - 14 * u, top + 12 * u);
+      c.lineTo(l + 6 * u, top + 10 * u);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = "rgba(255,255,255,0.8)";
       c.lineWidth = 1.5;
       c.beginPath();
-      c.arc(x, gy - 18 * u, 18 * u, 0, Math.PI * 2);
-      c.fill();
+      c.moveTo(l + 8 * u, top + 16 * u);
+      c.lineTo(l + 14 * u, gy - 8 * u);
+      c.moveTo(l + o.w * 0.6, top + 14 * u);
+      c.lineTo(l + o.w * 0.5, top + 26 * u);
       c.stroke();
+      // neve em cima
+      c.fillStyle = "#FFFFFF";
       c.beginPath();
-      c.arc(x, gy - 46 * u, 13 * u, 0, Math.PI * 2);
+      c.ellipse(x, top + 2 * u, o.w * 0.42, 4 * u, 0.03, 0, Math.PI * 2);
       c.fill();
+    } else if (o.kind === "boneco") {
+      const ball = (cx: number, cy: number, r: number) => {
+        const g = c.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.1, cx, cy, r);
+        g.addColorStop(0, "#FFFFFF");
+        g.addColorStop(1, "#C7D8EC");
+        c.fillStyle = g;
+        c.beginPath();
+        c.arc(cx, cy, r, 0, Math.PI * 2);
+        c.fill();
+      };
+      ball(x, gy - 18 * u, 19 * u);
+      ball(x, gy - 46 * u, 13 * u);
+      // braços de galho
+      c.strokeStyle = "#5A3A22";
+      c.lineWidth = 2 * u;
+      c.beginPath();
+      c.moveTo(x - 10 * u, gy - 26 * u);
+      c.lineTo(x - 26 * u, gy - 38 * u);
+      c.lineTo(x - 30 * u, gy - 36 * u);
+      c.moveTo(x + 10 * u, gy - 26 * u);
+      c.lineTo(x + 25 * u, gy - 40 * u);
       c.stroke();
       c.fillStyle = "#1C2541";
       c.fillRect(x - 9 * u, gy - 70 * u, 18 * u, 12 * u);
       c.fillRect(x - 13 * u, gy - 60 * u, 26 * u, 3 * u);
+      c.fillStyle = "#B5102A";
+      c.fillRect(x - 9 * u, gy - 63 * u, 18 * u, 3 * u);
       c.fillStyle = "#F4A261";
       c.beginPath();
-      c.moveTo(x - 1 * u, gy - 46 * u);
-      c.lineTo(x - 13 * u, gy - 44 * u);
+      c.moveTo(x - 1 * u, gy - 47 * u);
+      c.lineTo(x - 15 * u, gy - 44 * u);
       c.lineTo(x - 1 * u, gy - 42 * u);
       c.fill();
       c.fillStyle = "#1C2541";
@@ -611,45 +843,109 @@ export class PolarGame {
       c.arc(x - 5 * u, gy - 50 * u, 1.6 * u, 0, Math.PI * 2);
       c.arc(x + 4 * u, gy - 50 * u, 1.6 * u, 0, Math.PI * 2);
       c.fill();
-      c.fillStyle = "#EF233C";
-      c.fillRect(x - 12 * u, gy - 36 * u, 24 * u, 5 * u);
+      for (const by of [-24, -14]) {
+        c.beginPath();
+        c.arc(x, gy + by * u, 1.8 * u, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.fillStyle = "#E63946";
+      c.beginPath();
+      c.roundRect(x - 13 * u, gy - 37 * u, 26 * u, 5 * u, 2 * u);
+      c.fill();
+      c.fillRect(x + 4 * u, gy - 34 * u, 5 * u, 12 * u);
     } else if (o.kind === "pinguim") {
+      // pinguim-imperador
       const hop = Math.abs(Math.sin(this.time * 8 + o.bob)) * 5 * u;
       c.translate(0, -hop);
-      c.fillStyle = "#1C2541";
+      const back = c.createLinearGradient(x - 16 * u, 0, x + 16 * u, 0);
+      back.addColorStop(0, "#0B132B");
+      back.addColorStop(1, "#2A3550");
+      c.fillStyle = back;
       c.beginPath();
-      c.ellipse(x, gy - 22 * u, 16 * u, 22 * u, 0, 0, Math.PI * 2);
+      c.ellipse(x + 2 * u, gy - 23 * u, 15 * u, 23 * u, 0.05, 0, Math.PI * 2);
       c.fill();
-      c.fillStyle = "#FFFFFF";
+      c.fillStyle = "#F7F7F2";
       c.beginPath();
-      c.ellipse(x - 3 * u, gy - 18 * u, 10 * u, 16 * u, 0, 0, Math.PI * 2);
+      c.ellipse(x - 4 * u, gy - 18 * u, 10 * u, 17 * u, 0.05, 0, Math.PI * 2);
+      c.fill();
+      // mancha amarela do pescoço
+      const neck = c.createRadialGradient(x - 8 * u, gy - 33 * u, 1, x - 8 * u, gy - 33 * u, 7 * u);
+      neck.addColorStop(0, "#FFC233");
+      neck.addColorStop(1, "rgba(255,194,51,0)");
+      c.fillStyle = neck;
+      c.beginPath();
+      c.arc(x - 8 * u, gy - 33 * u, 7 * u, 0, Math.PI * 2);
+      c.fill();
+      // cabeça e bico
+      c.fillStyle = "#0B132B";
+      c.beginPath();
+      c.arc(x - 2 * u, gy - 41 * u, 8 * u, 0, Math.PI * 2);
       c.fill();
       c.fillStyle = "#F4A261";
       c.beginPath();
-      c.moveTo(x - 10 * u, gy - 32 * u);
-      c.lineTo(x - 20 * u, gy - 29 * u);
-      c.lineTo(x - 10 * u, gy - 27 * u);
-      c.fill();
-      c.fillStyle = "#1C2541";
-      c.beginPath();
-      c.arc(x - 6 * u, gy - 34 * u, 1.8 * u, 0, Math.PI * 2);
-      c.fill();
-      c.fillStyle = "#EF233C";
-      c.fillRect(x - 14 * u, gy - 26 * u, 26 * u, 4 * u);
-    } else {
-      c.fillStyle = "#8D99AE";
-      c.beginPath();
-      c.ellipse(x, gy - o.h / 2 + 2 * u, o.w / 2, o.h / 2 + 2 * u, 0, Math.PI, 0);
+      c.moveTo(x - 9 * u, gy - 42 * u);
+      c.lineTo(x - 19 * u, gy - 39 * u);
+      c.lineTo(x - 9 * u, gy - 38 * u);
       c.fill();
       c.fillStyle = "#FFFFFF";
       c.beginPath();
-      c.ellipse(x, gy - o.h + 4 * u, o.w / 2.6, 6 * u, 0, 0, Math.PI * 2);
+      c.arc(x - 5 * u, gy - 43 * u, 1.6 * u, 0, Math.PI * 2);
+      c.fill();
+      // asinha e pés
+      c.fillStyle = "#1C2541";
+      c.beginPath();
+      c.ellipse(x + 10 * u, gy - 20 * u, 4 * u, 12 * u, 0.3 + Math.sin(this.time * 10 + o.bob) * 0.2, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = "#F4A261";
+      c.beginPath();
+      c.ellipse(x - 6 * u, gy - 1 * u, 6 * u, 2.5 * u, 0, 0, Math.PI * 2);
+      c.ellipse(x + 5 * u, gy - 1 * u, 6 * u, 2.5 * u, 0, 0, Math.PI * 2);
+      c.fill();
+      // gorrinho
+      c.fillStyle = "#E63946";
+      c.beginPath();
+      c.moveTo(x - 9 * u, gy - 46 * u);
+      c.quadraticCurveTo(x, gy - 62 * u, x + 10 * u, gy - 56 * u);
+      c.lineTo(x + 6 * u, gy - 45 * u);
+      c.fill();
+      c.fillStyle = "#FFFFFF";
+      c.beginPath();
+      c.arc(x + 10 * u, gy - 56 * u, 2.6 * u, 0, Math.PI * 2);
+      c.fill();
+    } else {
+      // rocha escura com neve
+      const g = c.createLinearGradient(x, gy - o.h, x, gy);
+      g.addColorStop(0, "#6C7A92");
+      g.addColorStop(1, "#3E4A60");
+      c.fillStyle = g;
+      c.beginPath();
+      c.moveTo(x - o.w / 2, gy);
+      c.lineTo(x - o.w * 0.4, gy - o.h * 0.6);
+      c.lineTo(x - o.w * 0.15, gy - o.h);
+      c.lineTo(x + o.w * 0.2, gy - o.h * 0.9);
+      c.lineTo(x + o.w * 0.45, gy - o.h * 0.45);
+      c.lineTo(x + o.w / 2, gy);
+      c.closePath();
+      c.fill();
+      c.fillStyle = "rgba(255,255,255,0.18)";
+      c.beginPath();
+      c.moveTo(x - o.w * 0.4, gy - o.h * 0.6);
+      c.lineTo(x - o.w * 0.15, gy - o.h);
+      c.lineTo(x - o.w * 0.1, gy - o.h * 0.4);
+      c.closePath();
+      c.fill();
+      c.fillStyle = "#FFFFFF";
+      c.beginPath();
+      c.moveTo(x - o.w * 0.35, gy - o.h * 0.68);
+      c.lineTo(x - o.w * 0.15, gy - o.h - 2 * u);
+      c.lineTo(x + o.w * 0.22, gy - o.h * 0.92);
+      c.quadraticCurveTo(x, gy - o.h * 0.7, x - o.w * 0.35, gy - o.h * 0.68);
       c.fill();
     }
     c.restore();
   }
 
-  /** O ursinho Polo: deitado de barriga no gelo, com cachecol vermelho voando. */
+  /** O ursinho Polo: urso-polar deitado de barriga, deslizando no gelo, com cachecol e gorro. */
   private bear(u: number, dt: number) {
     const c = this.ctx;
     const x = this.bearX;
@@ -658,131 +954,227 @@ export class PolarGame {
     const blink = this.hurt > 0 && Math.floor(this.hurt * 12) % 2 === 0;
     if (blink) return;
 
-    // sombra
-    c.fillStyle = "rgba(30,60,110,0.25)";
-    c.beginPath();
-    c.ellipse(x, this.ground + 3 * u, 40 * u * (1 - Math.min(0.5, this.bearY / (300 * u))), 6 * u, 0, 0, Math.PI * 2);
-    c.fill();
+    // sombra no gelo
+    const sh = 1 - Math.min(0.6, this.bearY / (300 * u));
+    c.save();
+    c.globalAlpha = sh;
+    this.groundShadow(x, 58 * u * sh);
+    c.restore();
 
     c.save();
     c.translate(x, y);
-    c.scale(1.3, 1.3); // ursinho um pouco maior que o cenário
-    const tilt = air ? Math.max(-0.35, Math.min(0.35, this.vy / (2400 * u))) : Math.sin(this.time * 10) * 0.02;
+    c.scale(1.3, 1.3);
+    const tilt = air ? Math.max(-0.35, Math.min(0.35, this.vy / (2400 * u))) : Math.sin(this.time * 10) * 0.015;
     c.rotate(tilt);
     if (this.star > 0) {
-      const glow = c.createRadialGradient(0, -16 * u, 4, 0, -16 * u, 52 * u);
+      const glow = c.createRadialGradient(0, -16 * u, 4, 0, -16 * u, 56 * u);
       glow.addColorStop(0, "rgba(255,209,102,0.55)");
       glow.addColorStop(1, "rgba(255,209,102,0)");
       c.fillStyle = glow;
       c.beginPath();
-      c.arc(0, -16 * u, 52 * u, 0, Math.PI * 2);
+      c.arc(0, -16 * u, 56 * u, 0, Math.PI * 2);
       c.fill();
     }
 
-    // cachecol (fita que balança atrás)
-    const sx = -6 * u;
-    const sy = -24 * u;
+    const fur = c.createLinearGradient(0, -34 * u, 0, 0);
+    fur.addColorStop(0, "#FFFFFF");
+    fur.addColorStop(0.6, "#F6F1E4");
+    fur.addColorStop(1, "#DDD3BC");
+    const edge = "rgba(150,140,115,0.55)";
+    const paddle = air ? 0.5 : Math.sin(this.time * 14) * 0.25;
+
+    // patas de trás esticadas (com almofadinhas)
+    c.save();
+    c.translate(-34 * u, -6 * u);
+    c.rotate(-0.15 - paddle * 0.3);
+    c.fillStyle = fur;
+    c.strokeStyle = edge;
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.ellipse(-10 * u, 0, 14 * u, 6.5 * u, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = "#3A3A44";
+    c.beginPath();
+    c.ellipse(-22 * u, 0, 2.8 * u, 4.6 * u, 0, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+
+    // cachecol voando
+    const sx = 8 * u;
+    const sy = -27 * u;
     this.scarf[0] = { x: sx, y: sy };
     for (let i = 1; i < this.scarf.length; i++) {
       const p = this.scarf[i];
-      const tx = this.scarf[i - 1].x - 7 * u;
+      const tx = this.scarf[i - 1].x - 8 * u;
       const ty = this.scarf[i - 1].y + Math.sin(this.time * 14 + i) * 2.5 * u + (air ? 2 * u : 0);
       p.x += (tx - p.x) * Math.min(1, dt * 25 || 1);
       p.y += (ty - p.y) * Math.min(1, dt * 25 || 1);
     }
-    c.strokeStyle = "#E63946";
-    c.lineWidth = 6 * u;
+    c.strokeStyle = "#C1121F";
+    c.lineWidth = 6.5 * u;
     c.lineCap = "round";
     c.beginPath();
     c.moveTo(this.scarf[0].x, this.scarf[0].y);
     for (const p of this.scarf) c.lineTo(p.x, p.y);
     c.stroke();
+    c.strokeStyle = "rgba(255,255,255,0.5)";
+    c.lineWidth = 1.5 * u;
+    c.setLineDash([3 * u, 5 * u]);
+    c.stroke();
+    c.setLineDash([]);
 
-    // corpo (deitado)
-    c.fillStyle = "#FFFFFF";
-    c.strokeStyle = "#C9D8EA";
-    c.lineWidth = 2;
+    // corpo alongado (urso-polar de verdade é comprido)
+    c.fillStyle = fur;
+    c.strokeStyle = edge;
+    c.lineWidth = 1.4;
     c.beginPath();
-    c.ellipse(-4 * u, -14 * u, 30 * u, 15 * u, 0, 0, Math.PI * 2);
+    c.moveTo(-44 * u, -6 * u);
+    c.bezierCurveTo(-46 * u, -24 * u, -26 * u, -32 * u, -6 * u, -30 * u);
+    c.bezierCurveTo(10 * u, -30 * u, 18 * u, -30 * u, 24 * u, -26 * u);
+    c.lineTo(26 * u, -8 * u);
+    c.bezierCurveTo(10 * u, -1 * u, -20 * u, 0, -44 * u, -6 * u);
+    c.closePath();
     c.fill();
     c.stroke();
-    // patinhas da frente esticadas
+    // sombra da barriga
+    c.fillStyle = "rgba(170,155,120,0.25)";
     c.beginPath();
-    c.ellipse(24 * u, -6 * u, 9 * u, 5 * u, 0.2, 0, Math.PI * 2);
+    c.ellipse(-10 * u, -5 * u, 30 * u, 4.5 * u, 0, 0, Math.PI * 2);
+    c.fill();
+    // pelos nas costas
+    c.strokeStyle = "rgba(190,180,150,0.6)";
+    c.lineWidth = 1;
+    for (let k = 0; k < 7; k++) {
+      const fx = -36 * u + k * 8 * u;
+      c.beginPath();
+      c.moveTo(fx, -26 * u + Math.abs(k - 3) * 0.8 * u);
+      c.lineTo(fx - 3 * u, -22 * u + Math.abs(k - 3) * 0.8 * u);
+      c.stroke();
+    }
+
+    // patas da frente esticadas para a frente
+    c.save();
+    c.translate(22 * u, -6 * u);
+    c.rotate(0.05 + paddle * 0.2);
+    c.fillStyle = fur;
+    c.strokeStyle = edge;
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.ellipse(10 * u, 0, 14 * u, 5.5 * u, 0, 0, Math.PI * 2);
     c.fill();
     c.stroke();
-    // patinhas de trás
+    c.strokeStyle = "#3A3A44";
+    c.lineWidth = 1.2;
+    for (let k = -1; k <= 1; k++) {
+      c.beginPath();
+      c.moveTo(23 * u, k * 2.2 * u);
+      c.lineTo(25.5 * u, k * 2.6 * u);
+      c.stroke();
+    }
+    c.restore();
+
+    // cabeça: focinho comprido, orelhas pequenas
+    c.fillStyle = fur;
+    c.strokeStyle = edge;
+    c.lineWidth = 1.4;
     c.beginPath();
-    c.ellipse(-32 * u, -8 * u, 8 * u, 5 * u, -0.3, 0, Math.PI * 2);
-    c.fill();
-    c.stroke();
-    // cabeça
-    c.beginPath();
-    c.arc(20 * u, -26 * u, 15 * u, 0, Math.PI * 2);
+    c.moveTo(14 * u, -24 * u);
+    c.bezierCurveTo(14 * u, -40 * u, 30 * u, -44 * u, 38 * u, -36 * u);
+    c.bezierCurveTo(44 * u, -32 * u, 50 * u, -30 * u, 52 * u, -26 * u);
+    c.bezierCurveTo(53 * u, -21 * u, 46 * u, -18 * u, 38 * u, -18 * u);
+    c.bezierCurveTo(28 * u, -16 * u, 16 * u, -16 * u, 14 * u, -24 * u);
+    c.closePath();
     c.fill();
     c.stroke();
     // orelhas
-    c.beginPath();
-    c.arc(10 * u, -38 * u, 5 * u, 0, Math.PI * 2);
-    c.arc(26 * u, -40 * u, 5 * u, 0, Math.PI * 2);
-    c.fill();
-    c.stroke();
-    c.fillStyle = "#FFC2D1";
-    c.beginPath();
-    c.arc(10 * u, -38 * u, 2.4 * u, 0, Math.PI * 2);
-    c.arc(26 * u, -40 * u, 2.4 * u, 0, Math.PI * 2);
-    c.fill();
-    // focinho
-    c.fillStyle = "#F4F8FF";
-    c.beginPath();
-    c.ellipse(31 * u, -22 * u, 8 * u, 6 * u, 0, 0, Math.PI * 2);
-    c.fill();
-    c.fillStyle = "#1C2541";
-    c.beginPath();
-    c.ellipse(36 * u, -24 * u, 3.4 * u, 2.6 * u, 0, 0, Math.PI * 2);
-    c.fill();
-    // olhos (fechados de felicidade quando no ar)
-    c.strokeStyle = "#1C2541";
-    c.lineWidth = 2;
-    if (air || this.star > 0) {
+    for (const [ex, ey] of [
+      [22, -39],
+      [29, -41],
+    ]) {
+      c.fillStyle = fur;
       c.beginPath();
-      c.arc(22 * u, -29 * u, 2.6 * u, Math.PI * 1.1, Math.PI * 1.9);
+      c.arc(ex * u, ey * u, 3.6 * u, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      c.fillStyle = "#C9BBA0";
+      c.beginPath();
+      c.arc(ex * u, ey * u, 1.6 * u, 0, Math.PI * 2);
+      c.fill();
+    }
+    // nariz preto brilhante
+    c.fillStyle = "#1B1B22";
+    c.beginPath();
+    c.ellipse(51 * u, -27 * u, 3.4 * u, 2.6 * u, 0.2, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = "rgba(255,255,255,0.6)";
+    c.beginPath();
+    c.arc(50.5 * u, -28 * u, 0.8 * u, 0, Math.PI * 2);
+    c.fill();
+    // boca
+    c.strokeStyle = "#3A3A44";
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.moveTo(50 * u, -24.5 * u);
+    c.quadraticCurveTo(46 * u, -20 * u, 42 * u, -21 * u);
+    c.stroke();
+    // olho
+    if (air || this.star > 0) {
+      c.strokeStyle = "#1B1B22";
+      c.lineWidth = 1.6;
+      c.beginPath();
+      c.arc(36 * u, -31 * u, 2.2 * u, Math.PI * 1.1, Math.PI * 1.9);
       c.stroke();
     } else {
-      c.fillStyle = "#1C2541";
+      c.fillStyle = "#1B1B22";
       c.beginPath();
-      c.arc(23 * u, -29 * u, 2.2 * u, 0, Math.PI * 2);
+      c.arc(36 * u, -31 * u, 1.9 * u, 0, Math.PI * 2);
       c.fill();
       c.fillStyle = "#FFFFFF";
       c.beginPath();
-      c.arc(23.8 * u, -29.8 * u, 0.8 * u, 0, Math.PI * 2);
+      c.arc(36.6 * u, -31.7 * u, 0.7 * u, 0, Math.PI * 2);
       c.fill();
     }
-    // bochecha
-    c.fillStyle = "rgba(255,143,163,0.55)";
+    // gorro de Natal com pompom
+    c.fillStyle = "#C1121F";
     c.beginPath();
-    c.arc(18 * u, -21 * u, 3.2 * u, 0, Math.PI * 2);
-    c.fill();
-    // gorrinho de Natal
-    c.fillStyle = "#E63946";
-    c.beginPath();
-    c.moveTo(8 * u, -36 * u);
-    c.quadraticCurveTo(18 * u, -58 * u, 4 * u, -60 * u);
-    c.lineTo(30 * u, -38 * u);
+    c.moveTo(17 * u, -36 * u);
+    c.quadraticCurveTo(22 * u, -58 * u, 6 * u, -58 * u);
+    c.lineTo(34 * u, -39 * u);
     c.closePath();
+    c.fill();
+    c.fillStyle = "rgba(255,255,255,0.25)";
+    c.beginPath();
+    c.moveTo(19 * u, -38 * u);
+    c.quadraticCurveTo(22 * u, -52 * u, 12 * u, -55 * u);
+    c.lineTo(22 * u, -38 * u);
     c.fill();
     c.fillStyle = "#FFFFFF";
     c.beginPath();
-    c.roundRect(6 * u, -40 * u, 26 * u, 6 * u, 3 * u);
+    c.roundRect(15 * u, -41 * u, 21 * u, 5.5 * u, 2.7 * u);
     c.fill();
     c.beginPath();
-    c.arc(4 * u, -60 * u, 4 * u, 0, Math.PI * 2);
+    c.arc(6 * u, -58 * u, 3.8 * u, 0, Math.PI * 2);
     c.fill();
     c.restore();
 
-    // rastro de neve quando desliza no chão
-    if (!air && this.running && Math.random() < 0.5) {
-      this.parts.push({ x: x - 30 * u, y: this.ground - 2 * u, vx: -80 * u - Math.random() * 60 * u, vy: -60 * u * Math.random(), life: 0.4, max: 0.4, color: "#FFFFFF", size: 2 * u });
+    // pó de neve levantado ao deslizar
+    if (!air && this.running) {
+      for (let k = 0; k < 2; k++) {
+        if (Math.random() < 0.7)
+          this.parts.push({
+            x: x - 40 * u + Math.random() * 20 * u,
+            y: this.ground - 2 * u,
+            vx: -90 * u - Math.random() * 80 * u,
+            vy: -40 * u - Math.random() * 90 * u,
+            life: 0.45,
+            max: 0.45,
+            color: k ? "#FFFFFF" : "#DCEBFA",
+            size: (1.5 + Math.random() * 2) * u,
+          });
+      }
+      // brilho da pata da frente
+      if (Math.random() < 0.15) this.parts.push({ x: x + 60 * u, y: this.ground - 3 * u, vx: -40 * u, vy: -50 * u, life: 0.3, max: 0.3, color: "#FFFFFF", size: 1.5 * u });
     }
   }
 }

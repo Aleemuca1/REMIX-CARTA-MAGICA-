@@ -4,7 +4,9 @@ import { useBackClose } from "../lib/backClose";
 import { motion, useReducedMotion, AnimatePresence } from "motion/react";
 import EnvelopeIntro from "./EnvelopeIntro";
 import confetti from "canvas-confetti";
-import { X, Printer, Share2, Sparkles, Stamp, Volume2, Square, Download, Lock, Check } from "lucide-react";
+import { Printer, Share2, Sparkles, Stamp, Volume2, Square, Lock, Check } from "lucide-react";
+import ShareSheet, { WhatsIcon } from "./letter/ShareSheet";
+import { whatsappUrl } from "../lib/shareKit";
 import { Letter } from "../types";
 import { narrate, type Narrator } from "../lib/narration";
 import { musicBox } from "../lib/christmasMusic";
@@ -27,7 +29,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
   const [speaking, setSpeaking] = useState<"idle" | "loading" | "playing">("idle");
   const [toast, setToast] = useState<string | null>(null);
   const [upsell, setUpsell] = useState(false);
-  const [pdfBusy, setPdfBusy] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [voiceId, setVoiceId] = useState<VoiceId>("noel");
   const [readIdx, setReadIdx] = useState(-1);
   const paraRefs = useRef<(HTMLParagraphElement | null)[]>([]);
@@ -102,38 +104,6 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
     musicBox.chime(88, undefined, 0.08);
   };
 
-  const handlePdf = async () => {
-    if (!isPro) {
-      setUpsell(true);
-      return;
-    }
-    if (!cardRef.current || pdfBusy) return;
-    setPdfBusy(true);
-    try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 2,
-        backgroundColor: "#FCF9F2",
-        ignoreElements: (el) => el.hasAttribute("data-no-pdf"),
-      });
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pageW = 210, pageH = 297, margin = 10;
-      let w = pageW - margin * 2;
-      let h = (canvas.height * w) / canvas.width;
-      if (h > pageH - margin * 2) {
-        h = pageH - margin * 2;
-        w = (canvas.width * h) / canvas.height;
-      }
-      pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", (pageW - w) / 2, margin, w, h);
-      pdf.save(`Carta-do-Papai-Noel-${letter.childName}.pdf`);
-      showToast("PDF baixado! 🎄");
-    } catch {
-      showToast("Não foi possível gerar o PDF agora.");
-    } finally {
-      setPdfBusy(false);
-    }
-  };
-
   // Chuva de confete dourado e vermelho quando a carta abre
   useEffect(() => {
     if (reduce || !opened) return;
@@ -150,29 +120,8 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
     return () => clearTimeout(t);
   }, [reduce, opened]);
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const shareUrl = `${window.location.origin}/natal/${letter.token}`;
-  const handleShare = async () => {
-    if (navigator.share) {
-      navigator
-        .share({
-          title: `Carta do Papai Noel para ${letter.childName}`,
-          text: `Olha a cartinha que o Papai Noel escreveu para ${letter.childName}! 🎅`,
-          url: shareUrl,
-        })
-        .catch(() => {});
-    } else {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        showToast("Link da carta copiado! ✨");
-      } catch {
-        showToast(shareUrl);
-      }
-    }
-  };
+  const waText = `🎅✨ Olha que lindo! O Papai Noel escreveu uma carta para ${letter.childName}! Abra e ouça a voz dele: ${shareUrl}`;
 
   return (
     <motion.div
@@ -232,14 +181,23 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                 </>
               )}
             </motion.button>
-            <ToolButton onClick={handlePdf} icon={isPro ? <Download className="w-4 h-4 text-[#FFD166]" /> : <Lock className="w-3.5 h-3.5 text-[#FFD166]" />}>
-              {pdfBusy ? "Gerando PDF..." : "Baixar PDF"}
+            <motion.a
+              href={whatsappUrl(waText)}
+              target="_blank"
+              rel="noopener noreferrer"
+              whileTap={{ scale: 0.95 }}
+              whileHover={{ y: -2 }}
+              className="bg-[#25D366] hover:bg-[#1EBE5A] text-[#06371B] rounded-full text-xs sm:text-sm font-bold flex items-center gap-1.5 px-3.5 py-2 shadow-md"
+              id="letter-whatsapp"
+            >
+              <WhatsIcon className="w-4 h-4" />
+              WhatsApp
+            </motion.a>
+            <ToolButton onClick={() => setShareOpen(true)} icon={<Share2 className="w-4 h-4 text-[#FFD166]" />} id="letter-share">
+              Compartilhar e baixar
             </ToolButton>
             <ToolButton onClick={() => window.print()} icon={<Printer className="w-4 h-4 text-[#FFD166]" />}>
               Imprimir
-            </ToolButton>
-            <ToolButton onClick={handleShare} icon={<Share2 className="w-4 h-4 text-[#FFD166]" />}>
-              Compartilhar
             </ToolButton>
           </div>
 
@@ -286,7 +244,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                   <span className="text-3xl">🎅</span>
                   <p className="text-xs sm:text-sm flex-1 text-center sm:text-left">
                     <strong className="text-[#FFD166]">Gostou da voz?</strong> No Natal Completo o Papai Noel lê a carta
-                    inteira, você baixa o PDF para imprimir e ganha 24 dias de surpresas no Calendário do Advento.
+                    inteira, você baixa em PDF, imagem HD e vídeo com a voz, e ganha 24 dias de surpresas no Calendário do Advento.
                   </p>
                   <button
                     onClick={() => onUpgrade?.("natal")}
@@ -452,6 +410,18 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
       </AnimatePresence>
 
       <AnimatePresence>
+        {shareOpen && (
+          <ShareSheet
+            letter={letter}
+            isPro={isPro}
+            voice={voiceById(isPro ? voiceId : "noel")}
+            onClose={() => setShareOpen(false)}
+            onUpgrade={onUpgrade ? () => onUpgrade("natal") : undefined}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {toast && (
           <motion.div
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-[#0B132B] text-white text-sm font-semibold px-5 py-3 rounded-full border border-[#FFD166]/60 shadow-2xl flex items-center gap-2 max-w-[90vw] break-all"
@@ -468,10 +438,11 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
   );
 }
 
-function ToolButton({ onClick, icon, children }: { onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) {
+function ToolButton({ onClick, icon, children, id }: { onClick: () => void; icon: React.ReactNode; children: React.ReactNode; id?: string }) {
   return (
     <motion.button
       onClick={onClick}
+      id={id}
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.95 }}
       className="bg-[#1C2541] hover:bg-[#2A3555] text-white rounded-full text-xs sm:text-sm flex items-center gap-1.5 px-3.5 py-2 transition-colors cursor-pointer"

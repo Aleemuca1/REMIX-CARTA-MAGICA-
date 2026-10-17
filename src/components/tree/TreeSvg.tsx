@@ -43,6 +43,73 @@ const FLAKES = Array.from({ length: 46 }, (_, i) => ({
 }));
 const LIGHTS = lightPoints();
 
+/** Camadas de galhos (de cima para baixo) que formam o pinheiro desenhado. */
+const LAYERS = [
+  { top: 84, bottom: 172, half: 80 },
+  { top: 118, bottom: 238, half: 120 },
+  { top: 162, bottom: 308, half: 160 },
+  { top: 212, bottom: 382, half: 197 },
+  { top: 270, bottom: 458, half: 230 },
+  { top: 334, bottom: 546, half: 264 },
+];
+const hash = (n: number) => {
+  const v = Math.sin(n * 91.7 + 47.3) * 43758.5453;
+  return v - Math.floor(v);
+};
+type Tip = { x: number; y: number };
+/** Contorno de uma camada: lados com "agulhas" e a barra de baixo com pontas de galho caídas. */
+function layerShape(L: (typeof LAYERS)[number], li: number) {
+  const cx = TREE_CX;
+  const n = Math.max(4, Math.round(L.half / 21));
+  const tips: Tip[] = [];
+  for (let k = 0; k <= n; k++) {
+    const f = k / n;
+    const x = cx - L.half + f * L.half * 2;
+    // as pontas do meio caem um pouco menos (formato de saia)
+    const droop = 10 + hash(li * 13 + k) * 9 - Math.cos((f - 0.5) * Math.PI) * 4;
+    tips.push({ x, y: L.bottom + droop });
+  }
+  const side = (from: Tip, to: Tip, seed: number) => {
+    // lado com pequenas agulhas para fora
+    let d = "";
+    const steps = 6;
+    for (let k = 1; k <= steps; k++) {
+      const f = k / steps;
+      const x = from.x + (to.x - from.x) * f;
+      const y = from.y + (to.y - from.y) * f;
+      const out = (to.x < from.x ? -1 : 1) * (5 + hash(seed + k) * 7) * Math.sin(f * Math.PI * 0.9 + 0.2);
+      d += ` L${(x + out).toFixed(1)},${(y + 2).toFixed(1)} L${(x - out * 0.3).toFixed(1)},${(y + 6).toFixed(1)}`;
+    }
+    return d;
+  };
+  const left = tips[0];
+  const right = tips[tips.length - 1];
+  let d = `M${cx},${L.top}`;
+  d += side({ x: cx, y: L.top }, left, li * 7);
+  d += ` L${left.x},${left.y}`;
+  for (let k = 0; k < tips.length - 1; k++) {
+    const a = tips[k];
+    const b = tips[k + 1];
+    const mx = (a.x + b.x) / 2;
+    const notch = L.bottom - 10 - hash(li * 5 + k) * 6;
+    d += ` Q${(a.x + mx) / 2},${notch + 2} ${mx},${notch}`;
+    d += ` Q${(mx + b.x) / 2},${notch + 2} ${b.x},${b.y}`;
+  }
+  // volta pelo lado direito até o topo
+  const back = side(right, { x: cx, y: L.top }, li * 11).replace(/^ L/, " L");
+  d += back + " Z";
+  return { d, tips };
+}
+const SHAPES = LAYERS.map(layerShape);
+const GIFTS = [
+  { x: 192, y: 582, w: 60, h: 46, c: "#D62839", r: "#FFD166" },
+  { x: 332, y: 576, w: 66, h: 52, c: "#3A56D4", r: "#FFD166" },
+  { x: 244, y: 600, w: 46, h: 38, c: "#1E9E4A", r: "#FFFFFF" },
+  { x: 384, y: 604, w: 42, h: 34, c: "#F4A261", r: "#D62839" },
+  { x: 292, y: 612, w: 38, h: 30, c: "#8E44D9", r: "#FFD166" },
+];
+
+
 /** Desenha um enfeite. Coordenadas centradas no ponto (x, y). */
 /** Nome pequeno de quem pendurou, embaixo do enfeite. */
 function NameTag({ name, y }: { name: string; y: number }) {
@@ -64,11 +131,12 @@ export function OrnamentShape({ o, selected, showName = true }: { o: Ornament; s
   const hasText = Boolean(o.text);
   const ring = selected ? <circle r={30} fill="none" stroke="#FFD166" strokeWidth={3} strokeDasharray="5 4" /> : null;
   const tag = hasText ? (
-    <g transform="translate(15,-17)">
-      <circle r={8} fill="#FFFDF5" stroke="#9B021A" strokeWidth={1.5} />
-      <text x={0} y={3.5} fontSize={10} textAnchor="middle" fill="#9B021A" fontFamily="Georgia,serif" fontWeight="bold">
-        ✉
-      </text>
+    // bilhetinho dobrado pendurado no enfeite: tem mensagem aqui dentro
+    <g transform="translate(14,-4) rotate(14)">
+      <line x1={-6} y1={-6} x2={0} y2={0} stroke="#C9A227" strokeWidth={1} />
+      <rect x={-1} y={-1} width={15} height={11} rx={1.5} fill="#FFFDF5" stroke="#9B021A" strokeWidth={1.2} />
+      <path d="M-1,-1 L6.5,5 L14,-1" stroke="#9B021A" strokeWidth={1} fill="none" />
+      <path d="M6.5,8.6 C3.6,6.6 4.4,4.6 6.5,5.8 C8.6,4.6 9.4,6.6 6.5,8.6 Z" fill="#E63946" />
     </g>
   ) : null;
   let body;
@@ -214,6 +282,8 @@ export function OrnamentShape({ o, selected, showName = true }: { o: Ornament; s
 type Props = {
   ornaments: Ornament[];
   lightsOn?: boolean;
+  /** noite mágica: o cenário escurece e a árvore ilumina tudo */
+  night?: boolean;
   starGlow?: boolean;
   selectedId?: string | null;
   ghost?: Ornament | null;
@@ -227,7 +297,7 @@ type Props = {
 };
 
 const TreeSvg = forwardRef<SVGSVGElement, Props>(function TreeSvg(
-  { ornaments, lightsOn = true, starGlow, selectedId, ghost, onTap, onPointerMove, onPointerLeave, onOrnamentClick, className, staticMode },
+  { ornaments, lightsOn = true, night = false, starGlow, selectedId, ghost, onTap, onPointerMove, onPointerLeave, onOrnamentClick, className, staticMode },
   ref,
 ) {
   return (
@@ -249,13 +319,35 @@ const TreeSvg = forwardRef<SVGSVGElement, Props>(function TreeSvg(
           <stop offset="100%" stopColor="#060B19" />
         </radialGradient>
         <linearGradient id="tleaf" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#2F9E57" />
-          <stop offset="100%" stopColor="#14532D" />
+          <stop offset="0%" stopColor="#2E8F52" />
+          <stop offset="100%" stopColor="#0F4A27" />
         </linearGradient>
         <linearGradient id="tleaf2" x1="1" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#38B463" />
-          <stop offset="100%" stopColor="#166534" />
+          <stop offset="0%" stopColor="#279151" />
+          <stop offset="100%" stopColor="#0D4123" />
         </linearGradient>
+        <radialGradient id="tskyN" cx="50%" cy="15%" r="95%">
+          <stop offset="0%" stopColor="#141C3D" />
+          <stop offset="60%" stopColor="#050A1C" />
+          <stop offset="100%" stopColor="#02040C" />
+        </radialGradient>
+        <linearGradient id="tshade" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#CFE8FF" stopOpacity="0.16" />
+          <stop offset="45%" stopColor="#CFE8FF" stopOpacity="0" />
+          <stop offset="70%" stopColor="#000000" stopOpacity="0" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0.28" />
+        </linearGradient>
+        <pattern id="tneedle" width="14" height="12" patternUnits="userSpaceOnUse">
+          <path d="M2,10 L6,3 M7,11 L10,4 M11,10 L13,6" stroke="#4FB874" strokeWidth="1.3" strokeLinecap="round" />
+          <path d="M4,11 L2,5 M9,11 L8,6" stroke="#0E4726" strokeWidth="1.2" strokeLinecap="round" />
+        </pattern>
+        <radialGradient id="twarm" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#FFC870" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#FFC870" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="tpoolR"><stop offset="0%" stopColor="#FF4D6D" stopOpacity="0.55" /><stop offset="100%" stopColor="#FF4D6D" stopOpacity="0" /></radialGradient>
+        <radialGradient id="tpoolB"><stop offset="0%" stopColor="#4CC9F0" stopOpacity="0.55" /><stop offset="100%" stopColor="#4CC9F0" stopOpacity="0" /></radialGradient>
+        <radialGradient id="tpoolG"><stop offset="0%" stopColor="#FFD166" stopOpacity="0.6" /><stop offset="100%" stopColor="#FFD166" stopOpacity="0" /></radialGradient>
         <radialGradient id="tglow" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#FFF3B0" stopOpacity="0.95" />
           <stop offset="100%" stopColor="#FFD166" stopOpacity="0" />
@@ -263,7 +355,9 @@ const TreeSvg = forwardRef<SVGSVGElement, Props>(function TreeSvg(
       </defs>
 
       {/* céu e neve */}
-      <rect width={VIEW_W} height={VIEW_H} fill="url(#tsky)" />
+      <rect width={VIEW_W} height={VIEW_H} fill={night ? "url(#tskyN)" : "url(#tsky)"} />
+      {night && <circle cx={520} cy={70} r={26} fill="#F4F1E6" />}
+      {night && <circle cx={520} cy={70} r={60} fill="url(#twarm)" opacity={0.5} />}
       {Array.from({ length: 40 }, (_, i) => (
         <circle
           key={i}
@@ -277,45 +371,97 @@ const TreeSvg = forwardRef<SVGSVGElement, Props>(function TreeSvg(
       <path d={`M0,${GROUND_Y} Q150,${GROUND_Y - 22} 300,${GROUND_Y - 8} T600,${GROUND_Y - 4} L600,${VIEW_H} L0,${VIEW_H} Z`} fill="#E8F0FA" />
       <path d={`M0,${GROUND_Y + 30} Q200,${GROUND_Y + 12} 420,${GROUND_Y + 34} T600,${GROUND_Y + 26} L600,${VIEW_H} L0,${VIEW_H} Z`} fill="#D3DFEE" />
 
-      {/* tronco */}
-      <rect x={TREE_CX - 26} y={548} width={52} height={66} rx={6} fill="#6B4226" />
-      <rect x={TREE_CX - 26} y={548} width={18} height={66} rx={6} fill="#7E5233" />
+      {/* casinhas ao longe (janelas acendem à noite) */}
+      {[
+        [38, GROUND_Y - 12, 0.9],
+        [520, GROUND_Y - 8, 1],
+      ].map(([hx, hy, k], i) => (
+        <g key={i} transform={`translate(${hx},${hy}) scale(${k})`}>
+          <rect x={-22} y={-26} width={44} height={26} fill={night ? "#1A2340" : "#5C6F96"} />
+          <path d="M-28,-24 L0,-46 L28,-24 Z" fill={night ? "#121A33" : "#45577E"} />
+          <path d="M-28,-24 L0,-46 L28,-24" stroke="#F4F8FF" strokeWidth={4} fill="none" strokeLinejoin="round" />
+          <rect x={-14} y={-19} width={9} height={9} fill={night ? "#FFD27A" : "#9FB3D6"} />
+          <rect x={5} y={-19} width={9} height={9} fill={night ? "#FFD27A" : "#9FB3D6"} />
+          {night && <circle cx={0} cy={-14} r={26} fill="url(#twarm)" />}
+        </g>
+      ))}
 
-      {/* copa: de baixo para cima */}
-      {[...TIERS].reverse().map((t, i) => {
-        const l = TREE_CX - t.half;
-        const r = TREE_CX + t.half;
-        const scallops = 6 + (2 - i) * 1;
-        let bottom = "";
-        for (let k = scallops; k >= 1; k--) {
-          const x0 = l + ((k - 1) / scallops) * (r - l);
-          const x1 = l + (k / scallops) * (r - l);
-          bottom += ` Q${(x0 + x1) / 2},${t.baseY + 16} ${x0},${t.baseY}`;
-        }
-        const d = `M${TREE_CX},${t.apexY} L${r},${t.baseY}${bottom} Z`;
+      {/* tronco com textura */}
+      <rect x={TREE_CX - 24} y={530} width={48} height={84} rx={5} fill="#5B371E" />
+      <rect x={TREE_CX - 24} y={530} width={16} height={84} rx={5} fill="#7A4D2C" />
+      <path d={`M${TREE_CX - 4},552 q4,14 -2,30 M${TREE_CX + 10},560 q-3,12 2,24`} stroke="#3F2513" strokeWidth={2} fill="none" />
+
+      {/* saia da árvore */}
+      <ellipse cx={TREE_CX} cy={612} rx={130} ry={20} fill="#B5102A" />
+      <ellipse cx={TREE_CX} cy={608} rx={130} ry={18} fill="#D62839" />
+      <ellipse cx={TREE_CX} cy={612} rx={130} ry={20} fill="none" stroke="#FFFFFF" strokeWidth={5} strokeDasharray="2 9" strokeLinecap="round" />
+
+      {/* copa: camadas de galhos, de baixo para cima, cada uma fazendo sombra na de baixo */}
+      {[...SHAPES].reverse().map((sh, ri) => {
+        const i = SHAPES.length - 1 - ri;
         return (
           <g key={i}>
-            <path d={d} fill={i % 2 ? "url(#tleaf2)" : "url(#tleaf)"} stroke="#0F3D22" strokeWidth={2} />
-            {/* neve nas pontas */}
-            <path
-              d={`M${l + 8},${t.baseY - 2} Q${l + 30},${t.baseY + 8} ${l + 54},${t.baseY + 1}`}
-              stroke="#F4F8FF"
-              strokeWidth={5}
-              fill="none"
-              strokeLinecap="round"
-              opacity={0.9}
-            />
-            <path
-              d={`M${r - 54},${t.baseY + 1} Q${r - 30},${t.baseY + 8} ${r - 8},${t.baseY - 2}`}
-              stroke="#F4F8FF"
-              strokeWidth={5}
-              fill="none"
-              strokeLinecap="round"
-              opacity={0.9}
-            />
+            <path d={sh.d} transform="translate(0,9)" fill="rgba(3,25,12,0.45)" />
+            <path d={sh.d} fill={i % 2 ? "url(#tleaf2)" : "url(#tleaf)"} stroke="#0B3A1E" strokeWidth={1.5} strokeLinejoin="round" />
+            <path d={sh.d} fill="url(#tneedle)" opacity={0.55} />
+            {/* luz da lua na borda esquerda */}
+            <path d={sh.d} fill="url(#tshade)" />
+            {/* pontinhas dos galhos mais claras */}
+            {sh.tips.map((p, k) => (
+              <path
+                key={k}
+                d={`M${p.x - 6},${p.y - 9} Q${p.x},${p.y - 2} ${p.x + 5},${p.y - 10}`}
+                stroke="#5CC27E"
+                strokeWidth={2}
+                fill="none"
+                strokeLinecap="round"
+                opacity={0.7}
+              />
+            ))}
+            {/* neve acumulada em cima de alguns galhos */}
+            {sh.tips
+              .filter((_, k) => hash(i * 17 + k) > 0.45)
+              .map((p, k) => (
+                <path
+                  key={`s${k}`}
+                  d={`M${p.x - 14},${p.y - 12} Q${p.x - 4},${p.y - 20} ${p.x + 9},${p.y - 13} Q${p.x + 2},${p.y - 9} ${p.x - 14},${p.y - 12} Z`}
+                  fill="#F4F8FF"
+                  opacity={0.95}
+                />
+              ))}
           </g>
         );
       })}
+
+      {/* presentes embaixo da árvore */}
+      {GIFTS.map((g, i) => (
+        <g key={i}>
+          <ellipse cx={g.x + g.w / 2} cy={g.y + g.h + 2} rx={g.w * 0.55} ry={5} fill="rgba(20,30,60,0.25)" />
+          <rect x={g.x} y={g.y} width={g.w} height={g.h} rx={3} fill={g.c} />
+          <rect x={g.x + g.w * 0.62} y={g.y} width={g.w * 0.38} height={g.h} rx={3} fill="rgba(0,0,0,0.18)" />
+          <rect x={g.x - 3} y={g.y - 2} width={g.w + 6} height={g.h * 0.22} rx={3} fill={g.c} />
+          <rect x={g.x - 3} y={g.y - 2} width={g.w + 6} height={g.h * 0.22} rx={3} fill="rgba(255,255,255,0.12)" />
+          <rect x={g.x + g.w / 2 - 4} y={g.y - 2} width={8} height={g.h + 2} fill={g.r} />
+          <rect x={g.x} y={g.y + g.h * 0.5 - 3} width={g.w} height={6} fill={g.r} opacity={0.9} />
+          <path
+            d={`M${g.x + g.w / 2},${g.y - 2} c-16,-16 -24,-2 -10,2 z M${g.x + g.w / 2},${g.y - 2} c16,-16 24,-2 10,2 z`}
+            fill={g.r}
+            stroke="rgba(0,0,0,0.2)"
+          />
+          <circle cx={g.x + g.w / 2} cy={g.y - 2} r={3.5} fill={g.r} />
+        </g>
+      ))}
+
+      {/* noite mágica: tudo escurece e só as luzes iluminam */}
+      {night && <rect width={VIEW_W} height={VIEW_H} fill="rgba(2,5,18,0.5)" pointerEvents="none" />}
+      {night && lightsOn && (
+        <g pointerEvents="none">
+          <ellipse cx={TREE_CX} cy={330} rx={300} ry={300} fill="url(#twarm)" opacity={0.75} />
+          <ellipse cx={TREE_CX - 120} cy={GROUND_Y + 22} rx={90} ry={20} fill="url(#tpoolR)" />
+          <ellipse cx={TREE_CX + 120} cy={GROUND_Y + 26} rx={90} ry={20} fill="url(#tpoolB)" />
+          <ellipse cx={TREE_CX} cy={GROUND_Y + 30} rx={150} ry={26} fill="url(#tpoolG)" />
+        </g>
+      )}
 
       {/* guirlandas douradas */}
       {GARLANDS.map((g, i) => (
@@ -333,12 +479,14 @@ const TreeSvg = forwardRef<SVGSVGElement, Props>(function TreeSvg(
       {/* pisca-pisca */}
       {LIGHTS.map((p, i) => (
         <g key={i}>
-          {lightsOn && <circle cx={p.x} cy={p.y} r={9} fill={p.c} opacity={0.25} className={staticMode ? undefined : "tree-light-glow"} style={staticMode ? undefined : { animationDelay: `${p.d}s` }} />}
+          {lightsOn && <circle cx={p.x} cy={p.y} r={night ? 13 : 9} fill={p.c} opacity={night ? 0.5 : 0.25} className={staticMode ? undefined : "tree-light-glow"} style={staticMode ? undefined : { animationDelay: `${p.d}s` }} />}
           <circle
             cx={p.x}
             cy={p.y}
-            r={4}
-            fill={lightsOn ? p.c : "#5B6478"}
+            r={night && lightsOn ? 4.6 : 4}
+            fill={lightsOn ? (night ? "#FFFDF0" : p.c) : "#5B6478"}
+            stroke={night && lightsOn ? p.c : undefined}
+            strokeWidth={night && lightsOn ? 2.4 : undefined}
             className={lightsOn && !staticMode ? "tree-light" : undefined}
             style={lightsOn && !staticMode ? { animationDelay: `${p.d}s` } : undefined}
           />
@@ -347,7 +495,14 @@ const TreeSvg = forwardRef<SVGSVGElement, Props>(function TreeSvg(
 
       {/* estrela do topo */}
       <g transform={`translate(${TREE_CX},${TIERS[0].apexY - 14})`}>
-        {(starGlow || lightsOn) && <circle r={starGlow ? 62 : 40} fill="url(#tglow)" className={staticMode ? undefined : "tree-star-glow"} />}
+        {night && lightsOn && (
+          <g className={staticMode ? undefined : "tree-star-rays"} opacity={0.55}>
+            {Array.from({ length: 12 }, (_, k) => (
+              <path key={k} d="M-4,0 L0,-120 L4,0 Z" fill="#FFE8A3" transform={`rotate(${k * 30})`} opacity={k % 2 ? 0.5 : 0.9} />
+            ))}
+          </g>
+        )}
+        {(starGlow || lightsOn) && <circle r={starGlow || night ? 70 : 40} fill="url(#tglow)" className={staticMode ? undefined : "tree-star-glow"} />}
         <path
           d="M0,-34 L10,-11 L34,-10 L15.5,5.7 L21,30 L0,17 L-21,30 L-15.5,5.7 L-34,-10 L-10,-11 Z"
           fill="#FFD166"

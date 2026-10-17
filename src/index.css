@@ -504,3 +504,6 @@
 }
 .tree-snow { animation: treeSnow 10s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .tree-snow { display: none; } }
+.tree-star-rays { animation: treeRays 14s linear infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes treeRays { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .tree-star-rays { animation: none; } }

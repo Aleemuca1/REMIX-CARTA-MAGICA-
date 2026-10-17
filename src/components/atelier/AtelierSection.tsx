@@ -12,7 +12,7 @@ import ProUpsell from "../ProUpsell";
 /** Seção "Ateliê de Natal": colorir desenhos ou desenhar livre, baixar e compartilhar. */
 export default function AtelierSection({ onUpgrade }: { onUpgrade?: () => void }) {
   const [open, setOpen] = useState(false);
-  const preview = DESIGNS.filter((d) => !d.exclusive).slice(0, 6);
+  const preview = ["noel-corpo", "treno", "arvore", "rena", "pinguim", "boneco"].map((id) => DESIGNS.find((d) => d.id === id)!).filter(Boolean);
 
   return (
     <section className="py-16 md:py-24 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto" id="atelie">

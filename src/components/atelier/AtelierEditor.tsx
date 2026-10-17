@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Undo2, Trash2, Download, Share2, Check } from "lucide-react";
-import { DESIGNS, designDataUrl, type Design } from "../../atelier/designs";
+import { DESIGNS, DESIGN_CATS, designDataUrl, type Design, type DesignCat } from "../../atelier/designs";
 import { floodFill } from "../../atelier/floodFill";
 import { musicBox } from "../../lib/christmasMusic";
 
@@ -21,7 +21,7 @@ const TOOLS: { id: Tool; icon: string; label: string }[] = [
   { id: "balde", icon: "🪣", label: "Balde" },
   { id: "pincel", icon: "🖌️", label: "Pincel" },
   { id: "brilho", icon: "✨", label: "Brilho" },
-  { id: "borracha", icon: "🧽", label: "Borracha" },
+  { id: "borracha", icon: "🧽", label: "Apagar" },
   { id: "adesivo", icon: "⭐", label: "Adesivos" },
 ];
 
@@ -48,6 +48,7 @@ export default function AtelierEditor({
   const lineRef = useRef<HTMLCanvasElement | null>(null);
   const stickRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef<{ x: number; y: number } | null>(null);
+  const downAt = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const undo = useRef<Snap[]>([]);
 
   const [mode, setMode] = useState<Mode>("colorir");
@@ -62,7 +63,8 @@ export default function AtelierEditor({
   const [toast, setToast] = useState<string | null>(null);
 
   // plano grátis: 6 desenhos e 6 adesivos; o resto é do Natal Completo
-  const freeIds = DESIGNS.filter((d) => !d.exclusive).slice(0, 6).map((d) => d.id);
+  const freeIds = [...DESIGNS.filter((d) => !d.exclusive && !d.free).slice(0, 6), ...DESIGNS.filter((d) => d.free)].map((d) => d.id);
+  const [cat, setCat] = useState<DesignCat | "todos">("todos");
   const designs = DESIGNS; // no grátis, os exclusivos aparecem com cadeado
   const designLocked = (id: string) => !full && !allowExclusive && !freeIds.includes(id) && id !== initialDesignId;
   const stickerLocked = (i: number) => !full && i >= 6;
@@ -266,16 +268,34 @@ export default function AtelierEditor({
     snapshot(["paint"]);
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     drawing.current = { x, y };
+    downAt.current = { x, y, moved: false };
     if (tool === "brilho") sparkle(x, y);
     else strokeTo(x + 0.01, y + 0.01);
   };
   const onMove = (e: React.PointerEvent) => {
     if (!drawing.current) return;
     const { x, y } = pos(e);
+    if (downAt.current && Math.hypot(x - downAt.current.x, y - downAt.current.y) > 6) downAt.current.moved = true;
     strokeTo(x, y);
   };
   const onUp = () => {
+    // apagar com um toque (sem arrastar) no modo colorir: tira a cor da parte inteira
+    const d = downAt.current;
+    downAt.current = null;
+    if (tool === "borracha" && mode === "colorir" && d && !d.moved) eraseRegion(d.x, d.y);
     drawing.current = null;
+  };
+
+  /** Tira a cor de uma parte inteira do desenho (como um "balde" que apaga). */
+  const eraseRegion = (x: number, y: number) => {
+    const pc = ctx(paintRef);
+    const paint = pc.getImageData(0, 0, N, N);
+    const mark = new ImageData(new Uint8ClampedArray(paint.data.length), N, N);
+    const ok = floodFill({ paint: mark, lines: ctx(lineRef).getImageData(0, 0, N, N), x, y, color: "#010203" });
+    if (!ok) return;
+    for (let i = 3; i < mark.data.length; i += 4) if (mark.data[i] > 0) paint.data[i] = 0;
+    pc.putImageData(paint, 0, 0);
+    musicBox.chime(67, undefined, 0.08);
   };
 
   // ---------------------------------------------------------------- exportar
@@ -416,9 +436,20 @@ export default function AtelierEditor({
 
         {mode === "colorir" && !lockDesign && (
           <div>
-            <p className="text-xs font-bold text-[#FFD166] uppercase tracking-wider mb-2">Escolha o desenho</p>
-            <div className="grid grid-cols-4 gap-2">
-              {designs.map((d) => (
+            <p className="text-xs font-bold text-[#FFD166] uppercase tracking-wider mb-2">Escolha o desenho ({DESIGNS.length})</p>
+            <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-1 px-1">
+              {DESIGN_CATS.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setCat(c.id)}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold cursor-pointer border ${cat === c.id ? "bg-[#FFD166] text-[#0B132B] border-[#FFD166]" : "bg-white/5 text-white/80 border-white/15"}`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto pr-1">
+              {designs.filter((d) => cat === "todos" || d.cat === cat).map((d) => (
                 <button
                   key={d.id}
                   onClick={() => (designLocked(d.id) ? onLocked?.(`O desenho "${d.name}"`) : setDesignId(d.id))}
@@ -479,6 +510,11 @@ export default function AtelierEditor({
           </div>
         )}
 
+        {tool === "borracha" && (
+          <p className="text-xs text-white/75 bg-white/5 rounded-xl px-3 py-2 border border-white/10">
+            🧽 Arraste o dedo para apagar{mode === "colorir" ? " ou toque numa parte para tirar toda a cor dela" : ""}. Errou? Use <b>Desfazer</b>.
+          </p>
+        )}
         {tool === "adesivo" ? (
           <div className="grid grid-cols-6 gap-2">
             {STICKERS.map((s, i) => (

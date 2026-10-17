@@ -133,7 +133,7 @@ export default function App() {
         <SantaGame onCreateLetter={() => handleStartWizard("free")} />
 
         {/* Jogo do ursinho polar */}
-        <PolarBearGame />
+        <PolarBearGame onCreateLetter={() => handleStartWizard("free")} />
 
         {/* Família no trenó (fotos ficam só no aparelho) */}
         <FamilySection onUpgrade={() => handleStartWizard("natal")} />

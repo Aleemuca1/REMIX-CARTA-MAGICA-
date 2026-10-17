@@ -50,6 +50,7 @@ export default function TreeEditor({
   const [type, setType] = useState<OrnamentType>("bola");
   const [color, setColor] = useState(ORNAMENT_COLORS[0]);
   const [lightsOn, setLightsOn] = useState(true);
+  const [night, setNight] = useState(false);
   const [ghost, setGhost] = useState<Ornament | null>(null);
   const [pending, setPending] = useState<Ornament | null>(null);
   const [viewing, setViewing] = useState<Ornament | null>(null);
@@ -305,6 +306,7 @@ export default function TreeEditor({
                 ref={svgRef}
                 ornaments={tree.ornaments}
                 lightsOn={lightsOn}
+                night={night}
                 starGlow={messages >= GOAL}
                 ghost={ghost}
                 onTap={onDown}
@@ -404,6 +406,23 @@ export default function TreeEditor({
               <b className="text-[#FFD166]">3.</b> Toque na árvore para pendurar e escreva uma frase de carinho. Toque num enfeite para ler a frase. 💌
             </p>
 
+            <button
+              onClick={() => {
+                const on = !night;
+                setNight(on);
+                if (on) {
+                  setLightsOn(true);
+                  [72, 76, 79, 84, 88].forEach((n, i) => setTimeout(() => musicBox.chime(n, undefined, 0.1), i * 110));
+                }
+              }}
+              className={`w-full rounded-2xl py-3 px-4 font-bold text-sm flex items-center justify-center gap-2 border cursor-pointer transition-colors ${
+                night ? "bg-[#FFD166] text-[#0B132B] border-[#FFD166]" : "bg-gradient-to-r from-[#0B132B] to-[#24305E] text-white border-[#FFD166]/50"
+              }`}
+              id="tree-night-btn"
+              aria-pressed={night}
+            >
+              {night ? "☀️ Voltar para o dia" : "🌙 Noite mágica: a árvore ilumina a noite"}
+            </button>
             <div className="grid grid-cols-2 gap-2">
               <ToolBtn onClick={() => setCeia(true)} disabled={!messages} highlight>
                 <Sparkles className="w-4 h-4" /> Modo Ceia
