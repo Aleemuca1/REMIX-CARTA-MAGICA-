@@ -30,7 +30,7 @@ const PLANS: Plan[] = [
       { text: "Envelope mágico animado" },
       { text: "Prévia da voz do Papai Noel" },
       { text: "Jogo Entrega Relâmpago completo" },
-      { text: "Ateliê de Natal com 6 desenhos e desenho livre" },
+      { text: "Ateliê de Natal com 8 desenhos e desenho livre" },
       { text: "Árvore da Família com até 12 enfeites" },
       { text: "1ª portinha do Calendário do Advento" },
     ],

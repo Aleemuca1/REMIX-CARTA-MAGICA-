@@ -129,6 +129,19 @@ export default function AtelierEditor({
     img.onload = () => {
       c.clearRect(0, 0, N, N);
       c.drawImage(img, 0, 0, N, N);
+      // o branco do desenho vira transparente: só os traços ficam (e a tinta aparece por baixo)
+      const im = c.getImageData(0, 0, N, N);
+      const px = im.data;
+      for (let i = 0; i < px.length; i += 4) {
+        if (!px[i + 3]) continue;
+        const lum = (px[i] * 0.3 + px[i + 1] * 0.59 + px[i + 2] * 0.11) / 255;
+        const a = Math.round(Math.min(1, (1 - lum) * 1.25) * (px[i + 3] / 255) * 255);
+        px[i] = 30;
+        px[i + 1] = 35;
+        px[i + 2] = 64;
+        px[i + 3] = a;
+      }
+      c.putImageData(im, 0, 0);
     };
     img.src = designDataUrl(d, N);
   }, []);

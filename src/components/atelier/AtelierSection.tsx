@@ -29,7 +29,7 @@ export default function AtelierSection({ onUpgrade }: { onUpgrade?: () => void }
               enfeite com adesivos. No final, baixe com uma moldura especial e mande para a família.
             </p>
             <ul className="text-xs sm:text-sm text-[#EDF2F4]/70 space-y-1.5 mb-6 inline-block text-left">
-              <li>🖍️ 8 desenhos para colorir + desenho livre</li>
+              <li>🖍️ {DESIGNS.length} desenhos para colorir (Papai Noel, trenó, bichinhos...) + desenho livre</li>
               <li>✨ Pincel de brilho, adesivos e borracha</li>
               <li>📲 Baixe ou compartilhe no WhatsApp</li>
             </ul>
