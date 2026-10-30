@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { prettyCity, prettyName } from "../lib/prettyText";
 import BackButton from "./BackButton";
 import { useBackClose } from "../lib/backClose";
 import { motion, useReducedMotion, AnimatePresence } from "motion/react";
@@ -11,6 +12,7 @@ import { Letter } from "../types";
 import { narrate, type Narrator } from "../lib/narration";
 import { musicBox } from "../lib/christmasMusic";
 import { VOICES, voiceById, type VoiceId } from "../lib/voices";
+import { LETTER_THEMES, letterTheme } from "../lib/letterThemes";
 
 interface LetterViewProps {
   letter: Letter;
@@ -33,7 +35,26 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
   const [voiceId, setVoiceId] = useState<VoiceId>("noel");
   const [readIdx, setReadIdx] = useState(-1);
   const paraRefs = useRef<(HTMLParagraphElement | null)[]>([]);
+  const [themeId, setThemeId] = useState(letterTheme(letter.theme).id);
+  const T = letterTheme(themeId);
+  const themedLetter = { ...letter, theme: themeId };
   useBackClose(true, onClose);
+
+  const pickTheme = (id: string) => {
+    if (id === themeId) return;
+    setThemeId(id);
+    letter.theme = id;
+    musicBox.chime(84, undefined, 0.08);
+    const t = letterTheme(id);
+    confetti({ particleCount: 50, spread: 70, origin: { y: 0.35 }, zIndex: 60, colors: [t.accent, t.accent2, t.frame, "#FFFFFF"] });
+    fetch("/api/letter-theme", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ letterId: letter.id, theme: id }),
+    }).catch(() => {
+      /* a cor continua na tela mesmo sem salvar */
+    });
+  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -107,7 +128,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
   // Chuva de confete dourado e vermelho quando a carta abre
   useEffect(() => {
     if (reduce || !opened) return;
-    const colors = ["#FFD166", "#EF233C", "#FFFFFF", "#2DC653"];
+    const colors = [T.frame, T.accent2, "#FFFFFF", T.accent];
     const fire = (ratio: number, opts: confetti.Options) =>
       confetti({ origin: { y: 0.65 }, colors, particleCount: Math.floor(180 * ratio), zIndex: 60, ...opts });
     const t = setTimeout(() => {
@@ -118,6 +139,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
       fire(0.1, { spread: 120, startVelocity: 45 });
     }, 450);
     return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduce, opened]);
 
   const shareUrl = `${window.location.origin}/natal/${letter.token}`;
@@ -126,12 +148,13 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
   return (
     <motion.div
       className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto print:p-0 print:bg-white"
+      style={{ "--ink": T.ink, "--accent": T.accent, "--accent2": T.accent2, "--frame": T.frame } as React.CSSProperties}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
       <AnimatePresence mode="wait">
       {!opened ? (
-        <EnvelopeIntro key="env" childName={letter.childName} city={letter.city} date={letter.date} onDone={handleOpened} />
+        <EnvelopeIntro key="env" theme={T} childName={prettyName(letter.childName)} city={letter.city ? prettyCity(letter.city) : undefined} date={letter.date} onDone={handleOpened} />
       ) : (
       <motion.div
         key="letter"
@@ -140,11 +163,13 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
         transition={{ type: "spring", stiffness: 120, damping: 18 }}
         style={{ transformPerspective: 1200 }}
         ref={cardRef}
-        className="relative w-full max-w-2xl parchment-bg text-[#1C2541] rounded-3xl p-6 sm:p-10 border-4 border-[#FFD166] shadow-2xl my-auto print:border-none print:shadow-none print:p-6 print:rounded-none">
+        className="relative w-full max-w-2xl parchment-bg text-[#1C2541] rounded-3xl p-6 sm:p-10 border-4 border-[var(--frame)] shadow-2xl my-auto transition-colors duration-500 print:border-none print:shadow-none print:p-6 print:rounded-none">
+        {/* véu de cor do papel (fica atrás do texto) */}
+        <div aria-hidden="true" className="absolute inset-0 -z-10 rounded-3xl pointer-events-none transition-colors duration-500 print:hidden" style={{ background: T.tint }} />
         {/* Controles (não aparecem na impressão nem no PDF) */}
         <div data-no-pdf className="pb-4 mb-4 border-b-2 border-[#1C2541]/15 print:hidden">
           <div className="flex justify-between items-center gap-2">
-            <span className="font-cinzel text-xs font-bold text-[#9B021A] uppercase tracking-wider">
+            <span className="font-cinzel text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
               Carta do Polo Norte
             </span>
             <BackButton onClick={onClose} light />
@@ -154,7 +179,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
               onClick={handleListen}
               whileTap={{ scale: 0.95 }}
               className={`relative overflow-hidden rounded-full px-4 py-2 text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer text-white shadow-md ${
-                speaking === "idle" ? "bg-gradient-to-r from-[#D90429] to-[#EF233C] btn-shine" : "bg-[#1C2541]"
+                speaking === "idle" ? "bg-gradient-to-r from-[var(--accent)] to-[var(--accent2)] btn-shine" : "bg-[#1C2541]"
               }`}
             >
               {speaking === "idle" ? (
@@ -203,7 +228,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
 
           {/* escolha da voz */}
           <div className="mt-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#9B021A] mb-1.5">Escolha quem vai ler a carta</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink)] mb-1.5">Escolha quem vai ler a carta</p>
             <div className="flex flex-wrap gap-1.5">
               {VOICES.map((v) => {
                 const locked = v.pro && !isPro;
@@ -215,10 +240,10 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                     whileTap={{ scale: 0.92 }}
                     className={`rounded-full px-3 py-1.5 text-xs font-bold inline-flex items-center gap-1 cursor-pointer border transition-colors ${
                       active
-                        ? "bg-[#9B021A] text-white border-[#9B021A] shadow"
+                        ? "bg-[var(--ink)] text-white border-[var(--ink)] shadow"
                         : locked
                           ? "bg-[#1C2541]/5 text-[#1C2541]/55 border-[#1C2541]/15"
-                          : "bg-white text-[#1C2541] border-[#1C2541]/20 hover:border-[#9B021A]"
+                          : "bg-white text-[#1C2541] border-[#1C2541]/20 hover:border-[var(--ink)]"
                     }`}
                     aria-pressed={active}
                     title={locked ? "Disponível no Natal Completo" : v.label}
@@ -226,6 +251,38 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                     <span>{v.emoji}</span>
                     {v.label}
                     {locked && <Lock className="w-3 h-3" />}
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* cor da carta */}
+          <div className="mt-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink)] mb-1.5">🎨 Cor da carta</p>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Cor da carta">
+              {LETTER_THEMES.map((t) => {
+                const active = themeId === t.id;
+                return (
+                  <motion.button
+                    key={t.id}
+                    onClick={() => pickTheme(t.id)}
+                    whileTap={{ scale: 0.9 }}
+                    aria-pressed={active}
+                    aria-label={t.name}
+                    title={t.name}
+                    className={`relative w-9 h-9 rounded-full flex items-center justify-center text-sm cursor-pointer border-2 shadow transition-transform ${
+                      active ? "border-[#1C2541] scale-110" : "border-white hover:scale-105"
+                    }`}
+                    style={{ background: `linear-gradient(135deg, ${t.envelope[0]}, ${t.envelope[1]})` }}
+                    id={`letter-theme-${t.id}`}
+                  >
+                    {t.emoji}
+                    {active && (
+                      <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#1C2541] text-white flex items-center justify-center">
+                        <Check className="w-2.5 h-2.5" />
+                      </span>
+                    )}
                   </motion.button>
                 );
               })}
@@ -248,7 +305,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                   </p>
                   <button
                     onClick={() => onUpgrade?.("natal")}
-                    className="bg-gradient-to-r from-[#D90429] to-[#EF233C] text-white font-bold px-4 py-2 rounded-full text-xs sm:text-sm whitespace-nowrap btn-shine cursor-pointer"
+                    className="bg-gradient-to-r from-[var(--accent)] to-[var(--accent2)] text-white font-bold px-4 py-2 rounded-full text-xs sm:text-sm whitespace-nowrap btn-shine cursor-pointer"
                   >
                     <span className="relative z-10">Liberar tudo · R$ 29,90</span>
                   </button>
@@ -262,8 +319,8 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
         <div className="flex justify-between items-center mb-6 border-b border-[#1C2541]/15 pb-4">
           <div>
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#9B021A]" />
-              <span className="font-cinzel text-xs sm:text-sm font-extrabold tracking-widest text-[#9B021A] uppercase">
+              <Sparkles className="w-4 h-4 text-[var(--ink)]" />
+              <span className="font-cinzel text-xs sm:text-sm font-extrabold tracking-widest text-[var(--ink)] uppercase">
                 CORREIO REAL DO POLO NORTE
               </span>
             </div>
@@ -271,17 +328,25 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
               Expedição Oficial de Natal{letter.trackingCode ? ` • Registro #${letter.trackingCode}` : ""}
             </span>
           </div>
-          <Stamp className="w-7 h-7 text-[#9B021A]/60" />
+          <Stamp className="w-7 h-7 text-[var(--ink)]/60" />
         </div>
 
         {/* Destination Details */}
-        <div className="mb-6 flex justify-between items-center text-xs">
-          <span className="bg-[#D90429]/10 text-[#9B021A] font-bold px-3 py-1 rounded-full border border-[#D90429]/20">
-            Para: {letter.childName}, {letter.age} anos • {letter.city}
-          </span>
-          <span className="text-[#1C2541]/60 font-mono">
-            {letter.date}
-          </span>
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-x-4 gap-y-2" id="letter-address">
+          <div className="relative min-w-0 max-w-full bg-[var(--accent)]/[0.06] border border-dashed border-[var(--accent)]/35 rounded-xl pl-3.5 pr-4 py-2 text-[var(--ink)]">
+            <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--ink)]/70">Para</span>
+            <span className="block font-handwriting text-2xl leading-tight break-words">
+              {prettyName(letter.childName)}
+              {letter.age ? <span className="font-sans text-xs font-bold text-[var(--ink)]/75 align-middle ml-2 whitespace-nowrap">{letter.age} anos</span> : null}
+            </span>
+            {letter.city && (
+              <span className="mt-0.5 flex items-start gap-1 text-xs font-semibold text-[#1C2541]/75 break-words">
+                <span aria-hidden="true">📍</span>
+                <span className="min-w-0">{prettyCity(letter.city)}</span>
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-[#1C2541]/60 font-mono pt-1 whitespace-nowrap">{letter.date}</span>
         </div>
 
         {/* Letter Body */}
@@ -300,7 +365,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                 transition={readIdx >= 0 ? { duration: 0.5 } : { delay: 0.6 + i * 0.35, duration: 0.6 }}
                 className={`relative rounded-xl transition-colors duration-500 ${
                   reading ? "bg-[#FFD166]/25 shadow-[0_0_0_2px_rgba(255,209,102,0.55)] px-3 py-2 -mx-3" : ""
-                } ${/^P\.?\s?S\.?/i.test(p) ? "font-handwriting text-2xl sm:text-3xl text-[#9B021A] leading-snug pt-2 -rotate-1" : ""}`}
+                } ${/^P\.?\s?S\.?/i.test(p) ? "font-handwriting text-2xl sm:text-3xl text-[var(--ink)] leading-snug pt-2 -rotate-1" : ""}`}
               >
                 {reading && (
                   <>
@@ -342,11 +407,12 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                 initial={reduce ? false : { scale: 3, opacity: 0, rotate: -40 }}
                 animate={{ scale: 1, opacity: 1, rotate: 0 }}
                 transition={{ delay: 0.8 + paragraphs.length * 0.35, type: "spring", stiffness: 300, damping: 14 }}
-                className="w-8 h-8 rounded-full wax-seal flex items-center justify-center text-[9px] font-bold text-[#FFD166] border border-[#FFD166]">
+                style={{ background: `radial-gradient(circle at 35% 35%, ${T.seal[0]}, ${T.seal[1]})` }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[9px] font-bold text-[#FFD166] border border-[#FFD166] shadow">
                 2026
               </motion.span>
               <div>
-                <span className="text-[10px] uppercase font-cinzel font-bold text-[#9B021A] block">
+                <span className="text-[10px] uppercase font-cinzel font-bold text-[var(--ink)] block">
                   Selo Real do Polo Norte
                 </span>
                 <span className="text-[9px] text-[#1C2541]/60">
@@ -357,7 +423,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
           </div>
 
           <div className="text-right">
-            <span className="font-handwriting text-3xl sm:text-4xl text-[#9B021A] font-bold block -mb-2">
+            <span className="font-handwriting text-3xl sm:text-4xl text-[var(--ink)] font-bold block -mb-2">
               Papai Noel
             </span>
             <span className="text-[10px] text-[#1C2541]/60 uppercase tracking-wider font-cinzel">
@@ -381,7 +447,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
             data-no-pdf
           >
             <motion.span
-              className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D90429] to-[#9B021A] flex items-center justify-center text-xl border border-[#FFD166]/60"
+              className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--ink)] flex items-center justify-center text-xl border border-[#FFD166]/60"
               animate={{ rotate: [-8, 8, -8], y: [0, -2, 0] }}
               transition={{ duration: 1.1, repeat: Infinity }}
               aria-hidden="true"
@@ -412,7 +478,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
       <AnimatePresence>
         {shareOpen && (
           <ShareSheet
-            letter={letter}
+            letter={themedLetter}
             isPro={isPro}
             voice={voiceById(isPro ? voiceId : "noel")}
             onClose={() => setShareOpen(false)}

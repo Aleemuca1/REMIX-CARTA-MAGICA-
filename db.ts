@@ -23,6 +23,7 @@ export type LetterRecord = {
   secretMessage?: string;
   childReaction?: string;
   parentalConsentAt?: string;
+  theme?: string;
   createdAt?: string;
 };
 
@@ -77,6 +78,7 @@ const letterToRow = (l: Partial<LetterRecord>) => {
     secret_message: l.secretMessage,
     child_reaction: l.childReaction,
     parental_consent_at: l.parentalConsentAt,
+    theme: l.theme,
   };
   Object.keys(row).forEach((k) => row[k] === undefined && delete row[k]);
   return row;
@@ -102,6 +104,7 @@ const rowToLetter = (r: any): LetterRecord => ({
   secretMessage: r.secret_message ?? undefined,
   childReaction: r.child_reaction ?? undefined,
   parentalConsentAt: r.parental_consent_at ?? undefined,
+  theme: r.theme ?? undefined,
   createdAt: r.created_at,
 });
 
@@ -158,6 +161,12 @@ export async function insertLetter(letter: LetterRecord): Promise<void> {
     delete row.parental_consent_at;
     ({ error } = await supabase.from("letters").insert(row));
   }
+  // se a migração 006 (cor da carta) ainda não foi aplicada, salva sem a cor
+  if (error && /theme/.test(error.message)) {
+    console.warn("Coluna theme ausente: rode supabase/migrations/006_cor_da_carta.sql");
+    delete row.theme;
+    ({ error } = await supabase.from("letters").insert(row));
+  }
   if (error) throw new Error(`Supabase insertLetter: ${error.message}`);
 }
 
@@ -186,7 +195,14 @@ export async function updateLetter(
     if (l) Object.assign(l, patch);
     return;
   }
-  const { error } = await supabase.from("letters").update(letterToRow(patch)).eq("id", id);
+  const row = letterToRow(patch);
+  let { error } = await supabase.from("letters").update(row).eq("id", id);
+  if (error && /theme/.test(error.message) && "theme" in row) {
+    console.warn("Coluna theme ausente: rode supabase/migrations/006_cor_da_carta.sql");
+    delete row.theme;
+    if (!Object.keys(row).length) return;
+    ({ error } = await supabase.from("letters").update(row).eq("id", id));
+  }
   if (error) throw new Error(`Supabase updateLetter: ${error.message}`);
 }
 

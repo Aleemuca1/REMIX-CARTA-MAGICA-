@@ -142,7 +142,7 @@ function extrasForPrompt(x: LetterExtras) {
 function generateFallbackLetter(data) {
   const isPro = data.plan === "pro";
   const name = data.childName.trim();
-  const city = data.city.trim();
+  const city = String(data.city || "").trim().slice(0, 60);
   const age = data.age;
   const achievements =
     data.achievements?.trim() ||
@@ -229,6 +229,7 @@ app.get("/api/letter/:token", async (req, res) => {
     res.status(500).json({ error: "Erro ao buscar a carta" });
   }
 });
+const LETTER_THEME_IDS = ["classico", "rosa", "lilas", "azul", "verde"];
 app.post("/api/generate-letter", async (req, res) => {
   try {
     const {
@@ -244,6 +245,7 @@ app.post("/api/generate-letter", async (req, res) => {
       parentalConsent,
     } = req.body;
     const extras = cleanExtras(req.body?.extras);
+    const theme = LETTER_THEME_IDS.includes(String(req.body?.theme)) ? String(req.body.theme) : "classico";
     const toneDesc = TONES[String(style)] ?? TONES["mágico"];
     const extrasText = extrasForPrompt(extras);
     // LGPD art. 14: exige consentimento do responsável antes de tratar dados da criança
@@ -334,6 +336,7 @@ ${extrasText ? `${extrasText}\n` : ""}- Plano: ${isPro ? "PRO (m\xE1xima profund
       giftRequest: giftRequest || "",
       parentNotes: parentNotes || "",
       style,
+      theme,
       plan: "free",
       parentalConsentAt: new Date().toISOString(),
       content: letterContent,
@@ -1205,6 +1208,19 @@ Escreva exatamente 2 a 3 frases curtas e afetuosas, come\xE7ando com "Psst... Um
     res
       .status(500)
       .json({ error: "Erro ao gerar mensagem secreta", details: err?.message });
+  }
+});
+// cor da carta (clássica, rosa, lilás, azul, verde) — pode ser trocada depois de pronta
+app.post("/api/letter-theme", async (req, res) => {
+  try {
+    const { letterId, theme } = req.body || {};
+    if (!LETTER_THEME_IDS.includes(String(theme))) return res.status(400).json({ error: "Cor inválida" });
+    const letter = await db.findLetter(String(letterId || ""));
+    if (!letter) return res.status(404).json({ error: "Carta não encontrada" });
+    await db.updateLetter(letter.id, { theme: String(theme) });
+    res.json({ success: true, theme });
+  } catch {
+    res.status(500).json({ error: "Erro ao salvar a cor da carta" });
   }
 });
 app.post("/api/reaction", async (req, res) => {

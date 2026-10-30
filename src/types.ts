@@ -17,4 +17,6 @@ export interface Letter {
   content: string;
   audioUrl?: string;
   photoUrl?: string;
+  /** cor da carta: classico, rosa, lilas, azul ou verde */
+  theme?: string;
 }

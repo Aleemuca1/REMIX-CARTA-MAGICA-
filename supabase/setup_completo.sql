@@ -85,3 +85,4 @@ create table if not exists public.family_trees (
 );
 -- Só o servidor (chave secreta) lê e grava.
 alter table public.family_trees enable row level security;
+alter table public.letters add column if not exists theme text;

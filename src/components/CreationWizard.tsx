@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { LETTER_THEMES } from "../lib/letterThemes";
+import { prettyCity, prettyName } from "../lib/prettyText";
 import BackButton from "./BackButton";
 import { useBackClose } from "../lib/backClose";
 import { motion, AnimatePresence } from "motion/react";
@@ -25,6 +27,7 @@ export default function CreationWizard({
   const [giftRequest, setGiftRequest] = useState("");
   const [parentNotes, setParentNotes] = useState("");
   const [style, setStyle] = useState("mágico");
+  const [theme, setTheme] = useState("classico");
   const [more, setMore] = useState(false);
   const [extras, setExtras] = useState({ siblings: "", pet: "", friend: "", food: "", favorite: "", encourage: "" });
   const setX = (k: keyof typeof extras, v: string) => setExtras((x) => ({ ...x, [k]: v.slice(0, k === "encourage" ? 90 : 60) }));
@@ -62,13 +65,14 @@ export default function CreationWizard({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          childName,
+          childName: prettyName(childName),
           age,
-          city,
+          city: prettyCity(city),
           achievements,
           giftRequest,
           parentNotes,
           style,
+          theme,
           extras,
           plan,
           parentalConsent: consent,
@@ -84,11 +88,12 @@ export default function CreationWizard({
           id: `cm-${Date.now()}`,
           childName,
           age,
-          city: city || "Brasil",
+          city: city ? prettyCity(city) : "Brasil",
           achievements: achievements || "Foi uma criança muito dedicada e generosa neste ano.",
           giftRequest: giftRequest || "Uma surpresa especial de Natal",
           parentNotes,
           style,
+          theme,
           plan: "free",
           date: new Date().toLocaleDateString("pt-BR"),
           token: `${childName.toLowerCase().replace(/\s+/g, "-")}-${Date.now().toString().slice(-4)}`,
@@ -115,11 +120,12 @@ Papai Noel 🎅`,
         id: `cm-${Date.now()}`,
         childName,
         age,
-        city: city || "Brasil",
+        city: city ? prettyCity(city) : "Brasil",
         achievements,
         giftRequest,
         parentNotes,
         style,
+        theme,
         plan: "free",
         date: new Date().toLocaleDateString("pt-BR"),
         token: `${childName.toLowerCase().replace(/\s+/g, "-")}-${Date.now().toString().slice(-4)}`,
@@ -177,8 +183,10 @@ Papai Noel 🎅`,
               type="text"
               required
               placeholder="Ex: Lucas, Sofia, Miguel..."
+              maxLength={30}
               value={childName}
               onChange={(e) => setChildName(e.target.value)}
+              onBlur={() => setChildName((n) => (n.trim() ? prettyName(n) : n))}
               className="w-full bg-[#1C2541] border border-white/20 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-[#FFD166]"
             />
           </div>
@@ -201,8 +209,10 @@ Papai Noel 🎅`,
                 type="text"
                 required
                 placeholder="Ex: São Paulo, SP"
+                maxLength={40}
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
+                onBlur={() => setCity((c) => (c.trim() ? prettyCity(c) : c))}
                 className="w-full bg-[#1C2541] border border-white/20 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-[#FFD166]"
               />
             </div>
@@ -228,6 +238,33 @@ Papai Noel 🎅`,
               onChange={(e) => setGiftRequest(e.target.value)}
               className="w-full bg-[#1C2541] border border-white/20 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-[#FFD166]"
             />
+          </div>
+
+          <div>
+            <label className="block text-white font-semibold mb-1.5">Cor da carta</label>
+            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Cor da carta">
+              {LETTER_THEMES.map((t) => (
+                <button
+                  type="button"
+                  key={t.id}
+                  onClick={() => setTheme(t.id)}
+                  aria-pressed={theme === t.id}
+                  className={`flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 text-xs font-bold border cursor-pointer transition-colors ${
+                    theme === t.id ? "bg-white text-[#0B132B] border-white" : "bg-[#1C2541] text-white/85 border-white/15 hover:border-white/50"
+                  }`}
+                  id={`theme-${t.id}`}
+                >
+                  <span
+                    className="w-6 h-6 rounded-full border-2 border-white/80 flex items-center justify-center text-[11px] shadow"
+                    style={{ background: `linear-gradient(135deg, ${t.envelope[0]}, ${t.envelope[1]})` }}
+                  >
+                    {t.emoji}
+                  </span>
+                  {t.name}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-white/50 mt-1">A criança escolhe a cor que mais gosta. Dá para trocar depois.</p>
           </div>
 
           <div>

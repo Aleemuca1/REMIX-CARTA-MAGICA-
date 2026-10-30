@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { musicBox } from "../lib/christmasMusic";
+import { DEFAULT_THEME, type LetterTheme } from "../lib/letterThemes";
 
 /**
  * Envelope do Polo Norte: a criança toca no selo de cera, ele se quebra em dois,
  * a aba abre e a carta sobe. Se ninguém tocar, abre sozinho depois de alguns segundos.
  */
-export default function EnvelopeIntro({ childName, city, date, onDone }: { childName: string; city?: string; date?: string; onDone: () => void }) {
+export default function EnvelopeIntro({ childName, city, date, onDone, theme = DEFAULT_THEME }: { childName: string; city?: string; date?: string; onDone: () => void; theme?: LetterTheme }) {
+  const sealBg = { background: `radial-gradient(circle at 35% 35%, ${theme.seal[0]}, ${theme.seal[1]})` };
   const [state, setState] = useState<"closed" | "cracking" | "open">("closed");
 
   const crack = () => {
@@ -42,7 +44,8 @@ export default function EnvelopeIntro({ childName, city, date, onDone }: { child
     >
       {/* Carta saindo do envelope */}
       <motion.div
-        className="absolute left-4 right-4 top-4 bottom-4 parchment-bg rounded-lg border-2 border-[#FFD166] shadow-xl flex flex-col items-center justify-start pt-4 text-[#9B021A] z-10"
+        className="absolute left-4 right-4 top-4 bottom-4 parchment-bg rounded-lg border-2 border-[#FFD166] shadow-xl flex flex-col items-center justify-start pt-4 z-10"
+        style={{ color: theme.ink }}
         animate={{ y: state === "open" ? -130 : 0 }}
         transition={{ delay: 0.5, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       >
@@ -51,7 +54,7 @@ export default function EnvelopeIntro({ childName, city, date, onDone }: { child
       </motion.div>
 
       {/* Corpo do envelope */}
-      <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#B5001F] to-[#7A0015] border-2 border-[#FFD166]/70 shadow-2xl z-20 overflow-hidden">
+      <div className="absolute inset-0 rounded-xl border-2 border-[#FFD166]/70 shadow-2xl z-20 overflow-hidden" style={{ background: `linear-gradient(135deg, ${theme.envelope[0]}, ${theme.envelope[1]})` }}>
         <div
           className="absolute inset-0"
           style={{ background: "linear-gradient(to top right, transparent 49.5%, rgba(0,0,0,0.18) 50%), linear-gradient(to top left, transparent 49.5%, rgba(0,0,0,0.18) 50%)" }}
@@ -85,8 +88,8 @@ export default function EnvelopeIntro({ childName, city, date, onDone }: { child
         style={{ transformStyle: "preserve-3d", zIndex: 30 }}
       >
         <div
-          className="w-full h-full bg-gradient-to-b from-[#D90429] to-[#9B021A] border-x-2 border-t-2 border-[#FFD166]/70 rounded-t-xl"
-          style={{ clipPath: "polygon(0 0, 100% 0, 50% 100%)" }}
+          className="w-full h-full border-x-2 border-t-2 border-[#FFD166]/70 rounded-t-xl"
+          style={{ clipPath: "polygon(0 0, 100% 0, 50% 100%)", background: `linear-gradient(to bottom, ${theme.flap[0]}, ${theme.flap[1]})` }}
         />
       </motion.div>
 
@@ -94,7 +97,8 @@ export default function EnvelopeIntro({ childName, city, date, onDone }: { child
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40 w-[4.5rem] h-[4.5rem] sm:w-20 sm:h-20">
         {!opened ? (
           <motion.div
-            className="w-full h-full wax-seal rounded-full border-2 border-[#FFD166] flex items-center justify-center font-cinzel text-xs font-extrabold text-[#FFD166] shadow-xl"
+            style={sealBg}
+            className="w-full h-full rounded-full border-2 border-[#FFD166] flex items-center justify-center font-cinzel text-xs font-extrabold text-[#FFD166] shadow-xl"
             animate={{ scale: [1, 1.08, 1] }}
             transition={{ duration: 1.4, repeat: Infinity }}
             id="envelope-seal"
@@ -105,8 +109,8 @@ export default function EnvelopeIntro({ childName, city, date, onDone }: { child
           (["left", "right"] as const).map((side) => (
             <motion.div
               key={side}
-              className="absolute inset-0 wax-seal rounded-full border-2 border-[#FFD166] flex items-center justify-center font-cinzel text-xs font-extrabold text-[#FFD166]"
-              style={{ clipPath: side === "left" ? "polygon(0 0, 55% 0, 42% 35%, 58% 60%, 45% 100%, 0 100%)" : "polygon(55% 0, 100% 0, 100% 100%, 45% 100%, 58% 60%, 42% 35%)" }}
+              className="absolute inset-0 rounded-full border-2 border-[#FFD166] flex items-center justify-center font-cinzel text-xs font-extrabold text-[#FFD166]"
+              style={{ ...sealBg, clipPath: side === "left" ? "polygon(0 0, 55% 0, 42% 35%, 58% 60%, 45% 100%, 0 100%)" : "polygon(55% 0, 100% 0, 100% 100%, 45% 100%, 58% 60%, 42% 35%)" }}
               initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
               animate={{ x: side === "left" ? -70 : 70, y: 90, rotate: side === "left" ? -50 : 50, opacity: 0 }}
               transition={{ duration: 0.9, ease: "easeIn" }}
