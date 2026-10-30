@@ -507,3 +507,25 @@
 .tree-star-rays { animation: treeRays 14s linear infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes treeRays { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .tree-star-rays { animation: none; } }
+
+/* Palco dos jogos de canvas: no celular em pé o jogo fica 3:4 centralizado
+   (as telas de início/fim usam a tela inteira); em telas largas ou deitadas ocupa tudo. */
+.game-canvas {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: 100%;
+  transform: translateY(-50%);
+}
+@media (min-width: 640px), (max-height: 520px) {
+  .game-canvas {
+    inset: 0;
+    height: 100%;
+    aspect-ratio: auto;
+    max-height: none;
+    transform: none;
+  }
+}

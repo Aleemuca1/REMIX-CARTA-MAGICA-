@@ -214,3 +214,88 @@ export async function renderCertificate(o: { player: string; title: string; emoj
   ctx.fillText("CHEFE DA OFICINA DE BRINQUEDOS", W - 190, 1030);
   return c;
 }
+
+export type RankRow = { name: string; score: number; detail?: string };
+
+/** Certificado do campeão da família (paisagem 1600x1131), com o placar de todos. */
+export async function renderFamilyCertificate(o: { game: string; ranking: RankRow[]; unit: string; accent?: string }) {
+  await ensureFonts();
+  const { parchment, waxSeal } = await import("./letterExport");
+  const W = 1600,
+    H = 1131;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext("2d")!;
+  parchment(ctx, 0, 0, W, H, 0);
+  const top = o.ranking[0]?.score ?? 0;
+  const winners = o.ranking.filter((r) => r.score === top);
+  const tie = winners.length > 1;
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#9B021A";
+  ctx.font = F.cinzel(30, 800);
+  ctx.fillText("✦ OFICINA DO PAPAI NOEL • POLO NORTE ✦", W / 2, 120);
+  ctx.fillStyle = "#1C2541";
+  ctx.font = F.cinzel(66, 800);
+  ctx.fillText(tie ? "Campeões da Família" : "Campeão da Família", W / 2, 210);
+  ctx.fillStyle = "rgba(28,37,65,0.75)";
+  ctx.font = F.serif(32, true);
+  ctx.fillText(`no jogo ${o.game}`, W / 2, 262);
+  // troféu
+  const ty = 330;
+  ctx.font = "84px serif";
+  ctx.fillText("🏆", W / 2, ty + 40);
+  // nome(s) do campeão
+  ctx.fillStyle = "#9B021A";
+  const names = winners.map((w) => w.name).join(" e ");
+  let ns = 120;
+  ctx.font = F.hand(ns);
+  while (ctx.measureText(names).width > W - 300 && ns > 56) ctx.font = F.hand((ns -= 6));
+  ctx.fillText(names, W / 2, 500);
+  ctx.strokeStyle = "rgba(155,2,26,0.35)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - 420, 528);
+  ctx.lineTo(W / 2 + 420, 528);
+  ctx.stroke();
+  ctx.fillStyle = "#1C2541";
+  ctx.font = F.serif(32);
+  ctx.fillText(`venceu com ${top} ${o.unit}! O Papai Noel está muito orgulhoso.`, W / 2, 580);
+  // placar
+  const medals = ["🥇", "🥈", "🥉", "🎖️"];
+  const rowH = 62,
+    bw = 760,
+    bx = W / 2 - bw / 2;
+  let y = 625;
+  o.ranking.slice(0, 4).forEach((r, i) => {
+    const first = r.score === top;
+    ctx.fillStyle = first ? "rgba(255,209,102,0.45)" : "rgba(28,37,65,0.06)";
+    ctx.beginPath();
+    ctx.roundRect(bx, y, bw, rowH - 10, 26);
+    ctx.fill();
+    ctx.textAlign = "left";
+    ctx.font = "34px serif";
+    ctx.fillStyle = "#1C2541";
+    ctx.fillText(medals[Math.min(3, new Set(o.ranking.filter((x) => x.score > r.score).map((x) => x.score)).size)], bx + 22, y + 39);
+    ctx.font = F.sans(30, 800);
+    ctx.fillText(r.name, bx + 80, y + 37);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#9B021A";
+    ctx.fillText(`${r.score} ${o.unit}`, bx + bw - 26, y + 37);
+    y += rowH;
+  });
+  ctx.textAlign = "center";
+  waxSeal(ctx, 230, 1000, 62);
+  ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(28,37,65,0.7)";
+  ctx.font = F.sans(24, 600);
+  ctx.fillText(new Date().toLocaleDateString("pt-BR"), 310, 1010);
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#9B021A";
+  ctx.font = F.hand(80);
+  ctx.fillText("Papai Noel", W - 190, 1005);
+  ctx.fillStyle = "rgba(28,37,65,0.6)";
+  ctx.font = F.cinzel(19, 700);
+  ctx.fillText(`CARTA MÁGICA • ${location.host}`, W - 190, 1042);
+  return c;
+}
