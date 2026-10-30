@@ -8,6 +8,7 @@ import { useBackClose } from "../lib/backClose";
 import { musicBox } from "../lib/christmasMusic";
 import { PolarGame, type PolarResult } from "../game/polarGame";
 import SantaCongrats from "./SantaCongrats";
+import { FamilyPodium, ModePicker, NextTurn, PlayersEditor, finalNames, loadPlayers, savePlayers } from "./family/FamilyMatch";
 import { loadPlayer, savePlayer, medalFor, type Medal } from "../lib/player";
 
 const BEST_KEY = "carta-magica-urso-best";
@@ -126,7 +127,7 @@ function BearModal({ onClose, onCreateLetter }: { onClose: () => void; onCreateL
   useBackClose(true, onClose);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const gameRef = useRef<PolarGame | null>(null);
-  const [phase, setPhase] = useState<"intro" | "count" | "play" | "over">("intro");
+  const [phase, setPhase] = useState<"intro" | "count" | "play" | "over" | "turn">("intro");
   const [count, setCount] = useState(3);
   const [easy, setEasy] = useState(false);
   const [name, setName] = useState(loadPlayer);
@@ -135,6 +136,11 @@ function BearModal({ onClose, onCreateLetter }: { onClose: () => void; onCreateL
   const [best, setBest] = useState(readBest);
   const [newBest, setNewBest] = useState(false);
   const fishNote = useRef(0);
+  const [familyMode, setFamilyMode] = useState(false);
+  const [names, setNames] = useState<string[]>(loadPlayers);
+  const [turnIdx, setTurnIdx] = useState(0);
+  const [scores, setScores] = useState<{ score: number; detail: string }[]>([]);
+  const fam = useRef({ on: false, idx: 0, n: 1 });
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -159,8 +165,15 @@ function BearModal({ onClose, onCreateLetter }: { onClose: () => void; onCreateL
     };
     game.onEnd = (r) => {
       setResult(r);
-      setPhase("over");
       setHud((h) => ({ ...h, hearts: 0, score: r.score }));
+      if (fam.current.on) {
+        setScores((sc) => [...sc, { score: r.score, detail: `${r.fish} peixes · ${r.meters} m` }]);
+        const last = fam.current.idx >= fam.current.n - 1;
+        setPhase(last ? "over" : "turn");
+        if (last) confetti({ particleCount: 160, spread: 110, origin: { y: 0.4 }, zIndex: 120, colors: ["#4CC9F0", "#FFD166", "#FFFFFF", "#EF233C"] });
+        return;
+      }
+      setPhase("over");
       const b = readBest();
       if (r.score > b) {
         saveBest(r.score);
@@ -171,7 +184,10 @@ function BearModal({ onClose, onCreateLetter }: { onClose: () => void; onCreateL
     };
     const onResize = () => game.resize();
     window.addEventListener("resize", onResize);
+    // mede de novo quando a animação de entrada termina (tamanho real da tela)
+    const settle = setTimeout(onResize, 450);
     return () => {
+      clearTimeout(settle);
       game.stop();
       window.removeEventListener("resize", onResize);
       document.body.style.overflow = "";
@@ -203,6 +219,19 @@ function BearModal({ onClose, onCreateLetter }: { onClose: () => void; onCreateL
     }, 650);
   }, [easy, name]);
 
+  const newMatch = () => {
+    fam.current = { on: familyMode, idx: 0, n: familyMode ? names.length : 1 };
+    if (familyMode) savePlayers(names);
+    setTurnIdx(0);
+    setScores([]);
+    begin();
+  };
+  const nextTurn = () => {
+    fam.current.idx += 1;
+    setTurnIdx(fam.current.idx);
+    begin();
+  };
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (phase === "play" && (e.code === "Space" || e.key === "ArrowUp" || e.key === "Enter")) {
@@ -218,20 +247,20 @@ function BearModal({ onClose, onCreateLetter }: { onClose: () => void; onCreateL
 
   return (
     <motion.div
-      className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-sm flex items-center justify-center p-2 sm:p-6"
+      className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-sm flex items-center justify-center p-0 sm:p-6 [@media(max-height:520px)]:p-0"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
       <motion.div
-        className="relative w-full max-w-5xl aspect-[3/4] sm:aspect-[16/9] max-h-[92vh] rounded-3xl overflow-hidden border-2 border-[#4CC9F0] shadow-2xl bg-[#071030]"
+        className="relative w-full max-w-5xl h-[100dvh] rounded-none border-0 sm:h-auto sm:aspect-[16/9] sm:max-h-[92vh] sm:rounded-3xl sm:border-2 [@media(max-height:520px)]:h-[100dvh] [@media(max-height:520px)]:max-h-none [@media(max-height:520px)]:max-w-none [@media(max-height:520px)]:aspect-auto [@media(max-height:520px)]:rounded-none [@media(max-height:520px)]:border-0 overflow-hidden border-[#4CC9F0] shadow-2xl bg-[#071030]"
         initial={{ scale: 0.9, y: 30 }}
         animate={{ scale: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 22 }}
       >
         <canvas
           ref={canvasRef}
-          className="absolute inset-0 w-full h-full touch-none select-none"
+          className="game-canvas touch-none select-none"
           onPointerDown={(e) => {
             e.preventDefault();
             if (phase === "play") gameRef.current?.jump();
@@ -290,17 +319,26 @@ function BearModal({ onClose, onCreateLetter }: { onClose: () => void; onCreateL
                   </button>
                 ))}
               </div>
-              <label className="text-xs text-[#4CC9F0] font-bold uppercase tracking-wider mb-1">Seu nome</label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value.slice(0, 20))}
-                placeholder="Ex: Sofia"
-                className="bg-white/10 border border-white/30 rounded-full px-5 py-2.5 text-white text-center mb-4 focus:outline-none focus:border-[#4CC9F0] w-60"
-                onKeyDown={(e) => e.key === "Enter" && begin()}
-                id="bear-name"
-              />
+              <ModePicker family={familyMode} setFamily={setFamilyMode} accent="#4CC9F0" />
+              {familyMode ? (
+                <div className="mb-4 w-full flex justify-center">
+                  <PlayersEditor names={names} setNames={setNames} accent="#4CC9F0" />
+                </div>
+              ) : (
+                <>
+                  <label className="text-xs text-[#4CC9F0] font-bold uppercase tracking-wider mb-1">Seu nome</label>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value.slice(0, 20))}
+                    placeholder="Ex: Sofia"
+                    className="bg-white/10 border border-white/30 rounded-full px-5 py-2.5 text-white text-center mb-4 focus:outline-none focus:border-[#4CC9F0] w-60"
+                    onKeyDown={(e) => e.key === "Enter" && newMatch()}
+                    id="bear-name"
+                  />
+                </>
+              )}
               <button
-                onClick={begin}
+                onClick={newMatch}
                 className="bg-gradient-to-r from-[#4CC9F0] to-[#4361EE] text-white font-extrabold px-10 py-4 rounded-full text-lg inline-flex items-center gap-2 shadow-lg border border-[#FFD166]/50 btn-shine cursor-pointer"
                 id="bear-start-btn"
               >
@@ -319,11 +357,44 @@ function BearModal({ onClose, onCreateLetter }: { onClose: () => void; onCreateL
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.5, opacity: 0 }}
             >
-              <span className="font-cinzel text-8xl font-extrabold text-white drop-shadow-[0_0_20px_rgba(76,201,240,0.8)]">{count}</span>
+              <div className="flex flex-col items-center">
+                {fam.current.on && <p className="mb-2 rounded-full bg-black/50 px-4 py-1.5 text-white font-bold">🎮 Vez de {finalNames(names)[turnIdx]}</p>}
+                <span className="font-cinzel text-8xl font-extrabold text-white drop-shadow-[0_0_20px_rgba(76,201,240,0.8)]">{count}</span>
+              </div>
             </motion.div>
           )}
 
-          {phase === "over" && result && m && (
+          {phase === "turn" && result && (
+            <Overlay key="turn">
+              <NextTurn
+                last={finalNames(names)[turnIdx]}
+                lastScore={result.score}
+                unit="pontos"
+                next={finalNames(names)[turnIdx + 1]}
+                nextIdx={turnIdx + 1}
+                onGo={nextTurn}
+                accent="#4CC9F0"
+                goId="bear-next-turn"
+              />
+            </Overlay>
+          )}
+
+          {phase === "over" && fam.current.on && (
+            <Overlay key="podium">
+              <FamilyPodium
+                game="Escorrega do Ursinho"
+                anchor="urso"
+                ranking={scores.map((x, i) => ({ name: finalNames(names)[i], score: x.score, detail: x.detail }))}
+                unit="pontos"
+                accent="#4CC9F0"
+                onRetry={newMatch}
+                onSetup={() => setPhase("intro")}
+                retryId="bear-retry-btn"
+              />
+            </Overlay>
+          )}
+
+          {phase === "over" && !fam.current.on && result && m && (
             <Overlay key="over">
               <SantaCongrats
                 game="Escorrega do Ursinho"
@@ -342,7 +413,7 @@ function BearModal({ onClose, onCreateLetter }: { onClose: () => void; onCreateL
                 ]}
                 accent="#4CC9F0"
                 retryId="bear-retry-btn"
-                onRetry={begin}
+                onRetry={newMatch}
                 getSnapshot={() => canvasRef.current}
                 onLetter={onCreateLetter ? () => { onClose(); onCreateLetter(); } : undefined}
               />

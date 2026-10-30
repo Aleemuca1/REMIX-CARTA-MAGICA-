@@ -32,7 +32,7 @@ export default function CookieBanner() {
         <motion.div
           role="dialog"
           aria-label="Aviso de cookies"
-          className="fixed bottom-3 left-3 right-3 sm:left-auto sm:right-5 sm:bottom-5 sm:max-w-sm z-[95] bg-[#0B132B]/95 backdrop-blur border border-[#FFD166]/50 rounded-2xl p-4 shadow-2xl text-sm text-[#EDF2F4]"
+          className="fixed bottom-3 left-3 right-3 sm:left-auto sm:right-5 sm:bottom-5 sm:max-w-sm z-[70] bg-[#0B132B]/95 backdrop-blur border border-[#FFD166]/50 rounded-2xl p-4 shadow-2xl text-sm text-[#EDF2F4]"
           initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 40, opacity: 0 }}

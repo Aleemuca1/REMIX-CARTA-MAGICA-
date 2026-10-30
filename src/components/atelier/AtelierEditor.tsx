@@ -401,7 +401,7 @@ export default function AtelierEditor({
     }`;
 
   return (
-    <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
+    <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start min-w-0">
       {/* tela */}
       <div className="relative">
         <div
@@ -439,7 +439,7 @@ export default function AtelierEditor({
               <button
                 key={m}
                 onClick={() => setMode(m)}
-                className={`rounded-full py-2 text-sm font-bold cursor-pointer ${mode === m ? "bg-[#FFD166] text-[#0B132B]" : "text-white/80"}`}
+                className={`rounded-full py-2 px-1 text-xs sm:text-sm font-bold cursor-pointer whitespace-nowrap ${mode === m ? "bg-[#FFD166] text-[#0B132B]" : "text-white/80"}`}
               >
                 {m === "colorir" ? "🖍️ Colorir" : "✏️ Desenho livre"}
               </button>

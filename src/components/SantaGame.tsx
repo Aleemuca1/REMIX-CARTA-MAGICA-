@@ -9,6 +9,7 @@ import { DeliveryGame, type GameResult } from "../game/deliveryGame";
 import { musicBox } from "../lib/christmasMusic";
 import { loadFaceImages, loadFamily } from "../family/store";
 import SantaCongrats from "./SantaCongrats";
+import { FamilyPodium, ModePicker, NextTurn, PlayersEditor, finalNames, loadPlayers, savePlayers } from "./family/FamilyMatch";
 import { loadPlayer, savePlayer, medalFor, type Medal } from "../lib/player";
 
 const BEST_KEY = "carta-magica-best";
@@ -140,13 +141,19 @@ export function GameModal({
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const gameRef = useRef<DeliveryGame | null>(null);
-  const [phase, setPhase] = useState<"intro" | "count" | "play" | "over">("intro");
+  const [phase, setPhase] = useState<"intro" | "count" | "play" | "over" | "turn">("intro");
   const [count, setCount] = useState(3);
   const [name, setName] = useState(loadPlayer);
   const [easy, setEasy] = useState(false);
   const [result, setResult] = useState<GameResult | null>(null);
   const [best, setBest] = useState(readBest);
   const [newBest, setNewBest] = useState(false);
+  // modo família: cada um joga uma rodada e no fim sai o campeão
+  const [familyMode, setFamilyMode] = useState(false);
+  const [names, setNames] = useState<string[]>(loadPlayers);
+  const [turnIdx, setTurnIdx] = useState(0);
+  const [scores, setScores] = useState<{ score: number; detail: string }[]>([]);
+  const fam = useRef({ on: false, idx: 0, n: 1 });
   useBackClose(true, onClose);
 
   useEffect(() => {
@@ -173,7 +180,9 @@ export function GameModal({
     const onResize = () => game.resize();
     window.addEventListener("resize", onResize);
     document.body.style.overflow = "hidden";
+    const settle = setTimeout(onResize, 450);
     return () => {
+      clearTimeout(settle);
       game.stop();
       window.removeEventListener("resize", onResize);
       document.body.style.overflow = "";
@@ -183,6 +192,13 @@ export function GameModal({
   const finish = useCallback((r: GameResult) => {
     onFinish?.(r);
     setResult(r);
+    if (fam.current.on) {
+      setScores((sc) => [...sc, { score: r.score, detail: `${r.delivered} presentes entregues` }]);
+      const last = fam.current.idx >= fam.current.n - 1;
+      setPhase(last ? "over" : "turn");
+      if (last) confetti({ particleCount: 160, spread: 110, origin: { y: 0.4 }, zIndex: 80, colors: ["#FFD166", "#EF233C", "#2DC653", "#FFFFFF"] });
+      return;
+    }
     setPhase("over");
     const prev = readBest();
     if (r.score > prev) {
@@ -196,6 +212,19 @@ export function GameModal({
 
   const easyRef = useRef(false);
   easyRef.current = easy;
+  /** começa uma partida nova (no modo família, desde o jogador 1) */
+  const newMatch = () => {
+    fam.current = { on: familyMode, idx: 0, n: familyMode ? names.length : 1 };
+    if (familyMode) savePlayers(names);
+    setTurnIdx(0);
+    setScores([]);
+    begin();
+  };
+  const nextTurn = () => {
+    fam.current.idx += 1;
+    setTurnIdx(fam.current.idx);
+    begin();
+  };
   const begin = () => {
     if (name.trim()) savePlayer(name);
     setPhase("count");
@@ -238,20 +267,20 @@ export function GameModal({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-sm flex items-center justify-center p-2 sm:p-6"
+      className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-sm flex items-center justify-center p-0 sm:p-6 [@media(max-height:520px)]:p-0"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
       <motion.div
-        className="relative w-full max-w-5xl aspect-[3/4] sm:aspect-[16/10] max-h-[92vh] rounded-3xl overflow-hidden border-2 border-[#FFD166] shadow-2xl bg-[#050A1A]"
+        className="relative w-full max-w-5xl h-[100dvh] rounded-none border-0 sm:h-auto sm:aspect-[16/10] sm:max-h-[92vh] sm:rounded-3xl sm:border-2 [@media(max-height:520px)]:h-[100dvh] [@media(max-height:520px)]:max-h-none [@media(max-height:520px)]:max-w-none [@media(max-height:520px)]:aspect-auto [@media(max-height:520px)]:rounded-none [@media(max-height:520px)]:border-0 overflow-hidden border-[#FFD166] shadow-2xl bg-[#050A1A]"
         initial={{ scale: 0.9, y: 30 }}
         animate={{ scale: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 22 }}
       >
         <canvas
           ref={canvasRef}
-          className="absolute inset-0 w-full h-full touch-none select-none"
+          className="game-canvas touch-none select-none"
           onPointerDown={(e) => {
             e.preventDefault();
             if (phase === "play") gameRef.current?.drop();
@@ -288,15 +317,24 @@ export function GameModal({
                   </button>
                 ))}
               </div>
-              <label className="text-xs text-[#FFD166] font-bold uppercase tracking-wider mb-1">Nome do piloto</label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value.slice(0, 20))}
-                placeholder="Ex: Sofia"
-                className="bg-white/10 border border-white/30 rounded-full px-5 py-2.5 text-white text-center mb-5 focus:outline-none focus:border-[#FFD166] w-60"
-                onKeyDown={(e) => e.key === "Enter" && begin()}
-              />
-              <button onClick={begin} className="bg-gradient-to-r from-[#2DC653] to-[#1a9e3e] text-white font-extrabold px-10 py-4 rounded-full text-lg inline-flex items-center gap-2 shadow-lg border border-[#FFD166]/50 btn-shine cursor-pointer" id="game-start-btn">
+              <ModePicker family={familyMode} setFamily={setFamilyMode} accent="#FFD166" />
+              {familyMode ? (
+                <div className="mb-4 w-full flex justify-center">
+                  <PlayersEditor names={names} setNames={setNames} />
+                </div>
+              ) : (
+                <>
+                  <label className="text-xs text-[#FFD166] font-bold uppercase tracking-wider mb-1">Nome do piloto</label>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value.slice(0, 20))}
+                    placeholder="Ex: Sofia"
+                    className="bg-white/10 border border-white/30 rounded-full px-5 py-2.5 text-white text-center mb-5 focus:outline-none focus:border-[#FFD166] w-60"
+                    onKeyDown={(e) => e.key === "Enter" && newMatch()}
+                  />
+                </>
+              )}
+              <button onClick={newMatch} className="bg-gradient-to-r from-[#2DC653] to-[#1a9e3e] text-white font-extrabold px-10 py-4 rounded-full text-lg inline-flex items-center gap-2 shadow-lg border border-[#FFD166]/50 btn-shine cursor-pointer" id="game-start-btn">
                 <Play className="w-5 h-5 relative z-10 fill-white" />
                 <span className="relative z-10">Começar!</span>
               </button>
@@ -305,7 +343,8 @@ export function GameModal({
           )}
 
           {phase === "count" && (
-            <motion.div key="count" className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+            <motion.div key="count" className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
+              {fam.current.on && <p className="mb-2 rounded-full bg-black/50 px-4 py-1.5 text-white font-bold" id="game-turn-label">🎮 Vez de {finalNames(names)[turnIdx]}</p>}
               <AnimatePresence mode="popLayout">
                 <motion.span
                   key={count}
@@ -321,7 +360,37 @@ export function GameModal({
             </motion.div>
           )}
 
-          {phase === "over" && result && rank && (
+          {phase === "turn" && result && (
+            <Overlay key="turn">
+              <NextTurn
+                last={finalNames(names)[turnIdx]}
+                lastScore={result.score}
+                unit="pontos"
+                next={finalNames(names)[turnIdx + 1]}
+                nextIdx={turnIdx + 1}
+                onGo={nextTurn}
+                accent="#FFD166"
+                goId="game-next-turn"
+              />
+            </Overlay>
+          )}
+
+          {phase === "over" && fam.current.on && (
+            <Overlay key="podium">
+              <FamilyPodium
+                game="Entrega Relâmpago"
+                anchor="jogo"
+                ranking={scores.map((x, i) => ({ name: finalNames(names)[i], score: x.score, detail: x.detail }))}
+                unit="pontos"
+                accent="#FFD166"
+                onRetry={newMatch}
+                onSetup={() => setPhase("intro")}
+                retryId="game-retry-btn"
+              />
+            </Overlay>
+          )}
+
+          {phase === "over" && !fam.current.on && result && rank && (
             <Overlay key="over">
               <SantaCongrats
                 game="Entrega Relâmpago"
@@ -340,7 +409,7 @@ export function GameModal({
                 ]}
                 accent="#FFD166"
                 retryId="game-retry-btn"
-                onRetry={begin}
+                onRetry={newMatch}
                 getSnapshot={() => canvasRef.current}
                 onLetter={() => {
                   onClose();

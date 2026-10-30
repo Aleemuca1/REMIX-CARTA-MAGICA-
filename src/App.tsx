@@ -16,6 +16,7 @@ import SantaGame from "./components/SantaGame";
 import PolarBearGame from "./components/PolarBearGame";
 import FamilySection from "./components/family/FamilySection";
 import MemoryGame from "./components/memory/MemoryGame";
+import CircusGame from "./components/CircusGame";
 import SnowDivider from "./components/SnowDivider";
 import Footer from "./components/Footer";
 import SnowToggle from "./components/SnowToggle";
@@ -139,6 +140,7 @@ export default function App() {
         {/* Família no trenó (fotos ficam só no aparelho) */}
         <FamilySection onUpgrade={() => handleStartWizard("natal")} />
         <MemoryGame onUpgrade={() => handleStartWizard("natal")} onCreateLetter={() => handleStartWizard("free")} />
+        <CircusGame onCreateLetter={() => handleStartWizard("free")} />
 
         {/* Ateliê de Natal: colorir e desenhar */}
         <AtelierSection onUpgrade={() => handleStartWizard("natal")} />

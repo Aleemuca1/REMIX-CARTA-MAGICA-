@@ -7,6 +7,7 @@ const MENU = [
   { id: "urso", label: "🐻‍❄️ Escorrega do Urso Polar" },
   { id: "familia", label: "📸 Família no Trenó" },
   { id: "memoria", label: "🃏 Memória de Natal" },
+  { id: "circo", label: "🎪 Circo de Natal" },
   { id: "atelie", label: "🎨 Ateliê de Natal" },
   { id: "arvore", label: "🎄 Árvore da Família" },
   { id: "calendario", label: "📅 Calendário do Advento" },

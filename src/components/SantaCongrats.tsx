@@ -23,8 +23,10 @@ type Props = {
   retryId: string;
   onRetry: () => void;
   getSnapshot: () => HTMLCanvasElement | null;
-  /** só aparece na área dos pais */
+  /** só aparece na área dos pais (a não ser que letterCta esteja ligado) */
   onLetter?: () => void;
+  /** mostra um convite grande para a criança escrever a cartinha (e o Noel fala sobre isso) */
+  letterCta?: boolean;
 };
 
 /** Final do jogo: o Papai Noel aparece, dá parabéns (falando!) e entrega a medalha e o certificado. */
@@ -46,7 +48,10 @@ export default function SantaCongrats(p: Props) {
   const goal = next
     ? `Faltam só ${next.min - p.score} pontos para a medalha ${next.title}. Vamos tentar de novo?`
     : "Você é o maior campeão do Polo Norte!";
-  const speech = `Ho ho ho! Parabéns, ${name || "meu pequeno ajudante"}! Você ${p.feat}! ${cheer}Ganhou a medalha ${medal.title}! ${goal}`;
+  const invite = p.letterCta && p.onLetter
+    ? " E agora tenho um pedido especial: me escreva uma cartinha contando o que você quer ganhar neste Natal! Peça ajuda para um adulto. Eu vou adorar ler!"
+    : ` ${goal}`;
+  const speech = `Ho ho ho! Parabéns, ${name || "meu pequeno ajudante"}! Você ${p.feat}! ${cheer}Ganhou a medalha ${medal.title}!${invite}`;
 
   const speak = () => {
     if (!("speechSynthesis" in window)) return;
@@ -207,6 +212,26 @@ export default function SantaCongrats(p: Props) {
       </div>
       {note && <p className="text-[11px] text-[#FFD166] mt-1.5">{note}</p>}
 
+      {p.letterCta && p.onLetter && (
+        <motion.button
+          onClick={p.onLetter}
+          whileTap={{ scale: 0.96 }}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.2 }}
+          className="relative w-full mt-3 rounded-2xl p-3.5 text-left bg-gradient-to-r from-[#9B021A] via-[#D90429] to-[#9B021A] border-2 border-[#FFD166] flex items-center gap-3 cursor-pointer shadow-xl btn-shine animate-soft-pulse"
+          id={`${p.anchor}-letter-cta`}
+        >
+          <motion.span className="text-4xl shrink-0 relative z-10" animate={{ rotate: [-8, 8, -8], y: [0, -3, 0] }} transition={{ duration: 1.6, repeat: Infinity }}>
+            ✉️
+          </motion.span>
+          <span className="relative z-10 min-w-0">
+            <span className="block font-extrabold text-white text-base leading-tight">Escrever minha cartinha para o Papai Noel</span>
+            <span className="block text-[11px] text-[#FFE9A8] mt-0.5">Peça ajuda para um adulto • o Papai Noel responde!</span>
+          </span>
+        </motion.button>
+      )}
+
       <AnimatePresence>
         {askName && (
           <motion.div className="w-full mt-3 bg-white/10 rounded-2xl p-3" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
@@ -294,7 +319,7 @@ export default function SantaCongrats(p: Props) {
         id={`${p.anchor}-parents-btn`}
         aria-expanded={parents}
       >
-        👨‍👩‍👧 Para os pais: compartilhar{p.onLetter ? " e carta do Papai Noel" : ""}
+        👨‍👩‍👧 Para os pais: compartilhar{p.onLetter && !p.letterCta ? " e carta do Papai Noel" : ""}
         <ChevronDown className={`w-3 h-3 transition-transform ${parents ? "rotate-180" : ""}`} />
       </button>
       <AnimatePresence>
@@ -304,7 +329,7 @@ export default function SantaCongrats(p: Props) {
               card={{ game: p.game, score: p.score, title: medal.title, emoji: medal.emoji, player: name || undefined, newBest: p.newBest, anchor: p.anchor, stats: p.stats, accent: p.accent === "#FFD166" ? undefined : p.accent, palette: p.accent === "#FFD166" ? undefined : ["#071030", "#14295A", "#2D4E86"] }}
               getSnapshot={p.getSnapshot}
             />
-            {p.onLetter && (
+            {p.onLetter && !p.letterCta && (
               <button
                 onClick={p.onLetter}
                 className="w-full rounded-2xl p-3 text-left bg-gradient-to-r from-[#9B021A] to-[#D90429] border border-[#FFD166]/40 flex items-center gap-3 cursor-pointer"

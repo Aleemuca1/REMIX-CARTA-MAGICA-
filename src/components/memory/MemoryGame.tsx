@@ -6,6 +6,7 @@ import Reveal from "../Reveal";
 import BackButton from "../BackButton";
 import ProUpsell from "../ProUpsell";
 import SantaCongrats from "../SantaCongrats";
+import { FamilyPodium } from "../family/FamilyMatch";
 import FaceCropper from "../family/FaceCropper";
 import { useBackClose } from "../../lib/backClose";
 import { musicBox } from "../../lib/christmasMusic";
@@ -61,7 +62,11 @@ const readBest = () => {
 };
 
 type Card = { id: number; key: string; emoji?: string; name: string; colors: string[]; img?: string };
-type Player = { name: string; score: number };
+type Player = { name: string; score: number; pairs?: number };
+
+/** Mais gente jogando = mais cartas na mesa (cada um tem mais chances de pontuar). */
+export const extraPairs = (n: number) => (n >= 4 ? 4 : n === 3 ? 2 : 0);
+const colsFor = (pairs: number) => (pairs <= 8 ? "grid-cols-4" : pairs <= 12 ? "grid-cols-4 sm:grid-cols-6" : "grid-cols-5 sm:grid-cols-8");
 
 const shuffle = <T,>(a: T[]) => {
   const r = [...a];
@@ -207,13 +212,15 @@ function MemoryModal({ onClose, onUpgrade, onCreateLetter }: { onClose: () => vo
 
   const lv = LEVELS.find((l) => l.id === level)!;
   const solo = players.length === 1;
+  const totalPairs = Math.min(lv.pairs + extraPairs(players.length), XMAS.length);
+  const [streak, setStreak] = useState(0);
 
   const begin = useCallback(async () => {
-    const fam = useFamily ? family.slice(0, Math.min(family.length, lv.pairs - 2)) : [];
+    const fam = useFamily ? family.slice(0, Math.min(family.length, totalPairs - 2)) : [];
     const faces = await Promise.all(fam.map(faceCard));
     const famCards: Omit<Card, "id">[] = fam.map((m, i) => ({ key: `f-${m.id}`, name: m.name || "Você", colors: ["#FFF6D8", "#FFD166"], img: faces[i] }));
     const xmas = shuffle(XMAS)
-      .slice(0, lv.pairs - famCards.length)
+      .slice(0, totalPairs - famCards.length)
       .map((x) => ({ key: x.k, emoji: x.e, name: x.n, colors: x.c }));
     const pairs = [...famCards, ...xmas];
     setDeck(shuffle([...pairs, ...pairs]).map((c, i) => ({ ...c, id: i })));
@@ -223,13 +230,14 @@ function MemoryModal({ onClose, onUpgrade, onCreateLetter }: { onClose: () => vo
     setMoves(0);
     setLock(false);
     setFlash(null);
-    setPlayers((ps) => ps.map((p, i) => ({ name: p.name.trim() || (ps.length === 1 ? "" : `Jogador ${i + 1}`), score: 0 })));
+    setStreak(0);
+    setPlayers((ps) => ps.map((p, i) => ({ name: p.name.trim() || (ps.length === 1 ? "" : `Jogador ${i + 1}`), score: 0, pairs: 0 })));
     if (players[0]?.name.trim()) savePlayer(players[0].name);
     setStart(Date.now());
     setElapsed(0);
     setPhase("play");
     musicBox.sleighBells(1, 0.07);
-  }, [useFamily, family, lv.pairs, players]);
+  }, [useFamily, family, totalPairs, players]);
 
   const flip = (c: Card) => {
     if (lock || open.includes(c.id) || found.has(c.key)) return;
@@ -245,9 +253,12 @@ function MemoryModal({ onClose, onUpgrade, onCreateLetter }: { onClose: () => vo
       f.add(a.key);
       setFound(f);
       setOpen([]);
-      setPlayers((ps) => ps.map((p, i) => (i === turn ? { ...p, score: p.score + 1 } : p)));
+      // 10 pontos por par; acertos seguidos na mesma vez valem bônus (+5, +10...)
+      const bonus = solo ? 0 : streak * 5;
+      setStreak((k) => k + 1);
+      setPlayers((ps) => ps.map((p, i) => (i === turn ? { ...p, score: p.score + (solo ? 1 : 10 + bonus), pairs: (p.pairs ?? 0) + 1 } : p)));
       [79, 84, 88].forEach((n, i) => setTimeout(() => musicBox.chime(n, undefined, 0.12), i * 90));
-      setFlash(a.img ? `${a.name}! 📸` : `${a.emoji} ${a.name}!`);
+      setFlash(`${a.img ? `${a.name}! 📸` : `${a.emoji} ${a.name}!`}${solo ? "" : ` +${10 + bonus}${bonus ? " 🔥" : ""}`}`);
       setTimeout(() => setFlash(null), 1100);
       confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 }, zIndex: 120, colors: ["#FFD166", "#EF233C", "#2DC653", "#FFFFFF"] });
       if (f.size === deck.length / 2) setTimeout(() => finish(), 900);
@@ -256,6 +267,7 @@ function MemoryModal({ onClose, onUpgrade, onCreateLetter }: { onClose: () => vo
       setTimeout(() => {
         setOpen([]);
         setLock(false);
+        setStreak(0);
         if (players.length > 1) {
           setTurn((t) => (t + 1) % players.length);
           musicBox.chime(67, undefined, 0.06);
@@ -372,13 +384,13 @@ function MemoryModal({ onClose, onUpgrade, onCreateLetter }: { onClose: () => vo
                   id={`memory-player-${i}`}
                 >
                   <span className="w-2.5 h-2.5 rounded-full" style={{ background: PLAYER_COLORS[i] }} />
-                  {solo ? "Pares" : p.name}: {p.score}
+                  {solo ? "Pares" : p.name}: {p.score}{solo ? "" : " pts"}
                   {!solo && i === turn && <span className="ml-1">👈 sua vez</span>}
                 </motion.div>
               ))}
               <span className="text-xs text-white/60">👆 {moves} jogadas{solo ? ` · ⏱️ ${elapsed}s` : ""}</span>
             </div>
-            <div className={`grid ${lv.cols} gap-2 sm:gap-3 max-w-2xl mx-auto`} id="memory-board">
+            <div className={`grid ${colsFor(deck.length / 2)} gap-2 sm:gap-3 ${deck.length > 24 ? "max-w-4xl" : "max-w-2xl"} mx-auto`} id="memory-board">
               {deck.map((c) => {
                 const up = open.includes(c.id) || found.has(c.key);
                 const done = found.has(c.key);
@@ -468,7 +480,16 @@ function MemoryModal({ onClose, onUpgrade, onCreateLetter }: { onClose: () => vo
               />
             </div>
           ) : (
-            <Podium players={players} winners={winners} onRetry={begin} onSetup={() => setPhase("setup")} />
+            <FamilyPodium
+              game="Memória de Natal"
+              anchor="memoria"
+              ranking={players.map((p) => ({ name: p.name, score: p.score, detail: `${p.pairs ?? 0} ${(p.pairs ?? 0) === 1 ? "par" : "pares"}` }))}
+              unit="pontos"
+              accent="#2DC653"
+              onRetry={begin}
+              onSetup={() => setPhase("setup")}
+              retryId="memory-retry-btn"
+            />
           ))}
       </motion.div>
     </motion.div>
@@ -592,6 +613,12 @@ function Setup({
 
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-[#FFD166] mb-2">Dificuldade</p>
+          {players.length > 1 && (
+            <p className="text-[11px] text-white/70 mb-2" id="memory-rules">
+              🏆 Cada par vale <b>10 pontos</b>. Acertou de novo na mesma vez? Ganha bônus 🔥 (+5, +10...).
+              {extraPairs(players.length) ? ` Com ${players.length} jogadores a mesa ganha mais cartas!` : ""}
+            </p>
+          )}
           <div className="grid grid-cols-3 gap-2">
             {LEVELS.map((l) => (
               <button
@@ -600,7 +627,9 @@ function Setup({
                 className={`rounded-2xl p-2.5 text-left border-2 cursor-pointer ${level === l.id ? "border-[#2DC653] bg-[#2DC653]/15" : "border-white/15 bg-white/5"}`}
               >
                 <span className="block font-bold text-white text-sm">{l.label}</span>
-                <span className="block text-[11px] text-white/60">{l.desc}</span>
+                <span className="block text-[11px] text-white/60">
+                  {extraPairs(players.length) ? `${(Math.min(l.pairs + extraPairs(players.length), 16)) * 2} cartas` : l.desc}
+                </span>
               </button>
             ))}
           </div>
@@ -685,63 +714,6 @@ function Setup({
           />
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-// ------------------------------------------------------------------ pódio (vários jogadores)
-function Podium({ players, winners, onRetry, onSetup }: { players: Player[]; winners: Player[]; onRetry: () => void; onSetup: () => void }) {
-  const tie = winners.length > 1;
-  const speech = tie
-    ? `Ho ho ho! Que empate lindo! ${winners.map((w) => w.name).join(" e ")} acharam ${winners[0].score} pares cada! Todos ganharam um abraço do Papai Noel!`
-    : `Ho ho ho! Parabéns, ${winners[0].name}! Você achou ${winners[0].score} pares e venceu o Jogo da Memória! Que memória de rena!`;
-  useEffect(() => {
-    musicBox.sleighBells(1.2, 0.08);
-    const t = setTimeout(() => santaSpeak(speech), 900);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const ranked = players.map((p, i) => ({ ...p, i })).sort((a, b) => b.score - a.score);
-  const medal = ["🥇", "🥈", "🥉", "🎖️"];
-  return (
-    <div className="max-w-md mx-auto text-center py-2">
-      <div className="flex items-start gap-2 text-left">
-        <div className="shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-[#EF233C] to-[#9B021A] border-2 border-[#FFD166] flex items-center justify-center text-4xl">🎅</div>
-        <div className="relative flex-1 bg-white text-[#1C2541] rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-sm shadow-lg" id="memory-podium-bubble">
-          {speech}
-          <button onClick={() => santaSpeak(speech)} className="absolute -bottom-3 right-2 bg-[#9B021A] text-white rounded-full px-2.5 py-1 text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer">
-            <Volume2 className="w-3 h-3" /> Ouvir
-          </button>
-        </div>
-      </div>
-      <div className="mt-6 space-y-2">
-        {ranked.map((p, k) => (
-          <motion.div
-            key={p.i}
-            initial={{ x: -30, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.3 + k * 0.15 }}
-            className={`flex items-center gap-3 rounded-2xl px-4 py-3 border-2 ${k === 0 || p.score === ranked[0].score ? "bg-[#FFD166]/15 border-[#FFD166]" : "bg-white/5 border-white/10"}`}
-          >
-            <span className="text-2xl">{p.score === ranked[0].score ? "🥇" : medal[k]}</span>
-            <span className="w-3 h-3 rounded-full" style={{ background: PLAYER_COLORS[p.i] }} />
-            <span className="flex-1 text-left text-white font-bold">{p.name}</span>
-            <span className="text-[#FFD166] font-extrabold">{p.score} pares</span>
-          </motion.div>
-        ))}
-      </div>
-      <div className="flex gap-2 mt-5">
-        <button
-          onClick={onRetry}
-          className="flex-[1.3] rounded-full py-3.5 font-extrabold text-white bg-gradient-to-r from-[#2DC653] to-[#1a9e3e] border border-[#FFD166]/50 inline-flex items-center justify-center gap-2 cursor-pointer"
-          id="memory-retry-btn"
-        >
-          <RotateCcw className="w-5 h-5" /> Jogar de novo
-        </button>
-        <button onClick={onSetup} className="flex-1 rounded-full py-3.5 font-bold text-white bg-white/10 border border-white/20 cursor-pointer">
-          Trocar jogadores
-        </button>
-      </div>
     </div>
   );
 }

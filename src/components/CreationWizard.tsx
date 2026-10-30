@@ -25,6 +25,9 @@ export default function CreationWizard({
   const [giftRequest, setGiftRequest] = useState("");
   const [parentNotes, setParentNotes] = useState("");
   const [style, setStyle] = useState("mágico");
+  const [more, setMore] = useState(false);
+  const [extras, setExtras] = useState({ siblings: "", pet: "", friend: "", food: "", favorite: "", encourage: "" });
+  const setX = (k: keyof typeof extras, v: string) => setExtras((x) => ({ ...x, [k]: v.slice(0, k === "encourage" ? 90 : 60) }));
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
@@ -66,6 +69,7 @@ export default function CreationWizard({
           giftRequest,
           parentNotes,
           style,
+          extras,
           plan,
           parentalConsent: consent,
         }),
@@ -224,6 +228,81 @@ Papai Noel 🎅`,
               onChange={(e) => setGiftRequest(e.target.value)}
               className="w-full bg-[#1C2541] border border-white/20 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-[#FFD166]"
             />
+          </div>
+
+          <div>
+            <label className="block text-white font-semibold mb-1.5">Jeito da carta</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5" role="radiogroup" aria-label="Jeito da carta">
+              {[
+                ["mágico", "✨", "Mágica"],
+                ["emocionante", "💖", "Emocionante"],
+                ["engraçado", "😂", "Engraçada"],
+                ["aventura", "🗺️", "Aventura"],
+              ].map(([id, e, l]) => (
+                <button
+                  type="button"
+                  key={id}
+                  onClick={() => setStyle(id)}
+                  aria-pressed={style === id}
+                  className={`rounded-xl py-2 px-2 text-xs font-bold border cursor-pointer transition-colors ${
+                    style === id ? "bg-[#FFD166] text-[#0B132B] border-[#FFD166]" : "bg-[#1C2541] text-white/85 border-white/15 hover:border-[#FFD166]/60"
+                  }`}
+                  id={`tone-${id}`}
+                >
+                  <span className="mr-1">{e}</span>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#FFD166]/40 bg-[#FFD166]/5">
+            <button
+              type="button"
+              onClick={() => setMore((v) => !v)}
+              className="w-full flex items-center justify-between gap-2 px-3.5 py-3 text-left cursor-pointer"
+              aria-expanded={more}
+              id="wizard-more-btn"
+            >
+              <span>
+                <span className="block text-[#FFD166] font-bold">✨ Deixe a carta ainda mais especial</span>
+                <span className="block text-[11px] text-white/60">Opcional: bichinho, melhor amigo, irmãos... o Papai Noel cita tudo pelo nome!</span>
+              </span>
+              <span className={`text-[#FFD166] transition-transform ${more ? "rotate-180" : ""}`}>▾</span>
+            </button>
+            <AnimatePresence initial={false}>
+              {more && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                  <div className="grid sm:grid-cols-2 gap-2.5 px-3.5 pb-3.5">
+                    {(
+                      [
+                        ["siblings", "👧🧒 Irmãos (carta para todos)", "Ex: Ben e Pedro"],
+                        ["pet", "🐶 Bichinho de estimação", "Ex: Thor, o cachorro"],
+                        ["friend", "🤝 Melhor amigo(a)", "Ex: Miguel"],
+                        ["food", "🍕 Comida favorita", "Ex: brigadeiro"],
+                        ["favorite", "🎨 Desenho ou brincadeira favorita", "Ex: dinossauros, futebol"],
+                        ["encourage", "🌱 Algo para incentivar com carinho", "Ex: dormir no próprio quarto"],
+                      ] as [keyof typeof extras, string, string][]
+                    ).map(([k, label, ph]) => (
+                      <div key={k} className={k === "encourage" ? "sm:col-span-2" : ""}>
+                        <label className="block text-white/90 font-semibold mb-1 text-[11px] sm:text-xs">{label}</label>
+                        <input
+                          type="text"
+                          placeholder={ph}
+                          value={extras[k]}
+                          onChange={(e) => setX(k, e.target.value)}
+                          className="w-full bg-[#1C2541] border border-white/20 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#FFD166]"
+                          id={`extra-${k}`}
+                        />
+                      </div>
+                    ))}
+                    <p className="sm:col-span-2 text-[10px] text-white/50">
+                      O Papai Noel incentiva com carinho, nunca com bronca ou ameaça. Use só o primeiro nome.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <div>

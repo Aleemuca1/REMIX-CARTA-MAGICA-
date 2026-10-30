@@ -110,6 +110,35 @@ function getGeminiClient() {
   return aiClient;
 }
 __name(getGeminiClient, "getGeminiClient");
+
+/** Detalhes opcionais que deixam a carta mais pessoal (tudo curtinho e sem dados sensíveis). */
+type LetterExtras = { pet?: string; friend?: string; food?: string; favorite?: string; encourage?: string; siblings?: string };
+function cleanExtras(raw: any): LetterExtras {
+  const out: LetterExtras = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const k of ["pet", "friend", "food", "favorite", "encourage", "siblings"] as const) {
+    const v = typeof raw[k] === "string" ? raw[k].replace(/[<>{}\[\]"`]/g, "").replace(/\s+/g, " ").trim().slice(0, k === "encourage" ? 90 : 60) : "";
+    if (v) out[k] = v;
+  }
+  return out;
+}
+const TONES: Record<string, string> = {
+  "mágico": "mágico e encantado, cheio de detalhes do Polo Norte",
+  emocionante: "emocionante e terno, que faça os pais se emocionarem, falando de crescimento, família e amor",
+  "engraçado": "divertido e bem-humorado, com trapalhadas dos duendes e das renas, piadinhas leves que façam a criança rir alto",
+  aventura: "de aventura, contando uma pequena missão secreta no Polo Norte em que a criança é a heroína/herói",
+};
+function extrasForPrompt(x: LetterExtras) {
+  const lines: string[] = [];
+  if (x.siblings) lines.push(`- Irmãos que também recebem a carta (cite cada um pelo nome com carinho, a carta é para todos): ${x.siblings}`);
+  if (x.pet) lines.push(`- Bichinho de estimação (mande um recado ou abraço especial para ele pelo nome): ${x.pet}`);
+  if (x.friend) lines.push(`- Melhor amigo(a) (cite com carinho): ${x.friend}`);
+  if (x.food) lines.push(`- Comida favorita (os duendes adoram/querem provar): ${x.food}`);
+  if (x.favorite) lines.push(`- Desenho, personagem ou brincadeira favorita (mencione de forma divertida, sem usar marcas como se fossem do Papai Noel): ${x.favorite}`);
+  if (x.encourage) lines.push(`- Algo que os pais querem incentivar (faça um incentivo CARINHOSO e positivo, como um desafio mágico, nunca bronca, ameaça ou condição para ganhar presente): ${x.encourage}`);
+  return lines.join("\n");
+}
+
 function generateFallbackLetter(data) {
   const isPro = data.plan === "pro";
   const name = data.childName.trim();
@@ -121,8 +150,17 @@ function generateFallbackLetter(data) {
   const gift =
     data.giftRequest?.trim() || "uma surpresa m\xE1gica feita com todo o amor";
   const parentNotes = data.parentNotes?.trim() || "";
+  const x: LetterExtras = data.extras || {};
+  const ps = x.pet
+    ? `\n\nP.S.: Mande um abraço bem apertado para ${x.pet}! O Rudolph quer conhecer esse amigo especial. \u{1F98C}`
+    : x.food
+      ? `\n\nP.S.: Os duendes descobriram que você adora ${x.food} e agora querem provar também! \u{1F604}`
+      : x.friend
+        ? `\n\nP.S.: Diga ao(à) ${x.friend} que o Papai Noel mandou um oi! \u2728`
+        : "";
+  const sib = x.siblings ? ` e ${x.siblings}` : "";
   if (isPro) {
-    return `Ho Ho Ho! Ol\xE1, meu querido(a) ${name}!
+    return `Ho Ho Ho! Ol\xE1, meu querido(a) ${name}${sib}!
 
 Daqui do topo do Polo Norte, onde as luzes douradas e esmeraldas da Aurora Boreal dan\xE7am pelo c\xE9u estrelado e as cabanas de madeira soltam fuma\xE7a quentinha com aroma de canela, peguei minha pena de cristal mais brilhante para escrever uma mensagem especial e \xFAnica para voc\xEA a\xED em ${city}!
 
@@ -138,9 +176,9 @@ ${
     : ""
 }Continue sendo essa crian\xE7a t\xE3o valente, curiosa, doce e protetora de quem est\xE1 ao seu redor. Na Noite de Natal, quando os sininhos tocarem no c\xE9u gelado, saiba que estou enviando uma chuva de b\xEAn\xE7\xE3os, sa\xFAde e p\xF3 de estrelas cintilantes para o seu lar.
 
-Com carinho, Papai Noel \u{1F385}`;
+Com carinho, Papai Noel \u{1F385}${ps}`;
   }
-  return `Ho Ho Ho! Ol\xE1, meu querido(a) ${name}!
+  return `Ho Ho Ho! Ol\xE1, meu querido(a) ${name}${sib}!
 
 Aqui da minha oficina m\xE1gica no Polo Norte, cercado por montanhas de neve branquinha e o brilho suave das estrelas de Natal, observei voc\xEA a\xED na cidade de ${city}!
 
@@ -156,7 +194,7 @@ ${
     : ""
 }Guarde sempre o brilho da esperan\xE7a e da alegria no seu cora\xE7\xE3o, espalhando sorrisos por onde passar.
 
-Com carinho, Papai Noel \u{1F385}`;
+Com carinho, Papai Noel \u{1F385}${ps}`;
 }
 __name(generateFallbackLetter, "generateFallbackLetter");
 app.get("/api/health", (_req, res) => {
@@ -205,6 +243,9 @@ app.post("/api/generate-letter", async (req, res) => {
       photoUrl,
       parentalConsent,
     } = req.body;
+    const extras = cleanExtras(req.body?.extras);
+    const toneDesc = TONES[String(style)] ?? TONES["mágico"];
+    const extrasText = extrasForPrompt(extras);
     // LGPD art. 14: exige consentimento do responsável antes de tratar dados da criança
     if (parentalConsent !== true) {
       return res.status(400).json({
@@ -236,10 +277,13 @@ Siga RIGOROSAMENTE esta estrutura em 7 partes consecutivas e harmoniosas:
 5. CARINHO & PALAVRAS DOS PAIS: ${parentNotes ? `Integre de forma natural, doce e comovente o recado confidencial dos respons\xE1veis: "${parentNotes}". Relembre que o amor da fam\xEDlia \xE9 o maior tesouro.` : `Reforce o amor imenso e orgulho que a fam\xEDlia sente por ela.`}
 6. ENCERRAMENTO: Uma b\xEAn\xE7\xE3o m\xE1gica de p\xF3 de estrelas, encorajando a crian\xE7a a continuar sendo gentil, respeitosa e iluminando a vida de todos.
 7. ASSINATURA OBRIGAT\xD3RIA: Exatamente "Com carinho, Papai Noel \u{1F385}"
+8. P.S.: Depois da assinatura, em um par\xE1grafo separado, um "P.S.:" curtinho, engra\xE7ado ou secreto, ligado a um detalhe pessoal da crian\xE7a (bichinho, comida, amigo ou brincadeira favorita). Se n\xE3o houver detalhe, conte um segredinho divertido do Polo Norte.
+${extrasText ? `\nDETALHES PESSOAIS (use TODOS, de forma natural e espalhada pela carta \u2014 \xE9 isso que faz a fam\xEDlia se emocionar):\n${extrasText}\n` : ""}
 
 DIRETRIZES DE SEGURAN\xC7A E \xC9TICA:
 - NUNCA use chantagem emocional ("se n\xE3o obedecer n\xE3o ganha presente", "estou vigiando se voc\xEA chora"). O Papai Noel \xE9 pura bondade, sabedoria e aconchego.
 - NUNCA prometa itens materiais de forma for\xE7ada.
+- Tom da carta: ${toneDesc}.
 - Estilo: ${style} (${isPro ? "Para o Plano PRO: crie uma narrativa rica, profunda, liter\xE1ria e m\xE1gica com cerca de 260 a 340 palavras, repleta de detalhes sensoriais e emo\xE7\xE3o genu\xEDna" : "Para o Plano Gratuito: crie uma mensagem acolhedora, clara e comovente com cerca de 150 a 190 palavras"}).
 - Idioma: Portugu\xEAs do Brasil impec\xE1vel, po\xE9tico e afetuoso.`;
         const userPrompt = `Escreva a carta de Natal personalizada com as informa\xE7\xF5es:
@@ -249,7 +293,7 @@ DIRETRIZES DE SEGURAN\xC7A E \xC9TICA:
 - Conquistas e atitudes especiais: ${achievements || "Foi gentil e espalhou alegria"}
 - Pedido de presente na cartinha: ${giftRequest || "Um presente feito com amor"}
 - Palavras especiais dos pais/respons\xE1veis: ${parentNotes || "Nenhum detalhe extra"}
-- Plano: ${isPro ? "PRO (m\xE1xima profundidade emocional, detalhes sensoriais e magia liter\xE1ria)" : "Gratuito (b\xE1sica, terna e envolvente)"}
+${extrasText ? `${extrasText}\n` : ""}- Plano: ${isPro ? "PRO (m\xE1xima profundidade emocional, detalhes sensoriais e magia liter\xE1ria)" : "Gratuito (b\xE1sica, terna e envolvente)"}
 - Estilo: ${style}`;
         const response = await ai.models.generateContent({
           model: "gemini-3.8-flash",
@@ -276,6 +320,7 @@ DIRETRIZES DE SEGURAN\xC7A E \xC9TICA:
         giftRequest,
         parentNotes,
         style,
+        extras,
         plan: isPro ? "pro" : "free",
       });
     }

@@ -131,7 +131,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
     >
       <AnimatePresence mode="wait">
       {!opened ? (
-        <EnvelopeIntro key="env" childName={letter.childName} onDone={handleOpened} />
+        <EnvelopeIntro key="env" childName={letter.childName} city={letter.city} date={letter.date} onDone={handleOpened} />
       ) : (
       <motion.div
         key="letter"
@@ -300,7 +300,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                 transition={readIdx >= 0 ? { duration: 0.5 } : { delay: 0.6 + i * 0.35, duration: 0.6 }}
                 className={`relative rounded-xl transition-colors duration-500 ${
                   reading ? "bg-[#FFD166]/25 shadow-[0_0_0_2px_rgba(255,209,102,0.55)] px-3 py-2 -mx-3" : ""
-                }`}
+                } ${/^P\.?\s?S\.?/i.test(p) ? "font-handwriting text-2xl sm:text-3xl text-[#9B021A] leading-snug pt-2 -rotate-1" : ""}`}
               >
                 {reading && (
                   <>
