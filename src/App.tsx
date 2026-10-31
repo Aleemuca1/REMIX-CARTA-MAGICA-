@@ -32,7 +32,7 @@ import TreeSection from "./components/tree/TreeSection";
 import SantaPeek from "./components/SantaPeek";
 import { celebrateFrom } from "./lib/celebrate";
 import { startCheckout, usePaymentReturn } from "./lib/payment";
-import { loadMe, requireParent } from "./lib/auth";
+import { loadMe, parentForCheckout } from "./lib/auth";
 import AuthHost from "./components/auth/AuthHost";
 import PaymentToast from "./components/PaymentToast";
 import ScrollTopButton from "./components/ScrollTopButton";
@@ -61,8 +61,7 @@ export default function App() {
 
   const pay = async (letter: Letter, plan: "pro" | "natal") => {
     // a compra fica na conta do responsável (e o e-mail dele recebe tudo)
-    const parent = await requireParent("pagar");
-    if (!parent) return;
+    if ((await parentForCheckout()) === "cancel") return;
     setPayMsg({ kind: "wait", text: "Abrindo o pagamento seguro do Asaas..." });
     const err = await startCheckout(letter.id, plan);
     if (err) setPayMsg({ kind: "error", text: err });

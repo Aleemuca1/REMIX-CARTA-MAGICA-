@@ -6,7 +6,7 @@ import { motion, useReducedMotion, AnimatePresence } from "motion/react";
 import EnvelopeIntro from "./EnvelopeIntro";
 import confetti from "canvas-confetti";
 import { Printer, Share2, Sparkles, Stamp, Volume2, Square, Lock, Check, BookmarkPlus } from "lucide-react";
-import { requireParent, saveLetterToAccount } from "../lib/auth";
+import { requireParent, saveLetterToAccount, useAuth } from "../lib/auth";
 import ShareSheet, { WhatsIcon } from "./letter/ShareSheet";
 import { whatsappUrl } from "../lib/shareKit";
 import { Letter } from "../types";
@@ -48,6 +48,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
   useBackClose(true, onClose);
 
   const [saved, setSaved] = useState(false);
+  const auth = useAuth();
   const saveToAccount = async () => {
     if (saved) return;
     const parent = await requireParent("salvar");
@@ -252,6 +253,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
             <ToolButton onClick={() => window.print()} icon={<Printer className="w-4 h-4 text-[#FFD166]" />}>
               Imprimir
             </ToolButton>
+            {auth.available && (
             <ToolButton
               onClick={() => void saveToAccount()}
               icon={saved ? <Check className="w-4 h-4 text-[#2DC653]" /> : <BookmarkPlus className="w-4 h-4 text-[#FFD166]" />}
@@ -259,6 +261,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
             >
               {saved ? "Guardada" : "Guardar e receber por e-mail"}
             </ToolButton>
+            )}
           </div>
 
           {/* escolha da voz */}

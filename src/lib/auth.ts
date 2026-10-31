@@ -11,12 +11,14 @@ export type LoginReason = "salvar" | "pagar" | "area";
 type State = {
   parent: Parent | null;
   ready: boolean;
+  /** login por e-mail configurado no servidor */
+  available: boolean;
   /** pedido de login aberto (o AuthHost mostra a janela) */
   pending: { reason: LoginReason; resolve: (p: Parent | null) => void } | null;
   areaOpen: boolean;
 };
 
-let state: State = { parent: null, ready: false, pending: null, areaOpen: false };
+let state: State = { parent: null, ready: false, available: false, pending: null, areaOpen: false };
 const listeners = new Set<() => void>();
 const set = (patch: Partial<State>) => {
   state = { ...state, ...patch };
@@ -41,7 +43,7 @@ export function loadMe(): Promise<Parent | null> {
     loading = fetch("/api/auth/me", { credentials: "same-origin" })
       .then((r) => (r.ok ? r.json() : { parent: null }))
       .then((d) => {
-        set({ parent: d.parent ?? null, ready: true });
+        set({ parent: d.parent ?? null, ready: true, available: d.available !== false });
         return d.parent ?? null;
       })
       .catch(() => {
@@ -56,6 +58,7 @@ export function loadMe(): Promise<Parent | null> {
 export async function requireParent(reason: LoginReason): Promise<Parent | null> {
   const p = state.parent ?? (await loadMe());
   if (p) return p;
+  if (!state.available) return null;
   state.pending?.resolve(null);
   return new Promise((resolve) => set({ pending: { reason, resolve } }));
 }
@@ -65,6 +68,13 @@ export function finishLogin(parent: Parent | null) {
   const pending = state.pending;
   set({ pending: null, ...(parent ? { parent } : {}) });
   pending?.resolve(parent);
+}
+
+/** Para pagar: pede login só se o login por e-mail já estiver funcionando. */
+export async function parentForCheckout(): Promise<"ok" | "cancel"> {
+  await loadMe();
+  if (!state.available || state.parent) return "ok";
+  return (await requireParent("pagar")) ? "ok" : "cancel";
 }
 
 export async function openParentArea() {

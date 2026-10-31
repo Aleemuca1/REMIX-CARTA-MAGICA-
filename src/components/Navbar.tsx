@@ -112,6 +112,7 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
           >
             Planos
           </button>
+          {auth.available && (
           <button
             onClick={() => void openParentArea()}
             className={`text-xs sm:text-sm transition-colors cursor-pointer inline-flex items-center gap-1.5 rounded-full ${
@@ -124,6 +125,7 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
             <UserRound className="w-4 h-4" />
             <span className="hidden md:inline xl:hidden 2xl:inline">{auth.parent ? "Minhas cartas" : "Área dos pais"}</span>
           </button>
+          )}
           <button
             onClick={() => setMenu((v) => !v)}
             className="xl:hidden text-white/90 hover:text-white p-2 -mr-1 rounded-full hover:bg-white/10 cursor-pointer"

@@ -139,7 +139,9 @@ app.post("/api/auth/verify", async (req, res) => {
 app.get("/api/auth/me", async (req, res) => {
   const p = await currentParent(req);
   res.setHeader("Cache-Control", "no-store");
-  res.json({ parent: p ? { email: p.email, name: p.name } : null });
+  const devMode = process.env.NODE_ENV !== "production" && !process.env.VERCEL;
+  // available=false: o e-mail (Resend) ainda não foi configurado, então o site não pede login
+  res.json({ parent: p ? { email: p.email, name: p.name } : null, available: mailer.emailConfigured() || devMode });
 });
 
 app.post("/api/auth/logout", async (req, res) => {
