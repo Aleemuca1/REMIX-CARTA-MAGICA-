@@ -529,3 +529,46 @@
     transform: none;
   }
 }
+
+/* ---------- Árvore de Luz ---------- */
+@keyframes lt-twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes lt-bulb { 0%, 100% { opacity: 1; } 45% { opacity: 0.35; } }
+@keyframes lt-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.95; } }
+@keyframes lt-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+.lt-star { animation: lt-twinkle 3s ease-in-out infinite; }
+.lt-window { animation: lt-twinkle 4s ease-in-out infinite; }
+.lt-bulb { animation: lt-bulb 1.8s ease-in-out infinite; }
+.lt-pulse { animation: lt-pulse 1.6s ease-in-out infinite; }
+.lt-starglow { animation: lt-pulse 2.4s ease-in-out infinite; }
+.lt-bauble { animation: lt-sway 3.2s ease-in-out infinite; transform-box: view-box; }
+.lt-bauble:focus-visible circle:nth-of-type(2) { stroke: #ffffff; stroke-width: 2; }
+
+/* ---------- Carta brilhante ---------- */
+@keyframes letter-glow {
+  0%, 100% { box-shadow: 0 0 18px 0 color-mix(in srgb, var(--frame, #FFD166) 45%, transparent), 0 25px 50px -12px rgba(0,0,0,0.6); }
+  50% { box-shadow: 0 0 46px 6px color-mix(in srgb, var(--frame, #FFD166) 70%, transparent), 0 25px 50px -12px rgba(0,0,0,0.6); }
+}
+.letter-glow { animation: letter-glow 3.2s ease-in-out infinite; }
+@keyframes foil-shine { 0% { background-position: 200% 50%; } 100% { background-position: -100% 50%; } }
+.foil-text {
+  background-image: linear-gradient(100deg, var(--ink, #9B021A) 0%, var(--ink, #9B021A) 38%, #E9B949 46%, #FFF3B0 50%, #E9B949 54%, var(--ink, #9B021A) 62%, var(--ink, #9B021A) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: foil-shine 5s linear infinite;
+}
+@keyframes sparkle-pop {
+  0%, 100% { transform: scale(0) rotate(0deg); opacity: 0; }
+  50% { transform: scale(1) rotate(90deg); opacity: 1; }
+}
+.letter-sparkle { position: absolute; pointer-events: none; color: #FFD166; text-shadow: 0 0 8px #FFE9A8; animation: sparkle-pop 2.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .letter-glow, .foil-text, .letter-sparkle, .lt-bauble, .lt-bulb, .lt-pulse, .lt-star { animation: none; }
+  .letter-sparkle { opacity: 0; }
+}
+@media print {
+  .letter-sparkle { display: none; }
+  .letter-glow { animation: none; box-shadow: none; }
+  .foil-text { color: var(--ink, #9B021A); background: none; -webkit-background-clip: initial; background-clip: initial; }
+}

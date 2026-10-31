@@ -5,7 +5,8 @@ import { useBackClose } from "../lib/backClose";
 import { motion, useReducedMotion, AnimatePresence } from "motion/react";
 import EnvelopeIntro from "./EnvelopeIntro";
 import confetti from "canvas-confetti";
-import { Printer, Share2, Sparkles, Stamp, Volume2, Square, Lock, Check } from "lucide-react";
+import { Printer, Share2, Sparkles, Stamp, Volume2, Square, Lock, Check, BookmarkPlus } from "lucide-react";
+import { requireParent, saveLetterToAccount } from "../lib/auth";
 import ShareSheet, { WhatsIcon } from "./letter/ShareSheet";
 import { whatsappUrl } from "../lib/shareKit";
 import { Letter } from "../types";
@@ -13,6 +14,12 @@ import { narrate, type Narrator } from "../lib/narration";
 import { musicBox } from "../lib/christmasMusic";
 import { VOICES, voiceById, type VoiceId } from "../lib/voices";
 import { LETTER_THEMES, letterTheme } from "../lib/letterThemes";
+
+// [esquerda %, topo %, atraso s, tamanho]
+const SPARKLES: [number, number, number, number][] = [
+  [2, 3, 0, 18], [95, 2, 0.8, 14], [97, 22, 1.6, 12], [1, 30, 2.1, 12], [96, 48, 0.4, 16], [2, 58, 1.2, 14],
+  [97, 72, 2.4, 12], [1, 86, 0.6, 16], [94, 96, 1.9, 18], [50, 0.5, 1.1, 12], [30, 98.5, 2.8, 12], [70, 99, 0.2, 14],
+];
 
 interface LetterViewProps {
   letter: Letter;
@@ -39,6 +46,21 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
   const T = letterTheme(themeId);
   const themedLetter = { ...letter, theme: themeId };
   useBackClose(true, onClose);
+
+  const [saved, setSaved] = useState(false);
+  const saveToAccount = async () => {
+    if (saved) return;
+    const parent = await requireParent("salvar");
+    if (!parent) return;
+    try {
+      const r = await saveLetterToAccount(letter.id);
+      setSaved(true);
+      musicBox.chime(88, undefined, 0.1);
+      showToast(r.emailed ? `Carta guardada! Enviamos o link para ${parent.email} 💌` : "Carta guardada em Minhas cartas! 💌");
+    } catch (e: any) {
+      showToast(e?.message || "Não foi possível guardar agora.");
+    }
+  };
 
   const pickTheme = (id: string) => {
     if (id === themeId) return;
@@ -163,9 +185,15 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
         transition={{ type: "spring", stiffness: 120, damping: 18 }}
         style={{ transformPerspective: 1200 }}
         ref={cardRef}
-        className="relative w-full max-w-2xl parchment-bg text-[#1C2541] rounded-3xl p-6 sm:p-10 border-4 border-[var(--frame)] shadow-2xl my-auto transition-colors duration-500 print:border-none print:shadow-none print:p-6 print:rounded-none">
+        className="relative w-full max-w-2xl parchment-bg text-[#1C2541] rounded-3xl p-6 sm:p-10 border-4 border-[var(--frame)] shadow-2xl letter-glow my-auto transition-colors duration-500 print:border-none print:shadow-none print:p-6 print:rounded-none">
         {/* véu de cor do papel (fica atrás do texto) */}
         <div aria-hidden="true" className="absolute inset-0 -z-10 rounded-3xl pointer-events-none transition-colors duration-500 print:hidden" style={{ background: T.tint }} />
+        {/* brilhinhos dourados piscando pela carta */}
+        {SPARKLES.map(([l, t, d, z], k) => (
+          <span key={k} aria-hidden="true" className="letter-sparkle" style={{ left: `${l}%`, top: `${t}%`, animationDelay: `${d}s`, fontSize: z }}>
+            ✦
+          </span>
+        ))}
         {/* Controles (não aparecem na impressão nem no PDF) */}
         <div data-no-pdf className="pb-4 mb-4 border-b-2 border-[#1C2541]/15 print:hidden">
           <div className="flex justify-between items-center gap-2">
@@ -223,6 +251,13 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
             </ToolButton>
             <ToolButton onClick={() => window.print()} icon={<Printer className="w-4 h-4 text-[#FFD166]" />}>
               Imprimir
+            </ToolButton>
+            <ToolButton
+              onClick={() => void saveToAccount()}
+              icon={saved ? <Check className="w-4 h-4 text-[#2DC653]" /> : <BookmarkPlus className="w-4 h-4 text-[#FFD166]" />}
+              id="letter-save"
+            >
+              {saved ? "Guardada" : "Guardar e receber por e-mail"}
             </ToolButton>
           </div>
 
@@ -320,7 +355,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-[var(--ink)]" />
-              <span className="font-cinzel text-xs sm:text-sm font-extrabold tracking-widest text-[var(--ink)] uppercase">
+              <span className="font-cinzel text-xs sm:text-sm font-extrabold tracking-widest text-[var(--ink)] uppercase foil-text">
                 CORREIO REAL DO POLO NORTE
               </span>
             </div>
@@ -335,7 +370,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
         <div className="mb-6 flex flex-wrap items-start justify-between gap-x-4 gap-y-2" id="letter-address">
           <div className="relative min-w-0 max-w-full bg-[var(--accent)]/[0.06] border border-dashed border-[var(--accent)]/35 rounded-xl pl-3.5 pr-4 py-2 text-[var(--ink)]">
             <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--ink)]/70">Para</span>
-            <span className="block font-handwriting text-2xl leading-tight break-words">
+            <span className="block font-handwriting text-2xl leading-tight break-words foil-text">
               {prettyName(letter.childName)}
               {letter.age ? <span className="font-sans text-xs font-bold text-[var(--ink)]/75 align-middle ml-2 whitespace-nowrap">{letter.age} anos</span> : null}
             </span>
@@ -423,7 +458,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
           </div>
 
           <div className="text-right">
-            <span className="font-handwriting text-3xl sm:text-4xl text-[var(--ink)] font-bold block -mb-2">
+            <span className="font-handwriting text-3xl sm:text-4xl text-[var(--ink)] font-bold block -mb-2 foil-text">
               Papai Noel
             </span>
             <span className="text-[10px] text-[#1C2541]/60 uppercase tracking-wider font-cinzel">
@@ -490,7 +525,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
       <AnimatePresence>
         {toast && (
           <motion.div
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-[#0B132B] text-white text-sm font-semibold px-5 py-3 rounded-full border border-[#FFD166]/60 shadow-2xl flex items-center gap-2 max-w-[90vw] break-all"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-[#0B132B] text-white text-sm font-semibold px-5 py-3 rounded-full border border-[#FFD166]/60 shadow-2xl flex items-center gap-2 max-w-[90vw] break-words"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}

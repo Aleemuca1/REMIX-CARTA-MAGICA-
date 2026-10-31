@@ -17,6 +17,10 @@ import PolarBearGame from "./components/PolarBearGame";
 import FamilySection from "./components/family/FamilySection";
 import MemoryGame from "./components/memory/MemoryGame";
 import CircusGame from "./components/CircusGame";
+import NiceListQuiz from "./components/NiceListQuiz";
+import SantaTracker from "./components/SantaTracker";
+import LightTree from "./components/LightTree";
+import WorldChristmas from "./components/WorldChristmas";
 import SnowDivider from "./components/SnowDivider";
 import Footer from "./components/Footer";
 import SnowToggle from "./components/SnowToggle";
@@ -28,6 +32,8 @@ import TreeSection from "./components/tree/TreeSection";
 import SantaPeek from "./components/SantaPeek";
 import { celebrateFrom } from "./lib/celebrate";
 import { startCheckout, usePaymentReturn } from "./lib/payment";
+import { loadMe, requireParent } from "./lib/auth";
+import AuthHost from "./components/auth/AuthHost";
 import PaymentToast from "./components/PaymentToast";
 import ScrollTopButton from "./components/ScrollTopButton";
 import { snow } from "./lib/snow";
@@ -46,7 +52,17 @@ export default function App() {
   // volta do Asaas: confirma o pagamento e reabre a carta já liberada
   usePaymentReturn(setPayMsg, setActiveLetter);
 
+  useEffect(() => {
+    void loadMe();
+    // links compartilhados como /#lista ou /#rastreador abrem direto na seção
+    const id = window.location.hash.slice(1);
+    if (/^[a-z-]{2,30}$/.test(id)) setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }), 700);
+  }, []);
+
   const pay = async (letter: Letter, plan: "pro" | "natal") => {
+    // a compra fica na conta do responsável (e o e-mail dele recebe tudo)
+    const parent = await requireParent("pagar");
+    if (!parent) return;
     setPayMsg({ kind: "wait", text: "Abrindo o pagamento seguro do Asaas..." });
     const err = await startCheckout(letter.id, plan);
     if (err) setPayMsg({ kind: "error", text: err });
@@ -130,6 +146,10 @@ export default function App() {
 
         {/* Presente surpresa interativo */}
         <GiftSurprise onStart={() => handleStartWizard("free")} />
+        <NiceListQuiz onCreateLetter={() => handleStartWizard("free")} />
+        <LightTree onCreateLetter={() => handleStartWizard("free")} />
+        <SantaTracker onCreateLetter={() => handleStartWizard("free")} />
+        <WorldChristmas onCreateLetter={() => handleStartWizard("free")} />
 
         {/* Jogo de Natal */}
         <SantaGame onCreateLetter={() => handleStartWizard("free")} />
@@ -193,6 +213,16 @@ export default function App() {
           onUpgrade={(plan) => void pay(activeLetter, plan)}
         />
       )}
+
+      <AuthHost
+        onOpenLetter={(token) =>
+          fetch(`/api/letter/${encodeURIComponent(token)}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((l) => l && setActiveLetter(l))
+            .catch(() => {})
+        }
+        onCreateLetter={() => handleStartWizard("free")}
+      />
 
       <ScrollTopButton />
       <PaymentToast msg={payMsg} onClose={() => setPayMsg(null)} />

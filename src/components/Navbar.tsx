@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
-import { Sparkles, Menu, X } from "lucide-react";
+import { Sparkles, Menu, X, UserRound } from "lucide-react";
+import { openParentArea, useAuth } from "../lib/auth";
 
 const MENU = [
   { id: "como-funciona", label: "✨ Como funciona" },
+  { id: "lista", label: "📜 Lista do Bom Comportamento" },
+  { id: "arvore-luz", label: "✨ Árvore de Luz (mensagens)" },
+  { id: "rastreador", label: "🛷 Rastreie o Papai Noel" },
+  { id: "natal-mundo", label: "🌍 Natal pelo mundo" },
   { id: "jogo", label: "🎮 Jogo do Papai Noel" },
   { id: "urso", label: "🐻‍❄️ Escorrega do Urso Polar" },
   { id: "familia", label: "📸 Família no Trenó" },
@@ -24,6 +29,7 @@ interface NavbarProps {
 export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false);
   const [menu, setMenu] = useState(false);
+  const auth = useAuth();
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     onScroll();
@@ -61,7 +67,7 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
         </div>
 
         {/* Nav Links & CTA */}
-        <nav className="flex items-center gap-4 sm:gap-6">
+        <nav className="flex items-center gap-2 sm:gap-6">
           <button
             onClick={() => onScrollTo("como-funciona")}
             className="text-xs sm:text-sm text-[#EDF2F4]/80 hover:text-white transition-colors cursor-pointer hidden sm:inline-block"
@@ -105,6 +111,18 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
             id="nav-link-pricing"
           >
             Planos
+          </button>
+          <button
+            onClick={() => void openParentArea()}
+            className={`text-xs sm:text-sm transition-colors cursor-pointer inline-flex items-center gap-1.5 rounded-full ${
+              auth.parent ? "bg-white/10 text-white px-2.5 py-1.5 hover:bg-white/15" : "text-[#EDF2F4]/80 hover:text-white p-2 sm:p-0"
+            }`}
+            id="nav-parents"
+            aria-label="Área dos pais"
+            title="Área dos pais"
+          >
+            <UserRound className="w-4 h-4" />
+            <span className="hidden md:inline xl:hidden 2xl:inline">{auth.parent ? "Minhas cartas" : "Área dos pais"}</span>
           </button>
           <button
             onClick={() => setMenu((v) => !v)}

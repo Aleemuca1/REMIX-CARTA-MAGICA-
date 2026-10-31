@@ -106,6 +106,7 @@ export const PRIVACIDADE: LegalDoc = {
         "nome ou apelido da criança, idade e cidade/estado;",
         "conquistas do ano, pedido de presente e recado dos pais (campos opcionais);",
         "detalhes opcionais para personalizar a carta (primeiro nome de irmãos e do melhor amigo, nome do bichinho, comida, desenho ou brincadeira favorita e algo a incentivar) — usados só para escrever o texto e não guardados separadamente;",
+        "conta do responsável (Área dos Pais): e-mail e, se quiser, o primeiro nome do adulto — usados só para entrar com um código enviado por e-mail, guardar as cartas em \"Minhas cartas\", enviar o link da carta e vincular a compra. A criança não tem conta e não faz login;",
         "data e registro da sua autorização como responsável.",
       ],
     },

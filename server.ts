@@ -24,6 +24,163 @@ function requireAdmin(req, res, next) {
 }
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(process.cwd(), "public")));
+
+// ======================= Login do responsável =======================
+// Só os pais fazem login (código de 6 dígitos no e-mail, sem senha).
+// A criança joga e vê a carta grátis sem login; o login aparece para salvar a carta,
+// receber por e-mail, ver "Minhas cartas" e pagar.
+const SESSION_COOKIE = "cm_sess";
+const SESSION_DAYS = 60;
+const AUTH_SECRET = process.env.AUTH_SECRET || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "dev-only-secret";
+const sha = (v: string) => createHash("sha256").update(`${AUTH_SECRET}:${v}`).digest("hex");
+const cleanEmail = (v: unknown) => String(v ?? "").trim().toLowerCase().slice(0, 120);
+const validEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
+function readCookie(req: any, name: string): string | null {
+  const raw = String(req.headers?.cookie || "");
+  for (const part of raw.split(";")) {
+    const i = part.indexOf("=");
+    if (i > 0 && part.slice(0, i).trim() === name) return decodeURIComponent(part.slice(i + 1).trim());
+  }
+  return null;
+}
+function isHttps(req: any) {
+  return String(req.headers["x-forwarded-proto"] || "").startsWith("https") || process.env.VERCEL === "1";
+}
+async function currentParent(req: any): Promise<db.ParentRecord | null> {
+  if (req._parent !== undefined) return req._parent;
+  const tok = readCookie(req, SESSION_COOKIE);
+  let p: db.ParentRecord | null = null;
+  if (tok && /^[A-Za-z0-9_-]{30,80}$/.test(tok)) {
+    try {
+      p = await db.parentBySession(sha(`sess:${tok}`));
+    } catch {
+      p = null;
+    }
+  }
+  req._parent = p;
+  return p;
+}
+const ipOf = (req: any) => String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "").split(",")[0].trim();
+const authHits = new Map<string, number[]>();
+function tooMany(key: string, max: number, windowMs: number) {
+  const now = Date.now();
+  const arr = (authHits.get(key) || []).filter((t) => now - t < windowMs);
+  arr.push(now);
+  authHits.set(key, arr);
+  return arr.length > max;
+}
+
+app.post("/api/auth/start", async (req, res) => {
+  const email = cleanEmail(req.body?.email);
+  if (!validEmail(email)) return res.status(400).json({ error: "Confira o e-mail digitado." });
+  if (tooMany(`ip:${ipOf(req)}`, 12, 60 * 60 * 1000) || tooMany(`mail:${email}`, 5, 60 * 60 * 1000)) {
+    return res.status(429).json({ error: "Muitos pedidos de código. Espere alguns minutos e tente de novo." });
+  }
+  const devMode = process.env.NODE_ENV !== "production" && !process.env.VERCEL;
+  if (!mailer.emailConfigured() && !devMode) {
+    return res.status(503).json({ error: "O login por e-mail ainda está sendo configurado. Tente mais tarde." });
+  }
+  try {
+    const last = await db.latestLoginCode(email);
+    if (last && Date.now() - Date.parse(last.created_at) < 45 * 1000) {
+      return res.status(429).json({ error: "Acabamos de enviar um código. Espere alguns segundos para pedir outro." });
+    }
+    const code = String(randomBytes(4).readUInt32BE(0) % 1000000).padStart(6, "0");
+    await db.saveLoginCode(email, sha(`code:${email}:${code}`), new Date(Date.now() + 10 * 60 * 1000));
+    const sent = await mailer.sendLoginCode({ to: email, code, siteUrl: siteUrlFrom(req) });
+    if (!sent && !devMode) return res.status(502).json({ error: "Não conseguimos enviar o e-mail agora. Tente de novo." });
+    // em testes locais (sem e-mail configurado) o código aparece no log do servidor
+    if (!sent) console.log(`[login] código para ${email}: ${code}`);
+    res.json({ ok: true, ...(devMode && !sent ? { devCode: code } : {}) });
+  } catch (err: any) {
+    console.error("auth/start:", err?.message || err);
+    res.status(500).json({ error: "Não foi possível enviar o código agora." });
+  }
+});
+
+app.post("/api/auth/verify", async (req, res) => {
+  const email = cleanEmail(req.body?.email);
+  const code = String(req.body?.code ?? "").replace(/\D/g, "");
+  const name = String(req.body?.name ?? "").trim().replace(/\s+/g, " ").slice(0, 40) || undefined;
+  if (!validEmail(email) || code.length !== 6) return res.status(400).json({ error: "Digite os 6 números do código." });
+  if (tooMany(`verify:${ipOf(req)}`, 30, 15 * 60 * 1000)) {
+    return res.status(429).json({ error: "Muitas tentativas. Espere alguns minutos." });
+  }
+  try {
+    const row = await db.latestLoginCode(email);
+    if (!row || Date.parse(row.expires_at) < Date.now()) {
+      return res.status(400).json({ error: "Esse código venceu. Peça um novo." });
+    }
+    if (row.attempts >= 5) {
+      await db.clearLoginCodes(email);
+      return res.status(400).json({ error: "Muitas tentativas com esse código. Peça um novo." });
+    }
+    const a = Buffer.from(row.code_hash, "hex");
+    const b = Buffer.from(sha(`code:${email}:${code}`), "hex");
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      await db.bumpLoginAttempts(email, row.attempts + 1);
+      return res.status(400).json({ error: "Código incorreto. Confira o e-mail e tente de novo." });
+    }
+    await db.clearLoginCodes(email);
+    const parent = await db.upsertParent(email, name);
+    const token = randomBytes(32).toString("base64url");
+    await db.createSession(sha(`sess:${token}`), parent.id, new Date(Date.now() + SESSION_DAYS * 864e5));
+    res.setHeader(
+      "Set-Cookie",
+      `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}${isHttps(req) ? "; Secure" : ""}`,
+    );
+    res.json({ ok: true, parent: { email: parent.email, name: parent.name } });
+  } catch (err: any) {
+    console.error("auth/verify:", err?.message || err);
+    res.status(500).json({ error: "Não foi possível entrar agora. Tente de novo." });
+  }
+});
+
+app.get("/api/auth/me", async (req, res) => {
+  const p = await currentParent(req);
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ parent: p ? { email: p.email, name: p.name } : null });
+});
+
+app.post("/api/auth/logout", async (req, res) => {
+  const tok = readCookie(req, SESSION_COOKIE);
+  if (tok) await db.deleteSession(sha(`sess:${tok}`)).catch(() => {});
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${isHttps(req) ? "; Secure" : ""}`);
+  res.json({ ok: true });
+});
+
+// Minhas cartas
+app.get("/api/me/letters", async (req, res) => {
+  const p = await currentParent(req);
+  if (!p) return res.status(401).json({ error: "Entre na Área dos Pais." });
+  try {
+    const list = await db.lettersOfParent(p.id);
+    res.setHeader("Cache-Control", "no-store");
+    res.json(list.map((l) => ({ token: l.token, childName: l.childName, age: l.age, date: l.date, theme: l.theme, plan: l.plan })));
+  } catch (err: any) {
+    console.error("me/letters:", err?.message || err);
+    res.status(500).json({ error: "Não foi possível carregar suas cartas." });
+  }
+});
+
+// Salvar a carta na conta do responsável e mandar o link por e-mail
+app.post("/api/me/letters/save", async (req, res) => {
+  const p = await currentParent(req);
+  if (!p) return res.status(401).json({ error: "Entre na Área dos Pais." });
+  try {
+    const letter = await db.findLetter(String(req.body?.letterId || ""));
+    if (!letter) return res.status(404).json({ error: "Carta não encontrada. Crie a carta de novo." });
+    if (letter.parentId && letter.parentId !== p.id) return res.status(403).json({ error: "Essa carta já está guardada em outra conta." });
+    if (!letter.parentId) await db.updateLetter(letter.id, { parentId: p.id });
+    const site = siteUrlFrom(req);
+    const emailed = await mailer.sendLetterLink({ to: p.email, childName: letter.childName, letterUrl: `${site}/natal/${letter.token}`, siteUrl: site });
+    res.json({ ok: true, emailed });
+  } catch (err: any) {
+    console.error("me/letters/save:", err?.message || err);
+    res.status(500).json({ error: "Não foi possível salvar a carta agora." });
+  }
+});
+// ===================================================================
 const demoLetters: any[] = [
   {
     id: "cm-demo-01",
@@ -337,6 +494,7 @@ ${extrasText ? `${extrasText}\n` : ""}- Plano: ${isPro ? "PRO (m\xE1xima profund
       parentNotes: parentNotes || "",
       style,
       theme,
+      parentId: (await currentParent(req))?.id,
       plan: "free",
       parentalConsentAt: new Date().toISOString(),
       content: letterContent,
@@ -790,6 +948,8 @@ app.post("/api/checkout", async (req, res) => {
         error: "O pagamento ainda não está disponível. Tente novamente em breve.",
       });
     }
+    const parent = await currentParent(req);
+    if (parent && !letter.parentId) await db.updateLetter(letter.id, { parentId: parent.id }).catch(() => {});
     const orderId = `cm${randomBytes(9).toString("base64url")}`;
     const price = asaas.PLAN_PRICES[plan];
     await db.insertOrder({
@@ -803,6 +963,7 @@ app.post("/api/checkout", async (req, res) => {
       paymentMethod: "Asaas (Pix / Cartão)",
       createdAt: new Date().toLocaleString("pt-BR"),
     });
+    if (parent?.email) await db.updateOrder(orderId, { customerEmail: parent.email }).catch(() => {});
     const checkout = await asaas.createCheckout({ orderId, plan, siteUrl: siteUrlFrom(req) });
     await db.updateOrder(orderId, { gatewayChargeId: checkout.id });
     res.json({ success: true, orderId, checkoutUrl: checkout.link });
@@ -1070,7 +1231,8 @@ app.post("/api/asaas/webhook", async (req, res) => {
       const customerId = evt.payment?.customer || evt.checkout?.customer;
       const customerEmail =
         (typeof evt.checkout?.customerData?.email === "string" && evt.checkout.customerData.email) ||
-        (customerId ? await asaas.getCustomerEmail(String(customerId)) : undefined);
+        (customerId ? await asaas.getCustomerEmail(String(customerId)) : undefined) ||
+        order.customerEmail;
       await db.updateOrder(order.orderId, { status: "paid", accessCode, customerEmail: customerEmail || undefined });
       const letter = await db.findLetter(order.letterId);
       if (letter) await db.updateLetter(letter.id, { plan: order.plan as any });

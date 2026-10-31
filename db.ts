@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 // Camada de dados da Carta Mágica.
 // Usa o Supabase quando SUPABASE_URL e SUPABASE_SECRET_KEY estão definidos;
 // caso contrário, guarda tudo em memória (modo desenvolvimento).
@@ -24,6 +25,7 @@ export type LetterRecord = {
   childReaction?: string;
   parentalConsentAt?: string;
   theme?: string;
+  parentId?: string;
   createdAt?: string;
 };
 
@@ -79,6 +81,7 @@ const letterToRow = (l: Partial<LetterRecord>) => {
     child_reaction: l.childReaction,
     parental_consent_at: l.parentalConsentAt,
     theme: l.theme,
+    parent_id: l.parentId,
   };
   Object.keys(row).forEach((k) => row[k] === undefined && delete row[k]);
   return row;
@@ -105,6 +108,7 @@ const rowToLetter = (r: any): LetterRecord => ({
   childReaction: r.child_reaction ?? undefined,
   parentalConsentAt: r.parental_consent_at ?? undefined,
   theme: r.theme ?? undefined,
+  parentId: r.parent_id ?? undefined,
   createdAt: r.created_at,
 });
 
@@ -161,11 +165,13 @@ export async function insertLetter(letter: LetterRecord): Promise<void> {
     delete row.parental_consent_at;
     ({ error } = await supabase.from("letters").insert(row));
   }
-  // se a migração 006 (cor da carta) ainda não foi aplicada, salva sem a cor
-  if (error && /theme/.test(error.message)) {
-    console.warn("Coluna theme ausente: rode supabase/migrations/006_cor_da_carta.sql");
-    delete row.theme;
-    ({ error } = await supabase.from("letters").insert(row));
+  // se as migrações 006 (cor) ou 007 (login) ainda não foram aplicadas, salva sem essas colunas
+  for (const col of ["theme", "parent_id"]) {
+    if (error && new RegExp(col).test(error.message) && col in row) {
+      console.warn(`Coluna ${col} ausente em letters: rode as migrações 006/007 do Supabase`);
+      delete row[col];
+      ({ error } = await supabase.from("letters").insert(row));
+    }
   }
   if (error) throw new Error(`Supabase insertLetter: ${error.message}`);
 }
@@ -372,4 +378,126 @@ export async function saveTree(token: string, patch: { title?: string; ornaments
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("token", token);
   if (error) throw new Error(`Supabase saveTree: ${error.message}`);
+}
+
+
+// ---------- Login do responsável (código de 6 dígitos por e-mail) ----------
+// Tabelas da migração 007_login_responsavel.sql. Sem Supabase, fica tudo em memória (testes locais).
+export type ParentRecord = { id: string; email: string; name?: string };
+type CodeRow = { email: string; code_hash: string; expires_at: string; attempts: number; created_at: string };
+const memParents: ParentRecord[] = [];
+const memCodes: CodeRow[] = [];
+const memSessions: { token_hash: string; parent_id: string; expires_at: string }[] = [];
+
+export async function saveLoginCode(email: string, codeHash: string, expiresAt: Date): Promise<void> {
+  const row = { email, code_hash: codeHash, expires_at: expiresAt.toISOString(), attempts: 0, created_at: new Date().toISOString() };
+  if (!supabase) {
+    for (let i = memCodes.length - 1; i >= 0; i--) if (memCodes[i].email === email) memCodes.splice(i, 1);
+    memCodes.push(row);
+    return;
+  }
+  await supabase.from("auth_codes").delete().eq("email", email);
+  const { error } = await supabase.from("auth_codes").insert(row);
+  if (error) throw new Error(`Supabase saveLoginCode: ${error.message}`);
+}
+
+export async function latestLoginCode(email: string): Promise<(CodeRow & { id?: number }) | null> {
+  if (!supabase) return memCodes.filter((c) => c.email === email).slice(-1)[0] ?? null;
+  const { data, error } = await supabase
+    .from("auth_codes")
+    .select("*")
+    .eq("email", email)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`Supabase latestLoginCode: ${error.message}`);
+  return data ?? null;
+}
+
+export async function bumpLoginAttempts(email: string, attempts: number): Promise<void> {
+  if (!supabase) {
+    memCodes.filter((c) => c.email === email).forEach((c) => (c.attempts = attempts));
+    return;
+  }
+  await supabase.from("auth_codes").update({ attempts }).eq("email", email);
+}
+
+export async function clearLoginCodes(email: string): Promise<void> {
+  if (!supabase) {
+    for (let i = memCodes.length - 1; i >= 0; i--) if (memCodes[i].email === email) memCodes.splice(i, 1);
+    return;
+  }
+  await supabase.from("auth_codes").delete().eq("email", email);
+}
+
+export async function upsertParent(email: string, name?: string): Promise<ParentRecord> {
+  if (!supabase) {
+    let p = memParents.find((x) => x.email === email);
+    if (!p) {
+      p = { id: `p-${randomUUID()}`, email, name };
+      memParents.push(p);
+    } else if (name) p.name = name;
+    return p;
+  }
+  const { data: found } = await supabase.from("parents").select("id,email,name").eq("email", email).maybeSingle();
+  if (found) {
+    const patch: Record<string, any> = { last_login_at: new Date().toISOString() };
+    if (name && !found.name) patch.name = name;
+    await supabase.from("parents").update(patch).eq("id", found.id);
+    return { id: found.id, email: found.email, name: patch.name ?? found.name ?? undefined };
+  }
+  const { data, error } = await supabase
+    .from("parents")
+    .insert({ email, name: name || null, last_login_at: new Date().toISOString() })
+    .select("id,email,name")
+    .single();
+  if (error) throw new Error(`Supabase upsertParent: ${error.message}`);
+  return { id: data.id, email: data.email, name: data.name ?? undefined };
+}
+
+export async function createSession(tokenHash: string, parentId: string, expiresAt: Date): Promise<void> {
+  const row = { token_hash: tokenHash, parent_id: parentId, expires_at: expiresAt.toISOString() };
+  if (!supabase) {
+    memSessions.push(row);
+    return;
+  }
+  const { error } = await supabase.from("parent_sessions").insert(row);
+  if (error) throw new Error(`Supabase createSession: ${error.message}`);
+}
+
+export async function parentBySession(tokenHash: string): Promise<ParentRecord | null> {
+  const now = Date.now();
+  if (!supabase) {
+    const s = memSessions.find((x) => x.token_hash === tokenHash && Date.parse(x.expires_at) > now);
+    return s ? memParents.find((p) => p.id === s.parent_id) ?? null : null;
+  }
+  const { data, error } = await supabase
+    .from("parent_sessions")
+    .select("expires_at, parents(id,email,name)")
+    .eq("token_hash", tokenHash)
+    .maybeSingle();
+  if (error || !data || Date.parse(data.expires_at) <= now) return null;
+  const p: any = Array.isArray(data.parents) ? data.parents[0] : data.parents;
+  return p ? { id: p.id, email: p.email, name: p.name ?? undefined } : null;
+}
+
+export async function deleteSession(tokenHash: string): Promise<void> {
+  if (!supabase) {
+    const i = memSessions.findIndex((x) => x.token_hash === tokenHash);
+    if (i >= 0) memSessions.splice(i, 1);
+    return;
+  }
+  await supabase.from("parent_sessions").delete().eq("token_hash", tokenHash);
+}
+
+export async function lettersOfParent(parentId: string, limit = 60): Promise<LetterRecord[]> {
+  if (!supabase) return memLetters.filter((l) => l.parentId === parentId).slice(0, limit);
+  const { data, error } = await supabase
+    .from("letters")
+    .select("*")
+    .eq("parent_id", parentId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`Supabase lettersOfParent: ${error.message}`);
+  return (data ?? []).map(rowToLetter);
 }
