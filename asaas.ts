@@ -4,7 +4,7 @@
 //   ASAAS_ENV            opcional: "sandbox" ou "production" (detecta pela chave se ausente)
 //   ASAAS_WEBHOOK_TOKEN  o mesmo "Token de autenticação" cadastrado no webhook do Asaas
 //   PUBLIC_SITE_URL      opcional: ex. https://cartamagica.com.br (senão usa o domínio da requisição)
-import { CHECKOUT_IMAGE_BASE64 } from "./checkoutImage";
+import { CHECKOUT_IMAGE_BASE64 } from "./checkoutImage.js";
 
 export type PaidPlan = "pro" | "natal";
 
