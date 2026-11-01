@@ -17,6 +17,10 @@
       "destination": "/api"
     },
     {
+      "source": "/casa/(.*)",
+      "destination": "/api"
+    },
+    {
       "source": "/((?!api/|assets/).*)",
       "destination": "/index.html"
     }

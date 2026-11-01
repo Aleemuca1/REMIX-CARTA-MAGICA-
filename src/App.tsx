@@ -29,6 +29,7 @@ import SnowGlobe from "./components/SnowGlobe";
 import AdventCalendar from "./components/advent/AdventCalendar";
 import AtelierSection from "./components/atelier/AtelierSection";
 import TreeSection from "./components/tree/TreeSection";
+import HouseSection from "./components/house/HouseSection";
 import SantaPeek from "./components/SantaPeek";
 import { celebrateFrom } from "./lib/celebrate";
 import { startCheckout, usePaymentReturn } from "./lib/payment";
@@ -171,6 +172,9 @@ export default function App() {
 
         {/* Árvore de Natal da Família: enfeites com frases */}
         <TreeSection onUpgrade={() => handleStartWizard("natal")} />
+
+        {/* Nossa Casinha de Natal: a família monta a casa junta */}
+        <HouseSection onUpgrade={() => setChooseFor("nova")} />
 
         {/* Pricing & Value Section */}
         <SnowDivider />

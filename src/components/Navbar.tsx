@@ -15,6 +15,7 @@ const MENU = [
   { id: "circo", label: "🎪 Circo de Natal" },
   { id: "atelie", label: "🎨 Ateliê de Natal" },
   { id: "arvore", label: "🎄 Árvore da Família" },
+  { id: "casinha", label: "🏡 Casinha de Natal" },
   { id: "calendario", label: "📅 Calendário do Advento" },
   { id: "precos", label: "👑 Planos" },
   { id: "duvidas", label: "❓ Dúvidas" },

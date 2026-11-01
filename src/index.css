@@ -626,3 +626,8 @@
   .print-letter p { opacity: 1 !important; filter: none !important; transform: none !important; }
   .letter-body { font-size: 12.5pt; line-height: 1.7; }
 }
+
+/* Casinha de Natal: neve caindo à noite */
+@keyframes hs-snow { from { transform: translateY(0); } to { transform: translateY(660px); } }
+.hs-snow { animation: hs-snow linear infinite; }
+@media (prefers-reduced-motion: reduce) { .hs-snow { animation: none; opacity: 0; } }

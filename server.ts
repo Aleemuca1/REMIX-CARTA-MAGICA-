@@ -12,6 +12,7 @@ import { voiceById, voiceForSender } from "./src/lib/voices.js";
 import * as mailer from "./mailer.js";
 import { createHash, timingSafeEqual } from "crypto";
 import { MAX_AUTHOR, MAX_ORNAMENTS, MAX_TEXT, ORNAMENT_TYPES, VIEW_H, VIEW_W, sanitizeText } from "./src/tree/model.js";
+import { CATALOG as HOUSE_CATALOG, isPersonRef, VIEW_W as HOUSE_W, VIEW_H as HOUSE_H } from "./src/house/model.js";
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
@@ -1157,6 +1158,33 @@ app.get("/arvore/:token", async (req, res, next) => {
   }
 });
 
+app.get("/casa/:token", async (req, res, next) => {
+  if (process.env.NODE_ENV !== "production") return next();
+  try {
+    const html = await loadIndexHtml(req);
+    if (!html) return next();
+    const t = await db.findTree(String(req.params.token).toLowerCase()).catch(() => null);
+    const site = siteUrlFrom(req).replace(/\/+$/, "");
+    const title = t?.title ? `🏡 ${t.title}: venha colocar o seu bonequinho!` : "🏡 Venha montar a nossa Casinha de Natal!";
+    const desc = "Coloque o seu bonequinho na casa da família e deixe um recadinho de Natal. 💌";
+    const tags = `
+    <meta property="og:title" content="${escAttr(title)}" />
+    <meta property="og:description" content="${escAttr(desc)}" />
+    <meta property="og:image" content="${site}/og-casa.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />`;
+    const out = html
+      .replace(/<title>[^<]*<\/title>/, `<title>${escAttr(title)}</title>`)
+      .replace(/\s*<meta (property="og:[^"]+"|name="twitter:card")[^>]*>/g, "")
+      .replace("</head>", `${tags}\n  </head>`);
+    res.set("Cache-Control", "public, max-age=300").type("html").send(out);
+  } catch {
+    next();
+  }
+});
+
 app.get("/natal/:token", async (req, res, next) => {
   if (process.env.NODE_ENV !== "production") return next();
   try {
@@ -1239,7 +1267,7 @@ app.post("/api/tree", async (req, res) => {
 app.get("/api/tree/:token", async (req, res) => {
   try {
     const t = await db.findTree(String(req.params.token).toLowerCase());
-    if (!t) return res.status(404).json({ error: "Árvore não encontrada. Confira o link." });
+    if (!t || !Array.isArray(t.ornaments)) return res.status(404).json({ error: "Árvore não encontrada. Confira o link." });
     res.json(publicTree(t));
   } catch {
     res.status(500).json({ error: "Erro ao buscar a árvore." });
@@ -1250,7 +1278,7 @@ app.post("/api/tree/:token/ornaments", async (req, res) => {
   if (treeRateLimited(req)) return res.status(429).json({ error: "Calma, duende! Muitos enfeites seguidos. Tente daqui a pouco." });
   try {
     const t = await db.findTree(String(req.params.token).toLowerCase());
-    if (!t) return res.status(404).json({ error: "Árvore não encontrada." });
+    if (!t || !Array.isArray(t.ornaments)) return res.status(404).json({ error: "Árvore não encontrada." });
     if (t.ornaments.length >= MAX_ORNAMENTS) return res.status(400).json({ error: "A árvore está lotada de enfeites!" });
     const o = cleanOrnament(req.body?.ornament);
     if (!o) return res.status(400).json({ error: "Enfeite inválido." });
@@ -1285,6 +1313,102 @@ app.patch("/api/tree/:token", async (req, res) => {
     res.json({ title, ornaments: t.ornaments });
   } catch {
     res.status(500).json({ error: "Erro ao salvar o nome." });
+  }
+});
+
+
+// ---------- Nossa Casinha de Natal (guardada na mesma tabela da árvore, com código começando por "casa") ----------
+const HOUSE_MODEL_IDS = new Set(["chale", "biscoito", "iglu"]);
+const HOUSE_ITEM_IDS = new Set(HOUSE_CATALOG.map((c) => c.id));
+function cleanHouseCfg(c: any) {
+  return {
+    model: HOUSE_MODEL_IDS.has(c?.model) ? c.model : "chale",
+    roof: /^#[0-9a-fA-F]{6}$/.test(c?.roof) ? c.roof : "#C1121F",
+    title: sanitizeText(c?.title, 40),
+  };
+}
+function cleanHouseItem(o: any) {
+  if (!o || typeof o !== "object") return null;
+  const kind = o.kind === "pessoa" ? "pessoa" : o.kind === "item" ? "item" : null;
+  if (!kind) return null;
+  const ref = String(o.ref || "");
+  if (kind === "item" ? !HOUSE_ITEM_IDS.has(ref) : !isPersonRef(ref)) return null;
+  const x = Number(o.x);
+  const y = Number(o.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > HOUSE_W || y < 0 || y > HOUSE_H) return null;
+  const s = Math.min(1.8, Math.max(0.6, Number(o.s) || 1));
+  const id = /^[a-z0-9]{4,24}$/.test(String(o.id)) ? String(o.id) : randomBytes(6).toString("hex");
+  const name = sanitizeText(o.name, 18);
+  const text = sanitizeText(o.text, 100);
+  const author = sanitizeText(o.author, 18);
+  return { id, kind, ref, x: Math.round(x), y: Math.round(y), s: Math.round(s * 10) / 10, ...(name ? { name } : {}), ...(text ? { text } : {}), ...(author ? { author } : {}), at: new Date().toISOString() };
+}
+const houseOf = (t: db.TreeRecord) => {
+  const d: any = t.ornaments && !Array.isArray(t.ornaments) ? t.ornaments : { cfg: {}, items: [] };
+  return { cfg: cleanHouseCfg({ ...d.cfg, title: t.title }), items: Array.isArray(d.items) ? d.items : [] };
+};
+const isHouseToken = (t: string) => /^casa[a-f0-9]{8}$/.test(t);
+
+app.post("/api/house", async (req, res) => {
+  if (treeRateLimited(req, 10)) return res.status(429).json({ error: "Muitas casinhas criadas. Tente mais tarde." });
+  try {
+    const cfg = cleanHouseCfg(req.body?.cfg);
+    const list = Array.isArray(req.body?.items) ? req.body.items.slice(0, 120) : [];
+    const items = list.map(cleanHouseItem).filter(Boolean);
+    const token = `casa${randomBytes(4).toString("hex")}`;
+    const editKey = randomBytes(18).toString("base64url");
+    await db.insertTree({ token, editKeyHash: hashKey(editKey), title: cfg.title, ornaments: { cfg, items } as any });
+    res.json({ token, editKey });
+  } catch (err: any) {
+    console.error("Erro ao criar casinha:", err?.message || err);
+    res.status(503).json({ error: "O link da casinha está indisponível agora. Ela continua salva neste aparelho." });
+  }
+});
+
+app.get("/api/house/:token", async (req, res) => {
+  try {
+    const token = String(req.params.token).toLowerCase();
+    const t = isHouseToken(token) ? await db.findTree(token) : null;
+    if (!t) return res.status(404).json({ error: "Casinha não encontrada. Confira o link." });
+    res.json(houseOf(t));
+  } catch {
+    res.status(500).json({ error: "Erro ao abrir a casinha." });
+  }
+});
+
+// visitantes (avós, tios) só podem colocar coisas novas ou o recadinho delas
+app.post("/api/house/:token/items", async (req, res) => {
+  if (treeRateLimited(req)) return res.status(429).json({ error: "Calma, duende! Muitas coisas seguidas. Tente daqui a pouco." });
+  try {
+    const token = String(req.params.token).toLowerCase();
+    const t = isHouseToken(token) ? await db.findTree(token) : null;
+    if (!t) return res.status(404).json({ error: "Casinha não encontrada." });
+    const h = houseOf(t);
+    if (h.items.length >= 120) return res.status(400).json({ error: "A casinha está lotada de amor!" });
+    const it = cleanHouseItem(req.body?.item);
+    if (!it) return res.status(400).json({ error: "Item inválido." });
+    const items = [...h.items.filter((x: any) => x.id !== it.id), it];
+    await db.saveTree(t.token, { ornaments: { cfg: h.cfg, items } as any });
+    res.json({ cfg: h.cfg, items });
+  } catch {
+    res.status(500).json({ error: "Não foi possível colocar agora." });
+  }
+});
+
+// quem criou a casa salva tudo (mover, aumentar, tirar, trocar modelo)
+app.put("/api/house/:token", async (req, res) => {
+  try {
+    const token = String(req.params.token).toLowerCase();
+    const t = isHouseToken(token) ? await db.findTree(token) : null;
+    if (!t) return res.status(404).json({ error: "Casinha não encontrada." });
+    if (!ownerOk(t, req.headers["x-edit-key"])) return res.status(403).json({ error: "Só quem criou a casinha pode mudar as coisas de lugar." });
+    const cfg = cleanHouseCfg(req.body?.cfg);
+    const list = Array.isArray(req.body?.items) ? req.body.items.slice(0, 120) : [];
+    const items = list.map(cleanHouseItem).filter(Boolean);
+    await db.saveTree(t.token, { title: cfg.title, ornaments: { cfg, items } as any });
+    res.json({ cfg, items });
+  } catch {
+    res.status(500).json({ error: "Não foi possível salvar a casinha agora." });
   }
 });
 
