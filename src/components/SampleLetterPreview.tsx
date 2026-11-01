@@ -48,7 +48,7 @@ export default function SampleLetterPreview({
             Você nem imagina o quanto os duendes artesãos e a Mamãe Noel vibraram quando souberam da sua grande coragem neste ano: aprender a andar de bicicleta sem rodinhas! É preciso ter um coração muito valente para tentar, cair, levantar e conseguir pedalar com o vento no rosto.
           </p>
           <p>
-            O Rudolph, a rena de nariz vermelho brilhante, já separou com todo carinho a sua cartinha sobre o dinossauro robô. Nossos elfos inventores estão dando os últimos retoques na oficina mágica.
+            O próprio Papai Noel já separou com todo carinho a sua cartinha sobre o dinossauro robô. Nossos elfos inventores estão dando os últimos retoques na oficina mágica.
           </p>
           <p className="italic text-[#1C2541]/85">
             Lembre-se sempre de ser esse menino gentil, amoroso e obediente.

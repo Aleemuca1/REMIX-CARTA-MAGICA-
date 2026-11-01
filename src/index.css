@@ -589,3 +589,25 @@
 @keyframes ws-shine { from { transform: translateX(-100%); } to { transform: translateX(200%); } }
 .ws-shine { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent); animation: ws-shine 1.6s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .ws-fire, .ws-candle, .ws-winsnow, .ws-sparkle, .ws-shine { animation: none; } }
+
+/* ---------- Tipografia da carta ---------- */
+.font-letter { font-family: 'Lora', Georgia, serif; }
+.font-ps { font-family: 'Caveat', 'Comic Sans MS', cursive; }
+.font-xmas { font-family: 'Mountains of Christmas', 'Lora', Georgia, serif; }
+.drop-cap::first-letter {
+  float: left;
+  font-family: 'Cinzel', serif;
+  font-weight: 800;
+  font-size: 3.3em;
+  line-height: 0.85;
+  padding: 0.08em 0.12em 0 0;
+  color: var(--ink, #9B021A);
+  text-shadow: 2px 2px 0 rgba(233, 185, 73, 0.55);
+}
+.name-glow {
+  font-weight: 700;
+  color: var(--ink, #9B021A);
+  background: linear-gradient(transparent 62%, rgba(255, 209, 102, 0.55) 62%);
+  border-radius: 2px;
+  padding: 0 1px;
+}

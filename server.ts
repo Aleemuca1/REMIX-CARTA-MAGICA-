@@ -206,7 +206,7 @@ Daqui do alto da montanha gelada do Polo Norte, onde as luzes da Aurora Boreal d
 
 Voc\xEA nem imagina o quanto os duendes artes\xE3os e a Mam\xE3e Noel vibraram quando souberam da sua grande coragem neste ano: andar de bicicleta sem rodinhas! \xC9 preciso ter um cora\xE7\xE3o muito valente para tentar, cair, levantar e conseguir pedalar com o vento no rosto. E o seu cuidado afetuoso com o gatinho Pipoca aquece o cora\xE7\xE3o deste velhinho como um chocolate quente em noite de nevasca.
 
-O Rudolph, a rena de nariz vermelho brilhante, j\xE1 separou com todo carinho a sua cartinha sobre o dinossauro rob\xF4 que acende os olhos. Nossos elfos inventores est\xE3o dando os \xFAltimos retoques na oficina m\xE1gica de brinquedos.
+O pr\xF3prio Papai Noel j\xE1 separou com todo carinho a sua cartinha sobre o dinossauro rob\xF4 que acende os olhos. Nossos elfos inventores est\xE3o dando os \xFAltimos retoques na oficina m\xE1gica de brinquedos.
 
 Seus pais t\xEAm um orgulho gigantesco de voc\xEA. Lembre-se sempre de ser esse menino gentil, corajoso e de continuar dormindo no seu pr\xF3prio quarto como o grande rapazinho que voc\xEA j\xE1 \xE9.
 
@@ -234,7 +234,7 @@ Que alegria escrever para voc\xEA diretamente da minha oficina de brinquedos no 
 
 Os duendes observadores me contaram que voc\xEA foi muito corajosa ao fazer novos amigos na escolinha em Curitiba e que seus desenhos de arco-\xEDris s\xE3o repletos de cores e alegria! Continue espalhando esse sorriso doce por onde passar.
 
-J\xE1 registrei no meu Grande Livro Dourado o seu desejo da maleta de tintas m\xE1gicas e pinc\xE9is. O Rudolph e as outras renas mandam um carinhoso relincho m\xE1gico para voc\xEA!
+J\xE1 registrei no meu Grande Livro Dourado o seu desejo da maleta de tintas m\xE1gicas e pinc\xE9is. As renas mandam um carinhoso relincho m\xE1gico para voc\xEA!
 
 Durma bem e guarde sempre o encanto do Natal no seu cora\xE7\xE3ozinho.
 
@@ -311,7 +311,7 @@ function generateFallbackLetter(data) {
   const parentNotes = data.parentNotes?.trim() || "";
   const x: LetterExtras = data.extras || {};
   const ps = x.pet
-    ? `\n\nP.S.: Mande um abraço bem apertado para ${x.pet}! O Rudolph quer conhecer esse amigo especial. \u{1F98C}`
+    ? `\n\nP.S.: Mande um abraço bem apertado para ${x.pet}! As renas querem conhecer esse amigo especial. \u{1F98C}`
     : x.food
       ? `\n\nP.S.: Os duendes descobriram que você adora ${x.food} e agora querem provar também! \u{1F604}`
       : x.friend
@@ -319,13 +319,13 @@ function generateFallbackLetter(data) {
         : "";
   const sib = x.siblings ? ` e ${x.siblings}` : "";
   if (isPro) {
-    return `Ho Ho Ho! Ol\xE1, meu querido(a) ${name}${sib}!
+    return `Ho Ho Ho! Ol\xE1, ${name}${sib}, meu ajudante favorito de ${city}!
 
 Daqui do topo do Polo Norte, onde as luzes douradas e esmeraldas da Aurora Boreal dan\xE7am pelo c\xE9u estrelado e as cabanas de madeira soltam fuma\xE7a quentinha com aroma de canela, peguei minha pena de cristal mais brilhante para escrever uma mensagem especial e \xFAnica para voc\xEA a\xED em ${city}!
 
 Abri o Grande Livro Dourado das Boas A\xE7\xF5es que os elfos guardam no cora\xE7\xE3o da biblioteca polar. Quando encontrei a sua p\xE1gina, com seus ${age} anos de idade, meu cora\xE7\xE3o se encheu de orgulho e alegria ao ler que voc\xEA ${achievements}! A Mam\xE3e Noel e os duendes artes\xE3os aplaudiram com sorrisos largos. Pequenos gestos de coragem, bondade e amor fazem o mundo inteiro brilhar mais forte.
 
-O Rudolph, com seu nariz vermelho cintilante, j\xE1 colocou uma fita dourada no registro do seu pedido especial: "${gift}". Nossos duendes inventores est\xE3o trabalhando com muito esmero e alegria na oficina central de brinquedos, garantindo que a noite m\xE1gica seja repleta de encanto e surpresas preparadas com carinho.
+Eu mesmo, com minha caneta de pena dourada, j\xE1 coloquei uma fita dourada no registro do seu pedido especial: "${gift}". Nossos duendes inventores est\xE3o trabalhando com muito esmero e alegria na oficina central de brinquedos, garantindo que a noite m\xE1gica seja repleta de encanto e surpresas preparadas com carinho.
 
 ${
   parentNotes
@@ -335,15 +335,17 @@ ${
     : ""
 }Continue sendo essa crian\xE7a t\xE3o valente, curiosa, doce e protetora de quem est\xE1 ao seu redor. Na Noite de Natal, quando os sininhos tocarem no c\xE9u gelado, saiba que estou enviando uma chuva de b\xEAn\xE7\xE3os, sa\xFAde e p\xF3 de estrelas cintilantes para o seu lar.
 
-Com carinho, Papai Noel \u{1F385}${ps}`;
+\u{1F3AF} Miss\xE3o secreta de Natal: at\xE9 o dia 24, d\xEA um abra\xE7o surpresa em algu\xE9m da sua casa e conte para ele(a) uma coisa que voc\xEA admira nele(a). Os duendes v\xE3o anotar tudo no Livro Dourado!
+
+At\xE9 a noite de Natal, ${name}! Vou passar pertinho da sua casa e mandar um tchauzinho l\xE1 do tren\xF3.${ps}`;
   }
-  return `Ho Ho Ho! Ol\xE1, meu querido(a) ${name}${sib}!
+  return `Ho Ho Ho! Ol\xE1, ${name}${sib}, meu ajudante favorito de ${city}!
 
 Aqui da minha oficina m\xE1gica no Polo Norte, cercado por montanhas de neve branquinha e o brilho suave das estrelas de Natal, observei voc\xEA a\xED na cidade de ${city}!
 
 O Grande Livro Dourado me mostrou com muita alegria que, aos seus ${age} anos de idade, voc\xEA ${achievements}! Que orgulho ver seu crescimento e o seu cora\xE7\xE3o t\xE3o bondoso.
 
-Eu e o Rudolph j\xE1 lemos a sua cartinha sobre o seu pedido: ${gift}. Os duendes est\xE3o preparando tudo com muito carinho e anima\xE7\xE3o para a chegada do Natal.
+Eu e a Mam\xE3e Noel j\xE1 lemos a sua cartinha sobre o seu pedido: ${gift}. Os duendes est\xE3o preparando tudo com muito carinho e anima\xE7\xE3o para a chegada do Natal.
 
 ${
   parentNotes
@@ -353,7 +355,9 @@ ${
     : ""
 }Guarde sempre o brilho da esperan\xE7a e da alegria no seu cora\xE7\xE3o, espalhando sorrisos por onde passar.
 
-Com carinho, Papai Noel \u{1F385}${ps}`;
+\u{1F3AF} Miss\xE3o secreta de Natal: at\xE9 o dia 24, d\xEA um abra\xE7o surpresa em algu\xE9m da sua casa e conte para ele(a) uma coisa que voc\xEA admira nele(a). Os duendes v\xE3o anotar tudo no Livro Dourado!
+
+At\xE9 a noite de Natal, ${name}! Vou passar pertinho da sua casa e mandar um tchauzinho l\xE1 do tren\xF3.${ps}`;
 }
 __name(generateFallbackLetter, "generateFallbackLetter");
 app.get("/api/health", (_req, res) => {
@@ -471,24 +475,26 @@ app.post("/api/generate-letter", async (req, res) => {
     const ai = getGeminiClient();
     if (ai) {
       try {
-        const systemInstruction = `Voc\xEA \xE9 o verdadeiro Papai Noel escrevendo uma carta emocionante, aut\xEAntica, calorosa e inesquec\xEDvel para uma crian\xE7a.
-Siga RIGOROSAMENTE esta estrutura em 7 partes consecutivas e harmoniosas:
-1. SAUDA\xC7\xC3O: Ex: "Ho Ho Ho! Ol\xE1, meu querido(a) ${childName}!"
-2. INTRODU\xC7\xC3O DO POLO NORTE: Descri\xE7\xE3o v\xEDvida e sensorial do Polo Norte (as montanhas geladas, a Aurora Boreal dan\xE7ando em cores no c\xE9u noturno, a oficina cheia de aromas de canela e pinheiro, os duendes concentrados preparando os brinquedos e as renas treinando o grande voo).
-3. CONQUISTAS: Reconhecimento sincero, comovente e afetuoso das atitudes, aprendizados e conquistas da crian\xE7a aos ${age} anos de idade em ${city}. Elogie a coragem, o carinho e o esfor\xE7o.
-4. PEDIDO DE NATAL: Men\xE7\xE3o carinhosa e animada ao presente pedido (${giftRequest || "uma surpresa especial"}), sem fazer falsas promessas materiais irreais mas garantindo que o Rudolph e os duendes j\xE1 guardaram o desejo no cora\xE7\xE3o da oficina.
-5. CARINHO & PALAVRAS DOS PAIS: ${parentNotes ? `Integre de forma natural, doce e comovente o recado confidencial dos respons\xE1veis: "${parentNotes}". Relembre que o amor da fam\xEDlia \xE9 o maior tesouro.` : `Reforce o amor imenso e orgulho que a fam\xEDlia sente por ela.`}
-6. ENCERRAMENTO: Uma b\xEAn\xE7\xE3o m\xE1gica de p\xF3 de estrelas, encorajando a crian\xE7a a continuar sendo gentil, respeitosa e iluminando a vida de todos.
-7. ASSINATURA OBRIGAT\xD3RIA: Exatamente "Com carinho, Papai Noel \u{1F385}"
-8. P.S.: Depois da assinatura, em um par\xE1grafo separado, um "P.S.:" curtinho, engra\xE7ado ou secreto, ligado a um detalhe pessoal da crian\xE7a (bichinho, comida, amigo ou brincadeira favorita). Se n\xE3o houver detalhe, conte um segredinho divertido do Polo Norte.
-${extrasText ? `\nDETALHES PESSOAIS (use TODOS, de forma natural e espalhada pela carta \u2014 \xE9 isso que faz a fam\xEDlia se emocionar):\n${extrasText}\n` : ""}
+        const systemInstruction = `Você é o verdadeiro Papai Noel escrevendo, de próprio punho, uma carta mágica, divertida e emocionante para uma criança brasileira de ${age} anos. A carta será lida em voz alta pelos pais ou pela voz do Papai Noel, então escreva para a CRIANÇA entender e se encantar: frases curtas, palavras simples, muita imaginação e humor carinhoso.
 
-DIRETRIZES DE SEGURAN\xC7A E \xC9TICA:
-- NUNCA use chantagem emocional ("se n\xE3o obedecer n\xE3o ganha presente", "estou vigiando se voc\xEA chora"). O Papai Noel \xE9 pura bondade, sabedoria e aconchego.
-- NUNCA prometa itens materiais de forma for\xE7ada.
+ESTRUTURA (cada parte em um parágrafo separado por uma linha em branco):
+1. SAUDAÇÃO: uma única linha animada e criativa com o nome, por exemplo "Ho Ho Ho! Olá, ${childName}, meu ajudante favorito de ${city}!". Varie: não repita sempre a mesma frase.
+2. ABERTURA MÁGICA: conte uma cena engraçada ou surpreendente que acabou de acontecer COM O PRÓPRIO PAPAI NOEL no Polo Norte por causa da criança (ex.: deu uma gargalhada tão grande que a barba balançou; o gorro saiu voando de alegria ao ler o nome dela; os duendes fizeram uma festa). Seja inventivo e diferente a cada carta.
+3. CONQUISTAS: elogie com orgulho e de forma concreta o que a família contou (use as palavras deles), lembrando a idade e a cidade.
+4. PEDIDO DE NATAL: diga que o próprio Papai Noel anotou o pedido (${giftRequest || "uma surpresa especial"}) no Grande Livro Dourado, com carinho e sem prometer que o presente vai chegar.
+5. CARINHO DA FAMÍLIA: ${parentNotes ? `inclua com delicadeza o recado dos responsáveis: "${parentNotes}".` : "lembre que a família tem muito orgulho e amor por ela."}
+6. MISSÃO SECRETA: um parágrafo que começa exatamente com "🎯 Missão secreta de Natal:" e traz uma pequena missão gentil e divertida para a criança cumprir até o Natal (ex.: dar um abraço surpresa em alguém, ajudar a pôr a mesa, desenhar algo para o Papai Noel e deixar na janela). Uma frase ou duas.
+7. DESPEDIDA: uma frase final criativa e carinhosa que use o nome da criança e uma imagem divertida do Polo Norte (ex.: "Até a noite de Natal, ${childName}! Vou passar pertinho da sua casa e mandar um tchauzinho lá do trenó."). NÃO escreva assinatura nem "Papai Noel" no final: a assinatura já aparece desenhada na carta.
+8. P.S.: depois da despedida, um parágrafo que começa com "P.S.:" curtinho e engraçado, envolvendo o Papai Noel, a Mamãe Noel ou os duendes e, se houver, um detalhe pessoal da criança (bichinho, comida, amigo ou brincadeira favorita).
+${extrasText ? `\nDETALHES PESSOAIS (use TODOS, de forma natural e espalhada pela carta — é isso que faz a família se emocionar):\n${extrasText}\n` : ""}
+REGRAS IMPORTANTES:
+- O protagonista é sempre o Papai Noel. Fale de "as renas", "os duendes" e "a Mamãe Noel" de forma genérica: NUNCA cite personagens de filmes, desenhos ou marcas (por exemplo, não use o nome "Rudolph").
+- NUNCA use chantagem ("se não obedecer não ganha presente") nem prometa presentes. O Papai Noel é pura bondade e aconchego.
+- Use no máximo 3 emojis na carta toda, além do 🎯 da missão.
+- Use o nome da criança pelo menos 3 vezes ao longo da carta.
 - Tom da carta: ${toneDesc}.
-- Estilo: ${style} (${isPro ? "Para o Plano PRO: crie uma narrativa rica, profunda, liter\xE1ria e m\xE1gica com cerca de 260 a 340 palavras, repleta de detalhes sensoriais e emo\xE7\xE3o genu\xEDna" : "Para o Plano Gratuito: crie uma mensagem acolhedora, clara e comovente com cerca de 150 a 190 palavras"}).
-- Idioma: Portugu\xEAs do Brasil impec\xE1vel, po\xE9tico e afetuoso.`;
+- Tamanho: ${isPro ? "carta completa e caprichada, com cerca de 230 a 300 palavras" : "carta acolhedora com cerca de 150 a 190 palavras"}.
+- Idioma: português do Brasil, simples, mágico e afetuoso. Escreva somente a carta, sem títulos nem marcações.`;
         const userPrompt = `Escreva a carta de Natal personalizada com as informa\xE7\xF5es:
 - Crian\xE7a: ${childName}
 - Idade: ${age} anos
@@ -501,7 +507,7 @@ ${extrasText ? `${extrasText}\n` : ""}- Plano: ${isPro ? "PRO (m\xE1xima profund
         const response = await ai.models.generateContent({
           model: "gemini-3.8-flash",
           contents: userPrompt,
-          config: { systemInstruction, temperature: 0.72 },
+          config: { systemInstruction, temperature: 0.9 },
         });
         if (response && response.text) {
           letterContent = response.text.trim();
@@ -1013,8 +1019,15 @@ app.post("/api/checkout", async (req, res) => {
     await db.updateOrder(orderId, { gatewayChargeId: checkout.id });
     res.json({ success: true, orderId, checkoutUrl: checkout.link });
   } catch (err: any) {
-    console.error("Erro no checkout:", err?.message || err);
-    res.status(500).json({ error: "Não foi possível abrir o pagamento agora. Tente de novo em instantes." });
+    const msg = String(err?.message || err);
+    console.error("Erro no checkout:", msg);
+    // mostra o motivo que o Asaas deu (não tem dado sigiloso) para facilitar a correção
+    const asaasMsg = msg.startsWith("Asaas:") ? msg.slice(6).trim() : "";
+    res.status(500).json({
+      error: asaasMsg
+        ? `O Asaas não abriu o pagamento: ${asaasMsg}`
+        : "Não foi possível abrir o pagamento agora. Tente de novo em instantes.",
+    });
   }
 });
 

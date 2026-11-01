@@ -152,7 +152,7 @@ export default function HeroSantaFlight() {
                 <circle cx="120" cy="73" r="1.5" fill="#FFF" />
                 <circle cx="160" cy="84" r="2" fill="#FFE194" />
 
-                {/* Rena Rudolph à Frente */}
+                {/* Rena da frente */}
                 <g id="rudolph-lead" transform="translate(235, 30)">
                   {/* Nariz Vermelho Brilhante */}
                   <circle cx="88" cy="22" r="3.5" fill="#EF233C" />

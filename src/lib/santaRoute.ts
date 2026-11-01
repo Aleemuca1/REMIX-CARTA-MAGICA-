@@ -111,7 +111,7 @@ export const TRAINING: { name: string; lon: number; lat: number }[] = [
 export const NEWS: string[] = [
   "Os duendes embrulharam uma montanha de presentes hoje 🎁",
   "A Mamãe Noel testou uma receita nova de biscoito de gengibre 🍪",
-  "O Rudolph treinou o nariz brilhante no meio da neblina 🔴",
+  "O Papai Noel testou o trenó novo e deu três voltas na Lua! 🌙",
   "O trenó ganhou uma camada nova de tinta vermelha 🛷",
   "Chegou um saco enorme de cartinhas do Brasil 📬",
   "As renas comeram cenouras extras para ficar fortes 🥕",

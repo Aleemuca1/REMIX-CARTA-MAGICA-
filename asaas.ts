@@ -92,7 +92,9 @@ export async function createCheckout(opts: {
   });
   const data: any = await res.json().catch(() => ({}));
   if (!res.ok || !data?.id) {
-    const msg = data?.errors?.map((e: any) => e.description).join("; ") || `HTTP ${res.status}`;
+    const msg =
+      data?.errors?.map((e: any) => e.description).join("; ") ||
+      (res.status === 401 ? "chave de API inválida (confira a ASAAS_API_KEY na Vercel)" : `HTTP ${res.status}`);
     throw new Error(`Asaas: ${msg}`);
   }
   return { id: data.id, link: data.link || checkoutPageUrl(data.id) };

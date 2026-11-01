@@ -21,6 +21,47 @@ const SPARKLES: [number, number, number, number][] = [
   [97, 72, 2.4, 12], [1, 86, 0.6, 16], [94, 96, 1.9, 18], [50, 0.5, 1.1, 12], [30, 98.5, 2.8, 12], [70, 99, 0.2, 14],
 ];
 
+type ParaKind = "greeting" | "first" | "body" | "mission" | "farewell" | "ps";
+const KIND_CLASS: Record<ParaKind, string> = {
+  greeting: "font-xmas text-[28px] sm:text-[34px] leading-tight text-[var(--ink)] font-bold",
+  first: "drop-cap",
+  body: "",
+  mission:
+    "bg-[#FFF3C4]/70 border-2 border-dashed border-[var(--ink)]/40 rounded-2xl px-4 py-3 text-[15px] sm:text-base leading-relaxed shadow-[0_6px_18px_-10px_rgba(155,2,26,0.5)]",
+  farewell: "font-ps text-[25px] sm:text-[28px] leading-snug text-[var(--ink)] text-center pt-1",
+  ps: "font-ps text-[24px] sm:text-[27px] leading-snug text-[var(--ink)] pt-2 -rotate-1",
+};
+/** Decide o estilo de cada parágrafo: saudação, missão secreta, despedida, P.S.... */
+function paragraphKind(p: string, i: number, all: string[]): ParaKind {
+  const t = p.trim();
+  if (/^P\.?\s?S\.?/i.test(t)) return "ps";
+  if (/^🎯|^miss[aã]o secreta/i.test(t)) return "mission";
+  if (i === 0 && t.length < 160) return "greeting";
+  const lastMain = (() => {
+    for (let k = all.length - 1; k >= 0; k--) if (!/^P\.?\s?S\.?/i.test(all[k].trim())) return k;
+    return -1;
+  })();
+  if (i === lastMain && i > 1 && t.length < 220) return "farewell";
+  if (i === 1) return "first";
+  return "body";
+}
+/** Destaca o nome da criança no texto. */
+function withName(text: string, childName: string) {
+  const first = (childName || "").trim().split(/\s+/)[0];
+  if (!first || first.length < 2) return text;
+  const esc = first.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = text.split(new RegExp(`(${esc})`, "gi"));
+  return parts.map((part, k) =>
+    k % 2 === 1 ? (
+      <span key={k} className="name-glow">
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
+}
+
 interface LetterViewProps {
   letter: Letter;
   onClose: () => void;
@@ -166,7 +207,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
   }, [reduce, opened]);
 
   const shareUrl = `${window.location.origin}/natal/${letter.token}`;
-  const waText = `🎅✨ Olha que lindo! O Papai Noel escreveu uma carta para ${letter.childName}! Abra e ouça a voz dele: ${shareUrl}`;
+  const waText = `🤫✨ Psiu! Acabou de chegar uma carta do Polo Norte! O Papai Noel escreveu especialmente para ${letter.childName.split(" ")[0]} 🎅💌\nToque para abrir e ouvir a voz dele: ${shareUrl}`;
 
   return (
     <motion.div
@@ -388,10 +429,11 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
         </div>
 
         {/* Letter Body */}
-        <div className="font-serif text-sm sm:text-base leading-relaxed space-y-4 text-[#1C2541] whitespace-pre-line my-4">
+        <div className="font-letter text-[16px] sm:text-[17.5px] leading-[1.8] space-y-4 text-[#2B2118] whitespace-pre-line my-4">
           {paragraphs.map((p, i) => {
             const reading = readIdx === i;
             const dim = readIdx >= 0 && !reading;
+            const kind = paragraphKind(p, i, paragraphs);
             return (
               <motion.p
                 key={i}
@@ -403,8 +445,13 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                 transition={readIdx >= 0 ? { duration: 0.5 } : { delay: 0.6 + i * 0.35, duration: 0.6 }}
                 className={`relative rounded-xl transition-colors duration-500 ${
                   reading ? "bg-[#FFD166]/25 shadow-[0_0_0_2px_rgba(255,209,102,0.55)] px-3 py-2 -mx-3" : ""
-                } ${/^P\.?\s?S\.?/i.test(p) ? "font-handwriting text-2xl sm:text-3xl text-[var(--ink)] leading-snug pt-2 -rotate-1" : ""}`}
+                } ${KIND_CLASS[kind]}`}
               >
+                {kind === "mission" && (
+                  <span className="block font-cinzel text-[11px] sm:text-xs font-extrabold tracking-[0.2em] text-[var(--ink)] mb-1 not-italic">
+                    🎯 MISSÃO SECRETA DE NATAL
+                  </span>
+                )}
                 {reading && (
                   <>
                     <motion.span
@@ -431,7 +478,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                     ))}
                   </>
                 )}
-                {p}
+                {withName(kind === "mission" ? p.replace(/^\s*🎯?\s*Miss[aã]o secreta de Natal:?\s*/i, "").replace(/^./, (c) => c.toUpperCase()) : p, letter.childName)}
               </motion.p>
             );
           })}

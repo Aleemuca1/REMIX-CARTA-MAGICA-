@@ -2,7 +2,6 @@ import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Sparkles, ArrowRight, ShieldCheck, Timer, Volume2, Stamp } from "lucide-react";
 import ChristmasCountdown from "./ChristmasCountdown";
-import HeroSantaFlight from "./HeroSantaFlight";
 import TypewriterNames from "./TypewriterNames";
 import NightSky from "./NightSky";
 import SnowyVillage from "./SnowyVillage";
@@ -123,10 +122,6 @@ export default function LandingHero({
           animate={{ opacity: 1, scale: 1, rotate: 0 }}
           transition={{ duration: 0.9, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
         >
-          {/* Dedicated celestial flight corridor in the upper-right sky above the letter card */}
-          <div className="w-full relative h-28 sm:h-32 md:h-36 lg:h-40 flex items-end justify-end mb-2 sm:mb-3 pointer-events-none select-none">
-            <HeroSantaFlight />
-          </div>
 
           <div className={`relative w-full max-w-[360px] sm:max-w-[400px] xl:max-w-[420px] mx-auto ${envelopeOpen ? "" : "animate-float-card"}`}>
             {/* North Pole Wax Seal Stamp */}
@@ -181,7 +176,7 @@ export default function LandingHero({
                   Aqui do alto do Polo Norte, observei no meu telescópio de cristal o quanto você foi corajoso ao aprender a andar de bicicleta sem rodinhas este ano!
                 </p>
                 <p className="text-xs sm:text-sm text-[#1C2541]/80 italic">
-                  O Rudolph já separou com carinho a sua cartinha sobre o dinossauro robô que você pediu...
+                  O próprio Papai Noel já separou com carinho a sua cartinha sobre o dinossauro robô que você pediu...
                 </p>
               </div>
 

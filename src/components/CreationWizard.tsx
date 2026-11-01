@@ -73,7 +73,7 @@ export default function CreationWizard({
   const loadingMessages = [
     "O Papai Noel está pegando a pena dourada...",
     "Os duendes estão conferindo o Livro Dourado...",
-    "O Rudolph está iluminando o pergaminho...",
+    "O Papai Noel está caprichando em cada palavra...",
     "Carimbando o selo de cera do Polo Norte...",
   ];
 
@@ -154,7 +154,7 @@ Daqui do alto do Polo Norte, onde a neve fofa cobre as colinas e a Aurora Boreal
 
 Soube com muita alegria da sua grande conquista: ${achievements || "sua bondade e dedicação em tudo o que faz"}. É preciso ter um coração generoso e corajoso, e a Mamãe Noel e os duendes ficaram muito orgulhosos de você!
 
-O Rudolph, nossa rena de nariz vermelho brilhante, já separou com carinho a sua cartinha sobre ${giftRequest || "seu pedido especial"}. Os elfos artesãos estão finalizando os preparativos para a grande noite.
+O próprio Papai Noel já separou com carinho a sua cartinha sobre ${giftRequest || "seu pedido especial"}. Os elfos artesãos estão finalizando os preparativos para a grande noite.
 
 Continue sendo essa criança tão luminosa, respeitando quem cuida de você com tanto amor.
 

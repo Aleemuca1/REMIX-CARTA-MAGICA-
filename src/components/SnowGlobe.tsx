@@ -6,7 +6,7 @@ import { musicBox } from "../lib/christmasMusic";
 const MESSAGES = [
   "Os duendes contaram que alguém aí anda muito gentil este ano! ✨",
   "A Mamãe Noel já está assando biscoitos para a grande noite. 🍪",
-  "O Rudolph está treinando voos rasantes sobre a sua cidade! 🦌",
+  "As renas estão treinando voos rasantes sobre a sua cidade! 🦌",
   "Quem acredita na magia do Natal enxerga estrelas mais brilhantes. ⭐",
   "O Papai Noel adora abraços apertados e sorrisos sinceros. 🤗",
   "Um presente especial está sendo embrulhado agora mesmo na oficina! 🎁",
