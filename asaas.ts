@@ -6,7 +6,7 @@
 //   PUBLIC_SITE_URL      opcional: ex. https://cartamagica.com.br (senão usa o domínio da requisição)
 import { CHECKOUT_IMAGE_BASE64 } from "./checkoutImage.js";
 
-export type PaidPlan = "pro" | "natal";
+export type PaidPlan = "pro" | "natal" | "familia";
 
 export const PLAN_PRICES: Record<PaidPlan, { value: number; name: string; description: string }> = {
   pro: {
@@ -16,12 +16,23 @@ export const PLAN_PRICES: Record<PaidPlan, { value: number; name: string; descri
   },
   natal: {
     value: 29.9,
-    name: "Natal Completo",
-    description: "Carta completa com a voz do Papai Noel, PDF, certificado e Calendário do Advento com 24 surpresas",
+    name: "Carta Mágica (até 2 crianças)",
+    description: "Até 2 crianças, 6 cartas completas com 6 vozes, PDF, imagem HD, certificado, carta brilhante em 5 cores e Calendário do Advento",
+  },
+  familia: {
+    value: 49.9,
+    name: "Carta Mágica Família (até 5)",
+    description: "Até 5 crianças, 15 cartas completas com 6 vozes, PDF, imagem HD, certificado, carta brilhante em 5 cores e Calendário do Advento",
   },
 };
 
-export const isPaidPlan = (p: unknown): p is PaidPlan => p === "pro" || p === "natal";
+/** quantas crianças cada plano cobre */
+export const PLAN_CHILDREN: Record<string, number> = { pro: 1, natal: 2, familia: 5 };
+/** cartas completas por criança (os pais costumam fazer mais de uma: refazer, véspera, recado especial) */
+export const LETTERS_PER_CHILD = 3;
+export const PLAN_LETTERS: Record<string, number> = { pro: 1, natal: 2 * LETTERS_PER_CHILD, familia: 5 * LETTERS_PER_CHILD };
+
+export const isPaidPlan = (p: unknown): p is PaidPlan => p === "pro" || p === "natal" || p === "familia";
 
 export function asaasConfigured() {
   return Boolean(process.env.ASAAS_API_KEY);
@@ -60,7 +71,7 @@ export async function createCheckout(opts: {
     },
     items: [
       {
-        name: `Carta Mágica — ${price.name}`,
+        name: price.name.startsWith("Carta Mágica") ? price.name : `Carta Mágica — ${price.name}`,
         description: price.description,
         quantity: 1,
         value: price.value,

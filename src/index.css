@@ -572,3 +572,20 @@
   .letter-glow { animation: none; box-shadow: none; }
   .foil-text { color: var(--ink, #9B021A); background: none; -webkit-background-clip: initial; background-clip: initial; }
 }
+
+/* ---------- Oficina do duende (espera da carta) ---------- */
+@keyframes elf-snow { from { transform: translateY(-20px); } to { transform: translateY(105vh); } }
+.elf-snow { animation: elf-snow linear infinite; }
+@keyframes elf-flicker { 0%, 100% { opacity: 0.85; } 40% { opacity: 1; } 60% { opacity: 0.7; } }
+.elf-flicker { animation: elf-flicker 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .elf-snow, .elf-flicker { animation: none; } }
+@keyframes ws-fire { 0%, 100% { transform: scale(1, 1); } 30% { transform: scale(1.06, 0.9); } 60% { transform: scale(0.94, 1.08); } }
+.ws-fire { animation: ws-fire 0.9s ease-in-out infinite; transform-box: view-box; }
+.ws-candle { animation: ws-fire 1.3s ease-in-out infinite; transform-box: view-box; }
+@keyframes ws-winsnow { from { transform: translateY(0); } to { transform: translateY(100px); } }
+.ws-winsnow { animation: ws-winsnow linear infinite; }
+@keyframes ws-sparkle { 0% { transform: translateY(0) scale(0.4); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-34px) scale(1.1); opacity: 0; } }
+.ws-sparkle { animation: ws-sparkle 2.6s ease-out infinite; transform-box: fill-box; }
+@keyframes ws-shine { from { transform: translateX(-100%); } to { transform: translateX(200%); } }
+.ws-shine { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent); animation: ws-shine 1.6s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .ws-fire, .ws-candle, .ws-winsnow, .ws-sparkle, .ws-shine { animation: none; } }

@@ -34,6 +34,8 @@ import { celebrateFrom } from "./lib/celebrate";
 import { startCheckout, usePaymentReturn } from "./lib/payment";
 import { loadMe, parentForCheckout } from "./lib/auth";
 import AuthHost from "./components/auth/AuthHost";
+import PlanChooser, { type PaidChoice } from "./components/PlanChooser";
+import { AnimatePresence } from "motion/react";
 import PaymentToast from "./components/PaymentToast";
 import ScrollTopButton from "./components/ScrollTopButton";
 import { snow } from "./lib/snow";
@@ -47,6 +49,7 @@ export default function App() {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
   const [activeLetter, setActiveLetter] = useState<Letter | null>(null);
+  const [chooseFor, setChooseFor] = useState<Letter | null>(null);
   const [payMsg, setPayMsg] = useState<{ kind: "wait" | "ok" | "error"; text: string } | null>(null);
 
   // volta do Asaas: confirma o pagamento e reabre a carta já liberada
@@ -59,7 +62,7 @@ export default function App() {
     if (/^[a-z-]{2,30}$/.test(id)) setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }), 700);
   }, []);
 
-  const pay = async (letter: Letter, plan: "pro" | "natal") => {
+  const pay = async (letter: Letter, plan: PaidChoice) => {
     // a compra fica na conta do responsável (e o e-mail dele recebe tudo)
     if ((await parentForCheckout()) === "cancel") return;
     setPayMsg({ kind: "wait", text: "Abrindo o pagamento seguro do Asaas..." });
@@ -115,7 +118,8 @@ export default function App() {
     setIsWizardOpen(false);
     setActiveLetter(letter);
     // escolheu um plano pago: a carta já fica salva e seguimos para o pagamento
-    if (selectedPlan === "pro" || selectedPlan === "natal") void pay(letter, selectedPlan);
+    if (selectedPlan === "natal" || selectedPlan === "familia") void pay(letter, selectedPlan);
+    else if (selectedPlan === "pro") void pay(letter, "natal");
   };
 
   return (
@@ -209,9 +213,22 @@ export default function App() {
         <LetterView
           letter={activeLetter}
           onClose={closeLetter}
-          onUpgrade={(plan) => void pay(activeLetter, plan)}
+          onUpgrade={() => setChooseFor(activeLetter)}
         />
       )}
+
+      <AnimatePresence>
+        {chooseFor && (
+          <PlanChooser
+            onClose={() => setChooseFor(null)}
+            onPick={(p) => {
+              const l = chooseFor;
+              setChooseFor(null);
+              void pay(l, p);
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       <AuthHost
         onOpenLetter={(token) =>

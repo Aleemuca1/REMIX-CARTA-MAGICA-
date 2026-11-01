@@ -14,7 +14,7 @@ export type LetterRecord = {
   giftRequest: string;
   parentNotes: string;
   style: string;
-  plan: "free" | "pro" | "natal";
+  plan: "free" | "pro" | "natal" | "familia";
   content: string;
   date: string;
   photoUrl?: string;
@@ -26,6 +26,8 @@ export type LetterRecord = {
   parentalConsentAt?: string;
   theme?: string;
   parentId?: string;
+  /** código do pedido pago que cobriu esta carta (irmãos do mesmo plano) */
+  accessCode?: string;
   createdAt?: string;
 };
 
@@ -82,6 +84,7 @@ const letterToRow = (l: Partial<LetterRecord>) => {
     parental_consent_at: l.parentalConsentAt,
     theme: l.theme,
     parent_id: l.parentId,
+    access_code: l.accessCode,
   };
   Object.keys(row).forEach((k) => row[k] === undefined && delete row[k]);
   return row;
@@ -109,6 +112,7 @@ const rowToLetter = (r: any): LetterRecord => ({
   parentalConsentAt: r.parental_consent_at ?? undefined,
   theme: r.theme ?? undefined,
   parentId: r.parent_id ?? undefined,
+  accessCode: r.access_code ?? undefined,
   createdAt: r.created_at,
 });
 
@@ -166,7 +170,7 @@ export async function insertLetter(letter: LetterRecord): Promise<void> {
     ({ error } = await supabase.from("letters").insert(row));
   }
   // se as migrações 006 (cor) ou 007 (login) ainda não foram aplicadas, salva sem essas colunas
-  for (const col of ["theme", "parent_id"]) {
+  for (const col of ["theme", "parent_id", "access_code"]) {
     if (error && new RegExp(col).test(error.message) && col in row) {
       console.warn(`Coluna ${col} ausente em letters: rode as migrações 006/007 do Supabase`);
       delete row[col];
@@ -500,4 +504,17 @@ export async function lettersOfParent(parentId: string, limit = 60): Promise<Let
     .limit(limit);
   if (error) throw new Error(`Supabase lettersOfParent: ${error.message}`);
   return (data ?? []).map(rowToLetter);
+}
+
+
+/** Quantas cartas extras (irmãos) já foram criadas com o código do pedido. Null = não deu para contar. */
+export async function countLettersByCode(code: string): Promise<number | null> {
+  if (!/^[A-Z0-9]{6}$/.test(code)) return null;
+  if (!supabase) return memLetters.filter((l) => l.accessCode === code).length;
+  const { count, error } = await supabase.from("letters").select("id", { count: "exact", head: true }).eq("access_code", code);
+  if (error) {
+    console.warn("countLettersByCode:", error.message, "(rode supabase/migrations/008_planos_criancas.sql)");
+    return null;
+  }
+  return count ?? 0;
 }

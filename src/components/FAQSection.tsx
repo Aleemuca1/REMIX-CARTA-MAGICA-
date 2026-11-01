@@ -10,7 +10,7 @@ const FAQS = [
   },
   {
     q: "A carta gratuita é realmente grátis?",
-    a: "Sim. Você gera e vê a carta completa sem pagar nada. O plano Natal Completo (R$ 29,90, pagamento único) é opcional e acrescenta a voz do Papai Noel, PDF para impressão, certificado e as 24 portinhas do Calendário do Advento.",
+    a: "Sim. Você gera e vê a carta sem pagar nada (até 3 cartas grátis por dia). O Natal Completo é opcional e tem pagamento único: R$ 29,90 para até 2 crianças (6 cartas completas) ou R$ 49,90 no Pacote Família, para até 5 crianças (15 cartas completas). Os dois liberam até 3 cartas completas por criança com 6 vozes, carta brilhante em 5 cores, PDF, imagem HD, certificado e as 24 portinhas do Calendário do Advento.",
   },
   {
     q: "Como funciona o Calendário do Advento?",

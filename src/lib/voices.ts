@@ -1,5 +1,5 @@
 /** Vozes da narração. A primeira é a do plano grátis; as outras são do plano pago. */
-export type VoiceId = "noel" | "noel-alegre" | "mamae" | "duende" | "contador";
+export type VoiceId = "noel" | "noel-alegre" | "mamae" | "duende" | "contador" | "anjo";
 
 export type Voice = {
   id: VoiceId;
@@ -71,6 +71,18 @@ export const VOICES: Voice[] = [
       "Leia como um contador de histórias de Natal: voz calma, mágica e envolvente, com suspense suave e pausas, como um conto lido antes de dormir.",
     pitch: 0.85,
     rate: 0.86,
+    pro: true,
+  },
+  {
+    id: "anjo",
+    label: "Anjinho do Natal",
+    emoji: "👼",
+    gemini: "Vindemiatrix",
+    style:
+      "Leia como um anjinho do Natal: voz suave, delicada e luminosa, cheia de paz e carinho, falando devagar e com doçura, como quem traz uma mensagem especial do céu.",
+    pitch: 1.25,
+    rate: 0.9,
+    female: true,
     pro: true,
   },
 ];

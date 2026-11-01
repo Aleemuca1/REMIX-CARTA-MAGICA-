@@ -1,4 +1,4 @@
-export type PlanType = "free" | "pro" | "natal";
+export type PlanType = "free" | "pro" | "natal" | "familia";
 
 export interface Letter {
   id: string;

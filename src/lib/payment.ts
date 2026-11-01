@@ -5,7 +5,7 @@ import { grantFullAccess, saveAccessCode } from "../advent/access";
 type Msg = { kind: "wait" | "ok" | "error"; text: string } | null;
 
 /** Cria o pedido no servidor e leva para a página de pagamento do Asaas. Devolve uma mensagem de erro, se houver. */
-export async function startCheckout(letterId: string, plan: "pro" | "natal"): Promise<string | null> {
+export async function startCheckout(letterId: string, plan: "pro" | "natal" | "familia"): Promise<string | null> {
   try {
     const res = await fetch("/api/checkout", {
       method: "POST",
@@ -69,7 +69,12 @@ export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Lette
               setMsg({
                 kind: "ok",
                 text:
-                  "Pagamento confirmado! A voz do Papai Noel, o PDF e o Calendário do Advento estão liberados. 🎄" +
+                  "Pagamento confirmado! As 6 vozes, o PDF, o certificado e o Calendário do Advento estão liberados. 🎄" +
+                  (o.plan === "familia"
+                    ? " Agora é só criar as cartas dos irmãos: até 5 crianças e 15 cartas completas no total."
+                    : o.plan === "natal"
+                      ? " Tem outro filho? Crie a carta dele também: são até 2 crianças e 6 cartas completas no total."
+                      : "") +
                   (o.accessCode
                     ? ` Seu código mágico para abrir em outro aparelho: ${o.accessCode} (guarde, ele também aparece no Calendário).`
                     : ""),

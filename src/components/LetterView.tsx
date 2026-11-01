@@ -24,7 +24,7 @@ const SPARKLES: [number, number, number, number][] = [
 interface LetterViewProps {
   letter: Letter;
   onClose: () => void;
-  onUpgrade?: (plan: "pro" | "natal") => void;
+  onUpgrade?: () => void;
 }
 
 export default function LetterView({ letter, onClose, onUpgrade }: LetterViewProps) {
@@ -32,7 +32,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
   const [opened, setOpened] = useState(!!reduce);
   const handleOpened = useCallback(() => setOpened(true), []);
   const paragraphs = (letter.content || "").split(/\n\s*\n/).filter(Boolean);
-  const isPro = letter.plan === "pro" || letter.plan === "natal";
+  const isPro = letter.plan === "pro" || letter.plan === "natal" || letter.plan === "familia";
   const cardRef = useRef<HTMLDivElement | null>(null);
   const narratorRef = useRef<Narrator | null>(null);
   const [speaking, setSpeaking] = useState<"idle" | "loading" | "playing">("idle");
@@ -342,10 +342,10 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                     inteira, você baixa em PDF, imagem HD e vídeo com a voz, e ganha 24 dias de surpresas no Calendário do Advento.
                   </p>
                   <button
-                    onClick={() => onUpgrade?.("natal")}
+                    onClick={() => onUpgrade?.()}
                     className="bg-gradient-to-r from-[var(--accent)] to-[var(--accent2)] text-white font-bold px-4 py-2 rounded-full text-xs sm:text-sm whitespace-nowrap btn-shine cursor-pointer"
                   >
-                    <span className="relative z-10">Liberar tudo · R$ 29,90</span>
+                    <span className="relative z-10">Liberar tudo · a partir de R$ 29,90</span>
                   </button>
                 </div>
               </motion.div>
@@ -520,7 +520,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
             isPro={isPro}
             voice={voiceById(isPro ? voiceId : "noel")}
             onClose={() => setShareOpen(false)}
-            onUpgrade={onUpgrade ? () => onUpgrade("natal") : undefined}
+            onUpgrade={onUpgrade ? () => onUpgrade() : undefined}
           />
         )}
       </AnimatePresence>

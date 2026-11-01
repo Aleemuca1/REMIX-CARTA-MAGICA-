@@ -41,11 +41,11 @@ export default function ProUpsell({
         <h4 className="font-cinzel text-xl sm:text-2xl font-bold text-white mb-2">{title}</h4>
         <p className="text-sm text-[#EDF2F4]/80 mb-4 leading-relaxed">{text}</p>
         <ul className="text-xs text-left text-[#EDF2F4]/80 space-y-1 bg-white/5 rounded-2xl p-3 mb-5 border border-white/10">
-          <li>✓ Voz do Papai Noel lendo a carta inteira (5 vozes)</li>
+          <li>✓ 2 crianças e 6 cartas (R$ 29,90) ou 5 crianças e 15 cartas (R$ 49,90)</li>
+          <li>✓ 6 vozes lendo a carta inteira</li>
+          <li>✓ Carta brilhante em 5 cores, PDF, imagem HD e certificado</li>
           <li>✓ 24 portinhas do Calendário do Advento</li>
-          <li>✓ Árvore com enfeites ilimitados e Modo Ceia com voz</li>
-          <li>✓ Desenhos e adesivos exclusivos no Ateliê</li>
-          <li>✓ PDF para imprimir e certificado</li>
+          <li>✓ Árvore ilimitada, Modo Ceia com voz e Ateliê completo</li>
         </ul>
         {onUpgrade && (
           <button
@@ -54,7 +54,7 @@ export default function ProUpsell({
             id="pro-upsell-btn"
           >
             <Crown className="w-4 h-4 text-[#FFD166] relative z-10" />
-            <span className="relative z-10">Liberar tudo · R$ 29,90</span>
+            <span className="relative z-10">Liberar tudo · a partir de R$ 29,90</span>
           </button>
         )}
         <button onClick={onClose} className="mt-3 text-sm text-white/60 hover:text-white underline cursor-pointer inline-flex items-center gap-1">

@@ -15,7 +15,18 @@ type Plan = {
   cta: string;
   features: { text: string; strong?: boolean }[];
   highlight?: boolean;
+  kids?: string;
 };
+
+const PAID: { text: string; strong?: boolean }[] = [
+  { text: "Até 3 cartas completas por criança, com o nome dela", strong: true },
+  { text: "6 vozes lendo a carta inteira: Papai Noel, Noel animado, Mamãe Noel, Duende, Contador de histórias e Anjinho", strong: true },
+  { text: "Carta brilhante em 5 cores, com moldura que brilha", strong: true },
+  { text: "PDF para imprimir, imagem HD e vídeo com a voz" },
+  { text: "Certificado de Bom Comportamento" },
+  { text: "24 surpresas no Calendário do Advento" },
+  { text: "Árvore ilimitada, Modo Ceia com voz e Ateliê completo" },
+];
 
 const PLANS: Plan[] = [
   {
@@ -26,32 +37,34 @@ const PLANS: Plan[] = [
     note: "para sempre",
     cta: "Gerar carta grátis",
     features: [
-      { text: "Carta personalizada com o nome da criança" },
-      { text: "Envelope mágico animado" },
+      { text: "Até 3 cartas por dia com o nome da criança" },
+      { text: "Envelope mágico e carta brilhante em 5 cores" },
       { text: "Prévia da voz do Papai Noel" },
-      { text: "Jogo Entrega Relâmpago completo" },
-      { text: "Ateliê de Natal com 8 desenhos e desenho livre" },
-      { text: "Árvore da Família com até 12 enfeites" },
+      { text: "Jogos, Árvore de Luz e Lista do Bom Comportamento" },
+      { text: "Ateliê de Natal com desenhos para colorir" },
       { text: "1ª portinha do Calendário do Advento" },
     ],
   },
   {
     id: "natal",
-    name: "Natal Completo",
-    tag: "PRO · tudo incluído",
+    name: "Carta Completa",
+    tag: "Mais escolhido · até 2 crianças",
+    kids: "👧👦 até 2 crianças · 6 cartas completas",
     price: "R$ 29,90",
     note: "pagamento único",
-    cta: "Quero o Natal Completo",
+    cta: "Quero para meus filhos",
     highlight: true,
-    features: [
-      { text: "Carta completa e personalizada", strong: true },
-      { text: "Voz do Papai Noel lendo a carta (5 vozes)", strong: true },
-      { text: "24 dias de surpresas no Calendário do Advento", strong: true },
-      { text: "Árvore ilimitada + Modo Ceia com a voz do Papai Noel", strong: true },
-      { text: "PDF para imprimir e Certificado de Bom Comportamento" },
-      { text: "Desenhos, adesivos e moldura com nome no Ateliê" },
-      { text: "Link para avós e tios verem a carta" },
-    ],
+    features: PAID,
+  },
+  {
+    id: "familia",
+    name: "Pacote Família",
+    tag: "Até 5 crianças",
+    kids: "👨‍👩‍👧‍👦 até 5 crianças · 15 cartas completas",
+    price: "R$ 49,90",
+    note: "pagamento único",
+    cta: "Quero o Pacote Família",
+    features: PAID,
   },
 ];
 
@@ -62,11 +75,11 @@ export default function PricingSection({ onSelectPlan }: PricingSectionProps) {
         <span className="text-xs text-[#FFD166] uppercase font-bold tracking-widest block mb-2">Acessível para todas as famílias</span>
         <h2 className="font-cinzel text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4">Escolha a experiência ideal</h2>
         <p className="text-sm sm:text-base text-[#EDF2F4]/75">
-          Comece grátis e, se quiser, leve a magia até a noite de Natal com o Calendário do Advento.
+          Comece grátis. Se quiser, libere tudo para os seus filhos com pagamento único: cada criança ganha a sua carta completa, com o próprio nome.
         </p>
       </Reveal>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 items-stretch max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-7 items-stretch max-w-6xl mx-auto">
         {PLANS.map((p, i) => (
           <Reveal key={p.id} delay={0.1 + i * 0.12} className={`h-full ${p.highlight ? "md:-mt-4 md:mb-4" : ""}`}>
             <div
@@ -86,11 +99,12 @@ export default function PricingSection({ onSelectPlan }: PricingSectionProps) {
                 <div className="flex justify-between items-center mb-4 mt-2 gap-2">
                   <h3 className="font-cinzel text-xl font-bold text-white">{p.name}</h3>
                   {!p.highlight && (
-                    <span className={`text-xs px-3 py-1 rounded-full font-bold ${p.id === "pro" ? "bg-[#FFD166]/20 text-[#FFD166] border border-[#FFD166]/40" : "bg-white/10 text-[#EDF2F4]/80"}`}>
+                    <span className={`text-xs px-3 py-1 rounded-full font-bold whitespace-nowrap ${p.id === "familia" ? "bg-[#2DC653]/20 text-[#7BE495] border border-[#2DC653]/40" : "bg-white/10 text-[#EDF2F4]/80"}`}>
                       {p.tag}
                     </span>
                   )}
                 </div>
+                {p.kids && <p className="text-sm font-bold text-[#FFE9A8] -mt-2 mb-2">{p.kids}</p>}
                 <div className="mb-6">
                   <span className={`text-3xl sm:text-4xl font-extrabold font-cinzel ${p.id === "free" ? "text-white" : "text-[#FFD166]"}`}>{p.price}</span>
                   <span className="text-xs text-[#EDF2F4]/60 ml-2">{p.note}</span>

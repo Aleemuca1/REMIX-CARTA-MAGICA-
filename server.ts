@@ -388,6 +388,39 @@ app.get("/api/letter/:token", async (req, res) => {
     res.status(500).json({ error: "Erro ao buscar a carta" });
   }
 });
+
+/** Confere se o código de um pedido pago ainda tem carta completa sobrando. */
+async function codeStatus(raw: unknown) {
+  const code = String(raw ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (code.length !== 6) return null;
+  const order = await db.findPaidOrderByCode(code);
+  if (!order) return null;
+  const limit = asaas.PLAN_LETTERS[order.plan] ?? 1;
+  const extra = await db.countLettersByCode(code);
+  if (extra === null) return { code, plan: order.plan, limit, used: limit, remaining: 0 };
+  const used = 1 + extra; // a carta do pagamento + as dos irmãos
+  return { code, plan: order.plan, limit, used, remaining: Math.max(0, limit - used), children: asaas.PLAN_CHILDREN[order.plan] ?? 1 };
+}
+async function coveredByCode(raw: unknown) {
+  if (!raw) return null;
+  try {
+    const st = await codeStatus(raw);
+    return st && st.remaining > 0 ? { code: st.code, plan: st.plan as any } : null;
+  } catch {
+    return null;
+  }
+}
+app.get("/api/access/status/:code", async (req, res) => {
+  if (tooMany(`status:${ipOf(req)}`, 40, 10 * 60 * 1000)) return res.status(429).json({ error: "Muitas tentativas." });
+  try {
+    const st = await codeStatus(req.params.code);
+    if (!st) return res.status(404).json({ error: "Código não encontrado." });
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ plan: st.plan, limit: st.limit, used: st.used, remaining: st.remaining, children: (st as any).children ?? 1 });
+  } catch {
+    res.status(500).json({ error: "Erro ao conferir o código." });
+  }
+});
 const LETTER_THEME_IDS = ["classico", "rosa", "lilas", "azul", "verde"];
 app.post("/api/generate-letter", async (req, res) => {
   try {
@@ -399,10 +432,19 @@ app.post("/api/generate-letter", async (req, res) => {
       giftRequest,
       parentNotes,
       style = "m\xE1gico",
-      plan = "free",
       photoUrl,
       parentalConsent,
     } = req.body;
+    // irmãos: o código do pedido pago cobre mais cartas completas (2 no plano Carta Completa, 5 no Família)
+    const covered = parentalConsent === true ? await coveredByCode(req.body?.accessCode) : null;
+    const plan = covered ? covered.plan : req.body?.plan || "free";
+    // carta grátis: limite por dia (a IA tem custo). Por aparelho é 3; aqui é um teto por rede, mais folgado.
+    if (!covered && tooMany(`gen:${ipOf(req)}`, 15, 24 * 60 * 60 * 1000)) {
+      return res.status(429).json({
+        error: "Hoje já foram criadas muitas cartas grátis por aqui. Volte amanhã ou libere o Natal Completo para criar as cartas completas dos seus filhos.",
+        limit: true,
+      });
+    }
     const extras = cleanExtras(req.body?.extras);
     const theme = LETTER_THEME_IDS.includes(String(req.body?.theme)) ? String(req.body.theme) : "classico";
     const toneDesc = TONES[String(style)] ?? TONES["mágico"];
@@ -423,7 +465,7 @@ app.post("/api/generate-letter", async (req, res) => {
     }
     // o plano pedido só define o tamanho da carta; o acesso pago só é liberado
     // depois que o Asaas confirma o pagamento (webhook)
-    const isPro = plan === "pro" || plan === "natal";
+    const isPro = plan === "pro" || plan === "natal" || plan === "familia";
     let letterContent = "";
     let generatedWithAI = false;
     const ai = getGeminiClient();
@@ -497,7 +539,8 @@ ${extrasText ? `${extrasText}\n` : ""}- Plano: ${isPro ? "PRO (m\xE1xima profund
       style,
       theme,
       parentId: (await currentParent(req))?.id,
-      plan: "free",
+      plan: covered ? covered.plan : "free",
+      accessCode: covered ? covered.code : undefined,
       parentalConsentAt: new Date().toISOString(),
       content: letterContent,
       date: new Date().toLocaleDateString("pt-BR"),
@@ -552,7 +595,7 @@ app.post("/api/tts", async (req, res) => {
       }
       childName = letterRec.childName;
       const paras = String(letterRec.content || "").split(/\n\s*\n/).filter(Boolean);
-      const paidVoice = letterRec.plan === "pro" || letterRec.plan === "natal";
+      const paidVoice = letterRec.plan === "pro" || letterRec.plan === "natal" || letterRec.plan === "familia";
       text = paidVoice ? letterRec.content : paras.slice(0, 2).join("\n\n");
       // outras vozes são do plano pago
       if (!paidVoice) voice = voiceById("noel");
@@ -688,7 +731,7 @@ app.post("/api/generate-pdf", (req, res) => {
       plan = "pro",
       photoUrl,
     } = req.body;
-    const isPro = plan === "pro" || plan === "natal";
+    const isPro = plan === "pro" || plan === "natal" || plan === "familia";
     const waterMarkHtml = !isPro
       ? `<div style="position: absolute; bottom: 20px; left: 0; right: 0; text-align: center; font-size: 11px; color: #9B021A; opacity: 0.7;">
           Vers\xE3o de Degusta\xE7\xE3o \u2022 Carta M\xE1gica (cartamagica.com.br)
@@ -937,7 +980,7 @@ app.post("/api/checkout", async (req, res) => {
   try {
     const { letterId } = req.body || {};
     // um único plano pago: Natal Completo (R$ 29,90). "pro" antigo vira "natal".
-    const plan = asaas.isPaidPlan(req.body?.plan) ? "natal" : null;
+    const plan = req.body?.plan === "familia" ? "familia" : asaas.isPaidPlan(req.body?.plan) ? "natal" : null;
     if (!plan) {
       return res.status(400).json({ error: "Plano inválido." });
     }

@@ -369,7 +369,7 @@ function ParentArea({ email, name, onOpen, onCreate }: { email: string; name?: s
                   <span
                     className={`text-[10px] font-bold rounded-full px-2 py-1 ${l.plan === "free" ? "bg-white/10 text-white/70" : "bg-[#FFD166] text-[#0B132B]"}`}
                   >
-                    {l.plan === "free" ? "Grátis" : "Natal Completo"}
+                    {l.plan === "free" ? "Grátis" : l.plan === "familia" ? "Pacote Família" : "Natal Completo"}
                   </span>
                 </button>
               </li>

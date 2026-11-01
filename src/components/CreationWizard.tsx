@@ -1,5 +1,28 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { LETTER_THEMES } from "../lib/letterThemes";
+import { getAccessCode } from "../advent/access";
+import ElfWorkshopLoader from "./ElfWorkshopLoader";
+import { createPortal } from "react-dom";
+
+// cartas grátis por dia neste aparelho
+const FREE_PER_DAY = 3;
+const FREE_KEY = "carta-magica-gratis-hoje";
+const today = () => new Date().toISOString().slice(0, 10);
+function freeToday(): number {
+  try {
+    const v = JSON.parse(localStorage.getItem(FREE_KEY) || "{}");
+    return v.d === today() ? Number(v.n) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+function countFree() {
+  try {
+    localStorage.setItem(FREE_KEY, JSON.stringify({ d: today(), n: freeToday() + 1 }));
+  } catch {
+    /* sem armazenamento */
+  }
+}
 import { prettyCity, prettyName } from "../lib/prettyText";
 import BackButton from "./BackButton";
 import { useBackClose } from "../lib/backClose";
@@ -28,6 +51,18 @@ export default function CreationWizard({
   const [parentNotes, setParentNotes] = useState("");
   const [style, setStyle] = useState("mágico");
   const [theme, setTheme] = useState("classico");
+  // plano pago com cartas de irmãos sobrando (código salvo depois do pagamento)
+  const [credit, setCredit] = useState<{ code: string; remaining: number; limit: number; children: number } | null>(null);
+  const [limitMsg, setLimitMsg] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    const code = getAccessCode();
+    if (!code) return;
+    fetch(`/api/access/status/${encodeURIComponent(code)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setCredit(d && d.remaining > 0 ? { code, remaining: d.remaining, limit: d.limit, children: d.children ?? 1 } : null))
+      .catch(() => setCredit(null));
+  }, [isOpen]);
   const [more, setMore] = useState(false);
   const [extras, setExtras] = useState({ siblings: "", pet: "", friend: "", food: "", favorite: "", encourage: "" });
   const setX = (k: keyof typeof extras, v: string) => setExtras((x) => ({ ...x, [k]: v.slice(0, k === "encourage" ? 90 : 60) }));
@@ -57,6 +92,12 @@ export default function CreationWizard({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!childName.trim()) return;
+    setLimitMsg(null);
+    // carta grátis: até 3 por dia neste aparelho
+    if (!credit && freeToday() >= FREE_PER_DAY) {
+      setLimitMsg(`Você já criou ${FREE_PER_DAY} cartas grátis hoje neste aparelho. Volte amanhã ou libere o Natal Completo: cada criança ganha até 3 cartas completas.`);
+      return;
+    }
 
     setLoading(true);
 
@@ -75,13 +116,21 @@ export default function CreationWizard({
           theme,
           extras,
           plan,
+          accessCode: credit?.code,
           parentalConsent: consent,
         }),
       });
 
+      if (res.status === 429 || res.status === 400) {
+        const data = await res.json().catch(() => ({}));
+        setLimitMsg(data.error || "Não foi possível criar a carta agora.");
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
-        onGenerated(data.letter ?? data);
+        const l = data.letter ?? data;
+        if (!credit && (l.plan ?? "free") === "free") countFree();
+        onGenerated(l);
       } else {
         // Fallback local se o backend não responder
         const mockLetter: Letter = {
@@ -175,6 +224,14 @@ Papai Noel 🎅`,
         <p className="text-xs sm:text-sm text-[#EDF2F4]/70 mb-6">
           Preencha os detalhes para que o Papai Noel mencione fatos reais que vão emocionar seu filho.
         </p>
+
+        {credit && (
+          <div className="mb-4 rounded-2xl border border-[#FFD166]/60 bg-[#FFD166]/10 px-4 py-3 text-[#FFE9A8] text-xs sm:text-sm" id="wizard-credit">
+            👑 <b>Incluída no seu Natal Completo:</b> você ainda pode criar {credit.remaining}{" "}
+            {credit.remaining === 1 ? "carta completa" : "cartas completas"} (plano para até {credit.children}{" "}
+            {credit.children === 1 ? "criança" : "crianças"}, 3 cartas por criança). Esta já sai com as 6 vozes, PDF e certificado!
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
           <div>
@@ -374,6 +431,21 @@ Papai Noel 🎅`,
             </span>
           </label>
 
+          {limitMsg && (
+            <div className="mt-4 rounded-2xl border border-[#FF8FA3]/60 bg-[#D90429]/15 px-4 py-3 text-sm text-white" id="wizard-limit" role="alert">
+              {limitMsg}{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  setTimeout(() => document.getElementById("precos")?.scrollIntoView({ behavior: "smooth" }), 250);
+                }}
+                className="underline font-bold text-[#FFD166] cursor-pointer"
+              >
+                Ver planos
+              </button>
+            </div>
+          )}
           <button
             type="submit"
             disabled={loading || !childName.trim() || !city.trim() || !consent}
@@ -405,6 +477,10 @@ Papai Noel 🎅`,
           </button>
         </form>
       </motion.div>
+      {createPortal(
+        <AnimatePresence>{loading && <ElfWorkshopLoader key="elf" childName={prettyName(childName)} achievement={achievements} />}</AnimatePresence>,
+        document.body,
+      )}
     </motion.div>
   );
 }
