@@ -298,66 +298,87 @@ function extrasForPrompt(x: LetterExtras) {
   return lines.join("\n");
 }
 
+const ACCENTS: Record<string, string> = {
+  matematica: "matemática", portugues: "português", ingles: "inglês", historia: "história", ciencias: "ciências", musica: "música",
+  bicicleta: "bicicleta", videogame: "videogame", ferias: "férias", ja: "já", tambem: "também", voce: "você", irmao: "irmão",
+  irma: "irmã", educacao: "educação", licao: "lição", licoes: "lições", natacao: "natação", ballet: "balé", onibus: "ônibus", lapis: "lápis",
+};
+/** Arruma o que os pais escreveram para caber numa frase: "aprendeu matematica e foi obediente e passou de ano" -> "aprendeu matematica, foi obediente e passou de ano". */
+function tidyPhrase(raw: string) {
+  let t = String(raw || "").replace(/\s+/g, " ").trim().replace(/[.!;]+$/, "");
+  if (!t) return "";
+  const parts = t.split(/\s*(?:,|\be\b)\s+/i).map((x) => x.trim()).filter(Boolean);
+  if (parts.length > 1) t = `${parts.slice(0, -1).join(", ")} e ${parts[parts.length - 1]}`;
+  // acentos que os pais costumam esquecer ao digitar no celular
+  t = t.replace(/\b(matematica|portugues|ingles|historia|ciencias|musica|bicicleta|video ?game|ferias|ja|tambem|voce|irmao|irma|educacao|licao|licoes|natacao|ballet|onibus|lapis)\b/gi, (w) => ACCENTS[w.toLowerCase().replace(" ", "")] ?? w);
+  // primeira letra minúscula (vai no meio da frase), menos siglas e nomes
+  if (/^[A-ZÀ-Ú][a-zà-ú]/.test(t) && !/^(Eu|Ele|Ela)\b/.test(t)) t = t[0].toLowerCase() + t.slice(1);
+  return t;
+}
+/** Conquista começa com verbo ("aprendeu", "foi")? Então cabe depois de "você". */
+const startsWithVerb = (t: string) => /^(aprendeu|foi|passou|ajudou|conseguiu|tirou|ganhou|fez|come[cç]ou|terminou|leu|venceu|cuidou|comeu|dormiu|parou|deixou|largou|entrou|treinou|tocou|nadou|andou|virou|ficou|obedeceu|respeitou|dividiu|compartilhou|escreveu|desenhou|mudou|se\s)/i.test(t);
+
 function generateFallbackLetter(data) {
   const isPro = data.plan === "pro";
-  const name = data.childName.trim();
+  const name = String(data.childName || "").trim().split(/\s+/)[0] || "querido(a)";
   const city = String(data.city || "").trim().slice(0, 60);
   const age = data.age;
-  const achievements =
-    data.achievements?.trim() ||
-    "foi uma crian\xE7a gentil, bondosa e cheia de alegria";
-  const gift =
-    data.giftRequest?.trim() || "uma surpresa m\xE1gica feita com todo o amor";
-  const parentNotes = data.parentNotes?.trim() || "";
+  const ach = tidyPhrase(data.achievements);
+  const achLine = !ach
+    ? "você foi uma criança gentil, bondosa e cheia de alegria"
+    : startsWithVerb(ach)
+      ? `você ${ach}`
+      : `você teve um ano lindo: ${ach}`;
+  const gift = tidyPhrase(data.giftRequest);
+  const parentNotes = String(data.parentNotes || "").replace(/\s+/g, " ").trim();
   const x: LetterExtras = data.extras || {};
-  const ps = x.pet
-    ? `\n\nP.S.: Mande um abraço bem apertado para ${x.pet}! As renas querem conhecer esse amigo especial. \u{1F98C}`
-    : x.food
-      ? `\n\nP.S.: Os duendes descobriram que você adora ${x.food} e agora querem provar também! \u{1F604}`
-      : x.friend
-        ? `\n\nP.S.: Diga ao(à) ${x.friend} que o Papai Noel mandou um oi! \u2728`
-        : "";
   const sib = x.siblings ? ` e ${x.siblings}` : "";
-  if (isPro) {
-    return `Ho Ho Ho! Ol\xE1, ${name}${sib}, meu ajudante favorito de ${city}!
-
-Daqui do topo do Polo Norte, onde as luzes douradas e esmeraldas da Aurora Boreal dan\xE7am pelo c\xE9u estrelado e as cabanas de madeira soltam fuma\xE7a quentinha com aroma de canela, peguei minha pena de cristal mais brilhante para escrever uma mensagem especial e \xFAnica para voc\xEA a\xED em ${city}!
-
-Abri o Grande Livro Dourado das Boas A\xE7\xF5es que os elfos guardam no cora\xE7\xE3o da biblioteca polar. Quando encontrei a sua p\xE1gina, com seus ${age} anos de idade, meu cora\xE7\xE3o se encheu de orgulho e alegria ao ler que voc\xEA ${achievements}! A Mam\xE3e Noel e os duendes artes\xE3os aplaudiram com sorrisos largos. Pequenos gestos de coragem, bondade e amor fazem o mundo inteiro brilhar mais forte.
-
-Eu mesmo, com minha caneta de pena dourada, j\xE1 coloquei uma fita dourada no registro do seu pedido especial: "${gift}". Nossos duendes inventores est\xE3o trabalhando com muito esmero e alegria na oficina central de brinquedos, garantindo que a noite m\xE1gica seja repleta de encanto e surpresas preparadas com carinho.
-
-${
-  parentNotes
-    ? `Seus pais me contaram tamb\xE9m um segredinho com os olhinhos cheios de ternura: ${parentNotes}. O amor da sua fam\xEDlia \xE9 o verdadeiro p\xF3 de estrelas que ilumina todo o caminho do tren\xF3!
-
-`
-    : ""
-}Continue sendo essa crian\xE7a t\xE3o valente, curiosa, doce e protetora de quem est\xE1 ao seu redor. Na Noite de Natal, quando os sininhos tocarem no c\xE9u gelado, saiba que estou enviando uma chuva de b\xEAn\xE7\xE3os, sa\xFAde e p\xF3 de estrelas cintilantes para o seu lar.
-
-\u{1F3AF} Miss\xE3o secreta de Natal: at\xE9 o dia 24, d\xEA um abra\xE7o surpresa em algu\xE9m da sua casa e conte para ele(a) uma coisa que voc\xEA admira nele(a). Os duendes v\xE3o anotar tudo no Livro Dourado!
-
-At\xE9 a noite de Natal, ${name}! Vou passar pertinho da sua casa e mandar um tchauzinho l\xE1 do tren\xF3.${ps}`;
-  }
-  return `Ho Ho Ho! Ol\xE1, ${name}${sib}, meu ajudante favorito de ${city}!
-
-Aqui da minha oficina m\xE1gica no Polo Norte, cercado por montanhas de neve branquinha e o brilho suave das estrelas de Natal, observei voc\xEA a\xED na cidade de ${city}!
-
-O Grande Livro Dourado me mostrou com muita alegria que, aos seus ${age} anos de idade, voc\xEA ${achievements}! Que orgulho ver seu crescimento e o seu cora\xE7\xE3o t\xE3o bondoso.
-
-Eu e a Mam\xE3e Noel j\xE1 lemos a sua cartinha sobre o seu pedido: ${gift}. Os duendes est\xE3o preparando tudo com muito carinho e anima\xE7\xE3o para a chegada do Natal.
-
-${
-  parentNotes
-    ? `Seus pais t\xEAm um amor infinito por voc\xEA e se orgulham muito da pessoa incr\xEDvel que voc\xEA \xE9.
-
-`
-    : ""
-}Guarde sempre o brilho da esperan\xE7a e da alegria no seu cora\xE7\xE3o, espalhando sorrisos por onde passar.
-
-\u{1F3AF} Miss\xE3o secreta de Natal: at\xE9 o dia 24, d\xEA um abra\xE7o surpresa em algu\xE9m da sua casa e conte para ele(a) uma coisa que voc\xEA admira nele(a). Os duendes v\xE3o anotar tudo no Livro Dourado!
-
-At\xE9 a noite de Natal, ${name}! Vou passar pertinho da sua casa e mandar um tchauzinho l\xE1 do tren\xF3.${ps}`;
+  const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
+  const openings = [
+    `Hoje de manhã, quando os duendes entregaram a pilha de cartas, a sua estava brilhando tanto que a Mamãe Noel precisou colocar óculos escuros! Dei uma gargalhada tão grande que a minha barba balançou feito gelatina.`,
+    `Você não vai acreditar: assim que vi o seu nome na pilha de cartas, o meu gorro saiu voando de alegria e foi parar no nariz de uma rena! Os duendes riram tanto que derrubaram uma caixa inteira de bolinhas de Natal.`,
+    `Aqui no Polo Norte a notícia correu rápido: os duendes fizeram uma festa com chocolate quente e dança na neve só para comemorar o ano incrível que você teve aí em ${city}!`,
+  ];
+  const missions = [
+    `até o dia 24, dê um abraço surpresa em alguém da sua casa e conte uma coisa que você admira nessa pessoa. Os duendes vão anotar tudo no Livro Dourado!`,
+    `faça um desenho bem bonito para o Papai Noel e deixe na janela na noite de Natal. Prometo dar uma espiadinha lá do trenó!`,
+    `ajude alguém da sua família numa tarefa (pôr a mesa, guardar os brinquedos ou regar uma plantinha) sem ninguém pedir. É uma magia secreta que faz o Natal brilhar mais!`,
+  ];
+  const farewells = [
+    `Até a noite de Natal, ${name}! Vou passar pertinho da sua casa e mandar um tchauzinho lá do trenó.`,
+    `Fique de olho no céu na véspera de Natal, ${name}: se vir uma luzinha vermelha piscando, sou eu acenando para você!`,
+    `Um abraço quentinho do tamanho do Polo Norte, ${name}! Nos vemos na noite mais mágica do ano.`,
+  ];
+  const ps = x.pet
+    ? `P.S.: Mande um abraço bem apertado para ${x.pet}! As renas querem muito conhecer esse amigo especial.`
+    : x.food
+      ? `P.S.: Os duendes descobriram que você adora ${x.food} e agora querem provar também. Será que sobra um pedacinho para eles?`
+      : x.friend
+        ? `P.S.: Diga ao(à) ${x.friend} que o Papai Noel mandou um oi bem animado!`
+        : pick([
+            `P.S.: A Mamãe Noel pediu para avisar que fez biscoitos com o seu nome escrito em chocolate. Eu já comi dois... shhh, não conte para ela!`,
+            `P.S.: Uma das renas tentou ler a sua carta e acabou espirrando purpurina na oficina inteira. Agora está tudo brilhando!`,
+          ]);
+  const paras: string[] = [];
+  paras.push(`Ho Ho Ho! Olá, ${name}${sib}, meu ajudante favorito de ${city}!`);
+  paras.push(pick(openings));
+  paras.push(
+    `Abri o Grande Livro Dourado na sua página e li, com o coração cheio de orgulho, que neste ano, aos ${age} anos, ${achLine}! Isso é coisa de criança muito especial, ${name}. A Mamãe Noel e os duendes bateram palmas na hora.${isPro ? " Cada passo seu mostra o quanto você é corajoso(a), esforçado(a) e cheio(a) de luz." : ""}`,
+  );
+  paras.push(
+    gift
+      ? `Eu mesmo anotei o seu pedido no Grande Livro Dourado com a minha caneta de pena brilhante: ${gift}. Os duendes já sabem e estão trabalhando com muito carinho na oficina.`
+      : `Os duendes estão trabalhando com muito carinho na oficina, preparando um Natal cheio de surpresas e alegria para a sua casa.`,
+  );
+  paras.push(
+    parentNotes
+      ? `E a sua família me mandou um recadinho especial para você: “${parentNotes}”. Guarde isso no coração, porque o amor da família é a magia mais forte que existe.`
+      : `A sua família tem muito orgulho de você e um amor do tamanho do céu estrelado. Esse é o presente mais bonito de todos.`,
+  );
+  paras.push(`🎯 Missão secreta de Natal: ${pick(missions)}`);
+  paras.push(pick(farewells));
+  paras.push(ps);
+  return paras.join("\n\n");
 }
 __name(generateFallbackLetter, "generateFallbackLetter");
 app.get("/api/health", (_req, res) => {
@@ -426,6 +447,7 @@ app.get("/api/access/status/:code", async (req, res) => {
   }
 });
 const LETTER_THEME_IDS = ["classico", "rosa", "lilas", "azul", "verde"];
+const LETTER_MODELS = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
 app.post("/api/generate-letter", async (req, res) => {
   try {
     const {
@@ -480,7 +502,7 @@ app.post("/api/generate-letter", async (req, res) => {
 ESTRUTURA (cada parte em um parágrafo separado por uma linha em branco):
 1. SAUDAÇÃO: uma única linha animada e criativa com o nome, por exemplo "Ho Ho Ho! Olá, ${childName}, meu ajudante favorito de ${city}!". Varie: não repita sempre a mesma frase.
 2. ABERTURA MÁGICA: conte uma cena engraçada ou surpreendente que acabou de acontecer COM O PRÓPRIO PAPAI NOEL no Polo Norte por causa da criança (ex.: deu uma gargalhada tão grande que a barba balançou; o gorro saiu voando de alegria ao ler o nome dela; os duendes fizeram uma festa). Seja inventivo e diferente a cada carta.
-3. CONQUISTAS: elogie com orgulho e de forma concreta o que a família contou (use as palavras deles), lembrando a idade e a cidade.
+3. CONQUISTAS (OBRIGATÓRIO): cite UMA POR UMA, de forma explícita e concreta, TODAS as conquistas que a família escreveu (ex.: se escreveram "aprendeu matemática, foi obediente e passou de ano", a carta precisa falar da matemática, da obediência e de ter passado de ano). Corrija a ortografia do que os pais digitaram, sem mudar o sentido. Lembre a idade e a cidade.
 4. PEDIDO DE NATAL: diga que o próprio Papai Noel anotou o pedido (${giftRequest || "uma surpresa especial"}) no Grande Livro Dourado, com carinho e sem prometer que o presente vai chegar.
 5. CARINHO DA FAMÍLIA: ${parentNotes ? `inclua com delicadeza o recado dos responsáveis: "${parentNotes}".` : "lembre que a família tem muito orgulho e amor por ela."}
 6. MISSÃO SECRETA: um parágrafo que começa exatamente com "🎯 Missão secreta de Natal:" e traz uma pequena missão gentil e divertida para a criança cumprir até o Natal (ex.: dar um abraço surpresa em alguém, ajudar a pôr a mesa, desenhar algo para o Papai Noel e deixar na janela). Uma frase ou duas.
@@ -492,6 +514,8 @@ REGRAS IMPORTANTES:
 - NUNCA use chantagem ("se não obedecer não ganha presente") nem prometa presentes. O Papai Noel é pura bondade e aconchego.
 - Use no máximo 3 emojis na carta toda, além do 🎯 da missão.
 - Use o nome da criança pelo menos 3 vezes ao longo da carta.
+- Tudo o que a família escreveu (conquistas, pedido e recado) TEM que aparecer na carta. Antes de terminar, confira se nada ficou de fora.
+- Escreva com ortografia e acentuação perfeitas: esta carta será impressa e guardada pela criança para sempre.
 - Tom da carta: ${toneDesc}.
 - Tamanho: ${isPro ? "carta completa e caprichada, com cerca de 230 a 300 palavras" : "carta acolhedora com cerca de 150 a 190 palavras"}.
 - Idioma: português do Brasil, simples, mágico e afetuoso. Escreva somente a carta, sem títulos nem marcações.`;
@@ -499,19 +523,28 @@ REGRAS IMPORTANTES:
 - Crian\xE7a: ${childName}
 - Idade: ${age} anos
 - Cidade: ${city}
-- Conquistas e atitudes especiais: ${achievements || "Foi gentil e espalhou alegria"}
+- Conquistas e atitudes especiais (citar TODAS na carta): ${achievements || "Foi gentil e espalhou alegria"}
 - Pedido de presente na cartinha: ${giftRequest || "Um presente feito com amor"}
 - Palavras especiais dos pais/respons\xE1veis: ${parentNotes || "Nenhum detalhe extra"}
 ${extrasText ? `${extrasText}\n` : ""}- Plano: ${isPro ? "PRO (m\xE1xima profundidade emocional, detalhes sensoriais e magia liter\xE1ria)" : "Gratuito (b\xE1sica, terna e envolvente)"}
 - Estilo: ${style}`;
-        const response = await ai.models.generateContent({
-          model: "gemini-3.8-flash",
-          contents: userPrompt,
-          config: { systemInstruction, temperature: 0.9 },
-        });
-        if (response && response.text) {
-          letterContent = response.text.trim();
-          generatedWithAI = true;
+        // se um modelo falhar (fila cheia, instabilidade), tenta o próximo antes de usar a carta reserva
+        for (const model of LETTER_MODELS) {
+          try {
+            const response = await ai.models.generateContent({
+              model,
+              contents: userPrompt,
+              config: { systemInstruction, temperature: 0.9 },
+            });
+            const txt = response?.text?.trim();
+            if (txt && txt.length > 200) {
+              letterContent = txt;
+              generatedWithAI = true;
+              break;
+            }
+          } catch (e) {
+            console.warn(`Gemini (${model}) falhou:`, e?.message || e);
+          }
         }
       } catch (err) {
         console.warn(

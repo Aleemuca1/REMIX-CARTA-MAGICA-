@@ -23,13 +23,13 @@ const SPARKLES: [number, number, number, number][] = [
 
 type ParaKind = "greeting" | "first" | "body" | "mission" | "farewell" | "ps";
 const KIND_CLASS: Record<ParaKind, string> = {
-  greeting: "font-xmas text-[28px] sm:text-[34px] leading-tight text-[var(--ink)] font-bold",
+  greeting: "font-xmas text-[30px] sm:text-[38px] leading-[1.15] text-[var(--ink)] font-bold tracking-wide",
   first: "drop-cap",
   body: "",
   mission:
-    "bg-[#FFF3C4]/70 border-2 border-dashed border-[var(--ink)]/40 rounded-2xl px-4 py-3 text-[15px] sm:text-base leading-relaxed shadow-[0_6px_18px_-10px_rgba(155,2,26,0.5)]",
-  farewell: "font-ps text-[25px] sm:text-[28px] leading-snug text-[var(--ink)] text-center pt-1",
-  ps: "font-ps text-[24px] sm:text-[27px] leading-snug text-[var(--ink)] pt-2 -rotate-1",
+    "mission-card border-2 border-dashed border-[var(--ink)]/45 rounded-2xl px-4 sm:px-5 py-3.5 text-[15.5px] sm:text-[16.5px] leading-relaxed shadow-[0_6px_18px_-10px_rgba(155,2,26,0.5)]",
+  farewell: "font-ps font-bold text-[26px] sm:text-[30px] leading-snug text-[var(--ink)] text-center pt-1 px-2",
+  ps: "font-ps text-[23px] sm:text-[26px] leading-snug text-[#3A2E22] pt-2 -rotate-1 border-l-4 border-[var(--frame)]/70 pl-3",
 };
 /** Decide o estilo de cada parágrafo: saudação, missão secreta, despedida, P.S.... */
 function paragraphKind(p: string, i: number, all: string[]): ParaKind {
@@ -211,7 +211,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
 
   return (
     <motion.div
-      className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto print:p-0 print:bg-white"
+      className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto print:p-0 print:bg-white print:static print:overflow-visible print:block"
       style={{ "--ink": T.ink, "--accent": T.accent, "--accent2": T.accent2, "--frame": T.frame } as React.CSSProperties}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -227,7 +227,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
         transition={{ type: "spring", stiffness: 120, damping: 18 }}
         style={{ transformPerspective: 1200 }}
         ref={cardRef}
-        className="relative w-full max-w-2xl parchment-bg text-[#1C2541] rounded-3xl p-6 sm:p-10 border-4 border-[var(--frame)] shadow-2xl letter-glow my-auto transition-colors duration-500 print:border-none print:shadow-none print:p-6 print:rounded-none">
+        className="print-letter relative w-full max-w-2xl parchment-bg text-[#1C2541] rounded-3xl p-6 sm:p-10 border-4 border-[var(--frame)] shadow-2xl letter-glow my-auto transition-colors duration-500 print:border-none print:shadow-none print:p-6 print:rounded-none">
         {/* véu de cor do papel (fica atrás do texto) */}
         <div aria-hidden="true" className="absolute inset-0 -z-10 rounded-3xl pointer-events-none transition-colors duration-500 print:hidden" style={{ background: T.tint }} />
         {/* brilhinhos dourados piscando pela carta */}
@@ -429,14 +429,20 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
         </div>
 
         {/* Letter Body */}
-        <div className="font-letter text-[16px] sm:text-[17.5px] leading-[1.8] space-y-4 text-[#2B2118] whitespace-pre-line my-4">
+        <div lang="pt-BR" className="letter-body font-letter text-[16.5px] sm:text-[18px] leading-[1.85] space-y-5 text-[#2B2118] whitespace-pre-line my-5">
           {paragraphs.map((p, i) => {
             const reading = readIdx === i;
             const dim = readIdx >= 0 && !reading;
             const kind = paragraphKind(p, i, paragraphs);
+            const divider = kind === "mission" || kind === "farewell";
             return (
+              <div key={i} className="letter-para">
+              {divider && (
+                <div aria-hidden="true" className="letter-divider text-[var(--ink)]/60">
+                  <span />❄ ✦ ❄<span />
+                </div>
+              )}
               <motion.p
-                key={i}
                 ref={(el) => {
                   paraRefs.current[i] = el;
                 }}
@@ -480,6 +486,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                 )}
                 {withName(kind === "mission" ? p.replace(/^\s*🎯?\s*Miss[aã]o secreta de Natal:?\s*/i, "").replace(/^./, (c) => c.toUpperCase()) : p, letter.childName)}
               </motion.p>
+              </div>
             );
           })}
         </div>

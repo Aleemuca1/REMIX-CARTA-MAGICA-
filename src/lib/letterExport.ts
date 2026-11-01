@@ -209,6 +209,106 @@ function drawBody(ctx: CanvasRenderingContext2D, lay: Layout, x: number, y: numb
   return yy;
 }
 
+
+/* ---------- Folha A4 caprichada: cada parte da carta com o seu estilo ---------- */
+type Kind = "greeting" | "first" | "body" | "mission" | "farewell" | "ps";
+export function letterKind(p: string, i: number, all: string[]): Kind {
+  const t = p.trim();
+  if (/^P\.?\s?S\.?/i.test(t)) return "ps";
+  if (/^🎯|^miss[aã]o secreta/i.test(t)) return "mission";
+  if (i === 0 && t.length < 160) return "greeting";
+  let lastMain = -1;
+  for (let k = all.length - 1; k >= 0; k--) if (!/^P\.?\s?S\.?/i.test(all[k].trim())) { lastMain = k; break; }
+  if (i === lastMain && i > 1 && t.length < 220) return "farewell";
+  if (i === 1) return "first";
+  return "body";
+}
+type Block = { kind: Kind; lines: string[]; font: string; size: number; lh: number; h: number; pad: number };
+function richLayout(ctx: CanvasRenderingContext2D, paras: string[], maxW: number, maxH: number, start: number, min: number) {
+  let blocks: Block[] = [];
+  let size = start;
+  for (; size >= min; size -= 1) {
+    blocks = paras.map((raw, i) => {
+      const kind = letterKind(raw, i, paras);
+      const text = kind === "mission" ? raw.replace(/^\s*🎯?\s*Miss[aã]o secreta de Natal:?\s*/i, "").replace(/^./, (c) => c.toUpperCase()) : raw;
+      const sz = kind === "greeting" ? size * 1.55 : kind === "farewell" ? size * 1.45 : kind === "ps" ? size * 1.3 : kind === "mission" ? size * 0.95 : size;
+      const font = kind === "greeting" ? F.xmas(sz) : kind === "farewell" || kind === "ps" ? F.ps(sz) : F.letter(sz);
+      const pad = kind === "mission" ? size * 1.1 : 0;
+      ctx.font = font;
+      const lines = wrapLines(ctx, text, maxW - pad * 2);
+      const lh = sz * (kind === "greeting" || kind === "farewell" || kind === "ps" ? 1.2 : 1.62);
+      const extra = kind === "mission" ? size * 2.6 : kind === "farewell" ? size * 1.6 : 0; // rótulo / enfeite
+      return { kind, lines, font, size: sz, lh, h: lines.length * lh + extra + pad * 0.6, pad };
+    });
+    const gap = size * 0.85;
+    const total = blocks.reduce((a, b) => a + b.h, 0) + gap * (blocks.length - 1);
+    if (total <= maxH) break;
+  }
+  return { blocks, gap: size * 0.85, base: Math.max(size, min) };
+}
+function ornament(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, s: number) {
+  ctx.save();
+  ctx.strokeStyle = T.ink + "66";
+  ctx.lineWidth = Math.max(1, s * 0.06);
+  const mid = x + w / 2;
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.22, y);
+  ctx.lineTo(mid - s * 2.2, y);
+  ctx.moveTo(mid + s * 2.2, y);
+  ctx.lineTo(x + w * 0.78, y);
+  ctx.stroke();
+  ctx.fillStyle = T.ink + "AA";
+  ctx.font = F.letter(Math.round(s * 0.8));
+  ctx.textAlign = "center";
+  ctx.fillText("❄  ✦  ❄", mid, y + s * 0.28);
+  ctx.restore();
+}
+function drawRich(ctx: CanvasRenderingContext2D, lay: ReturnType<typeof richLayout>, x: number, y: number, w: number) {
+  let yy = y;
+  const s = lay.base;
+  for (const b of lay.blocks) {
+    ctx.save();
+    ctx.textAlign = "left";
+    if (b.kind === "mission") {
+      const h = b.h - s * 0.4;
+      ctx.fillStyle = "#FFF4CF";
+      ctx.beginPath();
+      ctx.roundRect(x, yy + s * 0.6, w, h - s * 0.6, s * 0.7);
+      ctx.fill();
+      ctx.setLineDash([s * 0.45, s * 0.3]);
+      ctx.strokeStyle = T.ink + "88";
+      ctx.lineWidth = Math.max(1.5, s * 0.08);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = T.ink;
+      ctx.font = F.cinzel(Math.round(s * 0.62), 800);
+      ctx.fillText("🎯  MISSÃO SECRETA DE NATAL", x + b.pad, yy + s * 1.95);
+      ctx.fillStyle = "#2B2118";
+      ctx.font = b.font;
+      b.lines.forEach((t, k) => ctx.fillText(t, x + b.pad, yy + s * 2.35 + b.size + k * b.lh));
+    } else if (b.kind === "farewell") {
+      ornament(ctx, x, yy + s * 0.5, w, s);
+      ctx.fillStyle = T.ink;
+      ctx.font = b.font;
+      ctx.textAlign = "center";
+      b.lines.forEach((t, k) => ctx.fillText(t, x + w / 2, yy + s * 1.6 + b.size + k * b.lh));
+    } else {
+      ctx.font = b.font;
+      ctx.fillStyle = b.kind === "greeting" || b.kind === "ps" ? T.ink : "#2B2118";
+      if (b.kind === "ps") {
+        ctx.fillStyle = T.frame === "#FFD166" ? "#E9B949" : T.frame;
+        ctx.fillRect(x, yy + b.size * 0.2, Math.max(3, s * 0.14), b.lines.length * b.lh);
+        ctx.fillStyle = "#3A2E22";
+      }
+      const ox = b.kind === "ps" ? s * 0.7 : 0;
+      b.lines.forEach((t, k) => ctx.fillText(t, x + ox, yy + b.size + k * b.lh));
+    }
+    ctx.restore();
+    yy += b.h + lay.gap;
+  }
+  return yy;
+}
+
 /** A carta completa numa folha A4 (1240x1754), com QR code para ouvir a voz. */
 export async function renderLetterPage(l: Letter, withQr = true) {
   useTheme(l);
@@ -227,8 +327,8 @@ export async function renderLetterPage(l: Letter, withQr = true) {
   const iw = W - m * 2;
   let y = letterHead(ctx, l, m, 100, iw, s);
   const footer = withQr ? 330 : 190;
-  const lay = layoutBody(ctx, letterParagraphs(l), iw, H - y - footer - 40, 40, 18);
-  drawBody(ctx, lay, m, y + 10);
+  const lay = richLayout(ctx, letterParagraphs(l), iw, H - y - footer - 50, 34, 17);
+  drawRich(ctx, lay, m, y + 14, iw);
   const fy = H - footer - 20;
   signature(ctx, m, fy, iw, s);
   if (withQr) {
