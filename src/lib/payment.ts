@@ -5,7 +5,7 @@ import { grantFullAccess, saveAccessCode } from "../advent/access";
 type Msg = { kind: "wait" | "ok" | "error"; text: string } | null;
 
 /** Cria o pedido no servidor e leva para a página de pagamento do Asaas. Devolve uma mensagem de erro, se houver. */
-export async function startCheckout(letterId: string, plan: "pro" | "natal" | "familia"): Promise<string | null> {
+export async function startCheckout(letterId: string | null, plan: "pro" | "natal" | "familia"): Promise<string | null> {
   try {
     const res = await fetch("/api/checkout", {
       method: "POST",
@@ -29,7 +29,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * Quando o cliente volta do Asaas (?pedido=...&status=...), espera o webhook
  * confirmar o pagamento e reabre a carta já com o plano liberado.
  */
-export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Letter) => void) {
+export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Letter) => void, createLetter?: () => void) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get("pedido");
@@ -64,6 +64,9 @@ export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Lette
               if (o.letterToken) {
                 const lr = await fetch(`/api/letter/${encodeURIComponent(o.letterToken)}`);
                 if (lr.ok) openLetter(await lr.json());
+              } else if (createLetter) {
+                // pagou direto pelos planos: abre a criação já com as cartas completas liberadas
+                setTimeout(createLetter, 1200);
               }
               clean();
               setMsg({
@@ -71,9 +74,9 @@ export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Lette
                 text:
                   "Pagamento confirmado! As 6 vozes, o PDF, o certificado e o Calendário do Advento estão liberados. 🎄" +
                   (o.plan === "familia"
-                    ? " Agora é só criar as cartas dos irmãos: até 5 crianças e 15 cartas completas no total."
+                    ? " Agora é só criar as cartas: até 5 crianças e 23 cartas completas no total."
                     : o.plan === "natal"
-                      ? " Tem outro filho? Crie a carta dele também: são até 2 crianças e 6 cartas completas no total."
+                      ? " Agora é só criar as cartas: até 2 crianças e 10 cartas completas no total."
                       : "") +
                   (o.accessCode
                     ? ` Seu código mágico para abrir em outro aparelho: ${o.accessCode} (guarde, ele também aparece no Calendário).`

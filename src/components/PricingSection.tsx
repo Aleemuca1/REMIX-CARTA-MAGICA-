@@ -19,7 +19,7 @@ type Plan = {
 };
 
 const PAID: { text: string; strong?: boolean }[] = [
-  { text: "Até 3 cartas completas por criança, com o nome dela", strong: true },
+  { text: "Cartas completas com o nome de cada criança", strong: true },
   { text: "6 vozes lendo a carta inteira: Papai Noel, Noel animado, Mamãe Noel, Duende, Contador de histórias e Anjinho", strong: true },
   { text: "Carta brilhante em 5 cores, com moldura que brilha", strong: true },
   { text: "PDF para imprimir, imagem HD e vídeo com a voz" },
@@ -49,7 +49,7 @@ const PLANS: Plan[] = [
     id: "natal",
     name: "Carta Completa",
     tag: "Mais escolhido · até 2 crianças",
-    kids: "👧👦 até 2 crianças · 6 cartas completas",
+    kids: "👧👦 até 2 crianças · 10 cartas completas",
     price: "R$ 29,90",
     note: "pagamento único",
     cta: "Quero para meus filhos",
@@ -60,7 +60,7 @@ const PLANS: Plan[] = [
     id: "familia",
     name: "Pacote Família",
     tag: "Até 5 crianças",
-    kids: "👨‍👩‍👧‍👦 até 5 crianças · 15 cartas completas",
+    kids: "👨‍👩‍👧‍👦 até 5 crianças · 23 cartas completas",
     price: "R$ 49,90",
     note: "pagamento único",
     cta: "Quero o Pacote Família",

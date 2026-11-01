@@ -1,13 +1,11 @@
-import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Sparkles, ArrowRight, ShieldCheck, Timer, Volume2, Stamp } from "lucide-react";
+import { Sparkles, ArrowRight, ShieldCheck, Timer, Volume2 } from "lucide-react";
 import ChristmasCountdown from "./ChristmasCountdown";
-import TypewriterNames from "./TypewriterNames";
+import HeroLetters from "./HeroLetters";
 import NightSky from "./NightSky";
 import SnowyVillage from "./SnowyVillage";
 import HangingOrnaments from "./HangingOrnaments";
 
-const DEMO_NAMES = ["Lucas", "Sofia", "Miguel", "Helena", "Arthur", "Alice"];
 
 interface LandingHeroProps {
   onStartWizard: (plan?: "free" | "pro") => void;
@@ -20,8 +18,6 @@ export default function LandingHero({
   onScrollTo,
   onViewSample,
 }: LandingHeroProps) {
-  const [envelopeOpen, setEnvelopeOpen] = useState(false);
-  const [demoName, setDemoName] = useState(DEMO_NAMES[0]);
   const reduce = useReducedMotion();
   const item = (i: number) =>
     reduce
@@ -123,108 +119,7 @@ export default function LandingHero({
           transition={{ duration: 0.9, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
         >
 
-          <div className={`relative w-full max-w-[360px] sm:max-w-[400px] xl:max-w-[420px] mx-auto ${envelopeOpen ? "" : "animate-float-card"}`}>
-            {/* North Pole Wax Seal Stamp */}
-            <div 
-              onClick={() => setEnvelopeOpen(!envelopeOpen)}
-              className="absolute -top-4 -right-2 sm:-top-5 sm:-right-3 z-30 wax-seal w-14 h-14 sm:w-16 sm:h-16 rounded-full flex flex-col items-center justify-center border-2 border-[#FFD166] text-[#FFD166] cursor-pointer hover:scale-110 active:scale-95 transition-transform animate-seal-wiggle"
-              title="Clique para abrir ou fechar a carta"
-              id="seal-stamp"
-            >
-              <span className="font-cinzel text-[8px] sm:text-[9px] font-extrabold uppercase leading-none text-center">
-                POLO NORTE
-              </span>
-              <span className="font-mono text-[9px] sm:text-[10px] font-bold text-white leading-none mt-0.5">
-                2026
-              </span>
-              <span className="text-[7px] text-[#FFD166]/80 uppercase tracking-tighter mt-0.5">
-                OFICIAL
-              </span>
-            </div>
-
-            {/* Vintage Parchment Preview Card */}
-            <div
-              className={`relative z-20 parchment-bg text-[#1C2541] rounded-3xl p-5 sm:p-7 border-4 border-[#FFD166] magical-shadow transition-all duration-500 transform ${
-                envelopeOpen ? "rotate-0 scale-[1.01]" : "rotate-1 hover:rotate-0"
-              }`}
-              id="hero-sample-letter-card"
-            >
-              {/* Header decorative bar */}
-              <div className="flex justify-between items-center border-b-2 border-[#1C2541]/20 pb-3 sm:pb-4 mb-3 sm:mb-4">
-                <div>
-                  <span className="font-cinzel text-[9px] sm:text-[10px] font-extrabold tracking-widest text-[#9B021A] uppercase block">
-                    SERVIÇO POSTAL AERONÁUTICO DO POLO NORTE
-                  </span>
-                  <span className="text-[10px] text-[#1C2541]/70 font-serif italic">
-                    Expresso Oficial de Natal • Destinatário Especial
-                  </span>
-                </div>
-                <Stamp className="w-5 h-5 sm:w-6 sm:h-6 text-[#9B021A]/50" />
-              </div>
-
-              {/* Child Info Badge */}
-              <div className="inline-block bg-[#D90429]/10 text-[#9B021A] border border-[#D90429]/30 rounded-full px-3 py-1 text-[11px] font-bold mb-3">
-                Para: {demoName} ✨ — com muito carinho
-              </div>
-
-              {/* Body snippet */}
-              <div className="font-serif text-sm sm:text-base leading-relaxed space-y-2 text-[#1C2541]">
-                <p className="font-cinzel font-bold text-[#9B021A] text-base">
-                  Ho Ho Ho! Olá, <TypewriterNames names={DEMO_NAMES} onName={setDemoName} />!
-                </p>
-                <p>
-                  Aqui do alto do Polo Norte, observei no meu telescópio de cristal o quanto você foi corajoso ao aprender a andar de bicicleta sem rodinhas este ano!
-                </p>
-                <p className="text-xs sm:text-sm text-[#1C2541]/80 italic">
-                  O próprio Papai Noel já separou com carinho a sua cartinha sobre o dinossauro robô que você pediu...
-                </p>
-              </div>
-
-              {/* Signature and Authenticity Seal */}
-              <div className="mt-4 pt-3 border-t border-[#1C2541]/15 flex items-center justify-between">
-                <div>
-                  <span className="text-[9px] uppercase tracking-wider font-cinzel text-[#1C2541]/60 block">
-                    Certificado de Bom Menino
-                  </span>
-                  <span className="text-xs font-bold text-[#9B021A]">
-                    ✓ Aprovado no Livro Dourado
-                  </span>
-                </div>
-                <div className="text-right pr-2">
-                  <span className="font-handwriting text-2xl sm:text-3xl text-[#9B021A] font-bold block -mb-1">
-                    Papai Noel
-                  </span>
-                  <span className="text-[9px] text-[#1C2541]/50">Oficina Central do Polo Norte</span>
-                </div>
-              </div>
-
-              {/* Interactive preview helper */}
-              <div className="mt-3 pt-2 flex items-center justify-between text-xs font-semibold text-[#9B021A] border-t border-dashed border-[#1C2541]/20">
-                <button
-                  onClick={onViewSample}
-                  className="hover:underline flex items-center gap-1 text-[11px] cursor-pointer"
-                  id="hero-listen-sample-btn"
-                >
-                  <Volume2 className="w-3.5 h-3.5" />
-                  <span>Ouvir narração em áudio</span>
-                </button>
-                <button
-                  onClick={() => onStartWizard("free")}
-                  className="hover:underline text-[11px] font-bold pr-2 cursor-pointer"
-                  id="hero-customize-btn"
-                >
-                  Personalizar para seu filho →
-                </button>
-              </div>
-            </div>
-
-            {/* Little decorative ribbon under the card */}
-            <div className="text-center mt-3">
-              <span className="inline-block text-[11px] text-[#EDF2F4]/60 bg-[#060B19]/80 px-3 py-1 rounded-full border border-white/10">
-                ✨ Modelo interativo • 100% personalizável em segundos
-              </span>
-            </div>
-          </div>
+          <HeroLetters onListen={onViewSample} onCreate={() => onStartWizard("free")} />
         </motion.div>
       </div>
     </section>

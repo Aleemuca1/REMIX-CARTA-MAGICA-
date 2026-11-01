@@ -33,7 +33,7 @@ export type LetterRecord = {
 
 export type OrderRecord = {
   orderId: string;
-  letterId: string;
+  letterId: string | null;
   childName: string;
   amount: number;
   plan: string;

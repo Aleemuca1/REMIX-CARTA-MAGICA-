@@ -17,12 +17,12 @@ export const PLAN_PRICES: Record<PaidPlan, { value: number; name: string; descri
   natal: {
     value: 29.9,
     name: "Carta Mágica (até 2 crianças)",
-    description: "Até 2 crianças, 6 cartas completas com 6 vozes, PDF, imagem HD, certificado, carta brilhante em 5 cores e Calendário do Advento",
+    description: "Até 2 crianças, 10 cartas completas com 6 vozes, PDF, imagem HD, certificado, carta brilhante em 5 cores e Calendário do Advento",
   },
   familia: {
     value: 49.9,
     name: "Carta Mágica Família (até 5)",
-    description: "Até 5 crianças, 15 cartas completas com 6 vozes, PDF, imagem HD, certificado, carta brilhante em 5 cores e Calendário do Advento",
+    description: "Até 5 crianças, 23 cartas completas com 6 vozes, PDF, imagem HD, certificado, carta brilhante em 5 cores e Calendário do Advento",
   },
 };
 
@@ -30,7 +30,7 @@ export const PLAN_PRICES: Record<PaidPlan, { value: number; name: string; descri
 export const PLAN_CHILDREN: Record<string, number> = { pro: 1, natal: 2, familia: 5 };
 /** cartas completas por criança (os pais costumam fazer mais de uma: refazer, véspera, recado especial) */
 export const LETTERS_PER_CHILD = 3;
-export const PLAN_LETTERS: Record<string, number> = { pro: 1, natal: 2 * LETTERS_PER_CHILD, familia: 5 * LETTERS_PER_CHILD };
+export const PLAN_LETTERS: Record<string, number> = { pro: 1, natal: 10, familia: 23 };
 
 export const isPaidPlan = (p: unknown): p is PaidPlan => p === "pro" || p === "natal" || p === "familia";
 

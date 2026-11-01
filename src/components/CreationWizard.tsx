@@ -35,6 +35,7 @@ interface CreationWizardProps {
   onClose: () => void;
   plan: PlanType;
   onGenerated: (letter: Letter) => void;
+  onSeePlans?: () => void;
 }
 
 export default function CreationWizard({
@@ -42,6 +43,7 @@ export default function CreationWizard({
   onClose,
   plan,
   onGenerated,
+  onSeePlans,
 }: CreationWizardProps) {
   const [childName, setChildName] = useState("");
   const [age, setAge] = useState<number>(6);
@@ -95,7 +97,7 @@ export default function CreationWizard({
     setLimitMsg(null);
     // carta grátis: até 3 por dia neste aparelho
     if (!credit && freeToday() >= FREE_PER_DAY) {
-      setLimitMsg(`Você já criou ${FREE_PER_DAY} cartas grátis hoje neste aparelho. Volte amanhã ou libere o Natal Completo: cada criança ganha até 3 cartas completas.`);
+      setLimitMsg(`Você já criou ${FREE_PER_DAY} cartas grátis hoje neste aparelho. Volte amanhã ou libere o Natal Completo: 10 cartas completas por R$ 29,90 ou 23 no Pacote Família.`);
       return;
     }
 
@@ -229,7 +231,7 @@ Papai Noel 🎅`,
           <div className="mb-4 rounded-2xl border border-[#FFD166]/60 bg-[#FFD166]/10 px-4 py-3 text-[#FFE9A8] text-xs sm:text-sm" id="wizard-credit">
             👑 <b>Incluída no seu Natal Completo:</b> você ainda pode criar {credit.remaining}{" "}
             {credit.remaining === 1 ? "carta completa" : "cartas completas"} (plano para até {credit.children}{" "}
-            {credit.children === 1 ? "criança" : "crianças"}, 3 cartas por criança). Esta já sai com as 6 vozes, PDF e certificado!
+            {credit.children === 1 ? "criança" : "crianças"}, {credit.limit} cartas no total). Esta já sai com as 6 vozes, PDF e certificado!
           </div>
         )}
 
@@ -438,11 +440,12 @@ Papai Noel 🎅`,
                 type="button"
                 onClick={() => {
                   onClose();
-                  setTimeout(() => document.getElementById("precos")?.scrollIntoView({ behavior: "smooth" }), 250);
+                  if (onSeePlans) setTimeout(onSeePlans, 200);
+                  else setTimeout(() => document.getElementById("precos")?.scrollIntoView({ behavior: "smooth" }), 250);
                 }}
                 className="underline font-bold text-[#FFD166] cursor-pointer"
               >
-                Ver planos
+                Liberar agora
               </button>
             </div>
           )}

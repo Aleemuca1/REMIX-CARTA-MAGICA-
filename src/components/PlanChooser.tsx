@@ -11,13 +11,13 @@ export const PAID_PLANS: {
   price: string;
   badge?: string;
 }[] = [
-  { id: "natal", name: "Carta Completa", kids: "até 2 crianças · 6 cartas", price: "R$ 29,90", badge: "Mais escolhido" },
-  { id: "familia", name: "Pacote Família", kids: "até 5 crianças · 15 cartas", price: "R$ 49,90", badge: "Melhor para famílias grandes" },
+  { id: "natal", name: "Carta Completa", kids: "até 2 crianças · 10 cartas", price: "R$ 29,90", badge: "Mais escolhido" },
+  { id: "familia", name: "Pacote Família", kids: "até 5 crianças · 23 cartas", price: "R$ 49,90", badge: "Melhor para famílias grandes" },
 ];
 
 /** O que vem nos dois planos pagos (tudo o que temos de melhor). */
 export const PAID_FEATURES = [
-  "Até 3 cartas completas por criança (para refazer, para a véspera ou um recado especial)",
+  "10 cartas completas (Carta Completa) ou 23 (Pacote Família): dá para refazer, fazer a da véspera e um recado especial",
   "6 vozes lendo a carta inteira (Papai Noel, Noel animado, Mamãe Noel, Duende, Contador de histórias e Anjinho)",
   "Carta brilhante em 5 cores, com moldura que brilha",
   "PDF para imprimir, imagem HD e vídeo com a voz",

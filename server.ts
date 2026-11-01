@@ -1023,9 +1023,10 @@ app.post("/api/checkout", async (req, res) => {
     if (!plan) {
       return res.status(400).json({ error: "Plano inválido." });
     }
-    const letter = await db.findLetter(String(letterId || ""));
-    if (!letter) {
-      return res.status(404).json({ error: "Carta não encontrada. Crie a carta antes de pagar." });
+    // dá para pagar direto pelos planos, antes de criar a carta (ex.: quem já usou as 3 grátis do dia)
+    const letter = letterId ? await db.findLetter(String(letterId)) : null;
+    if (letterId && !letter) {
+      return res.status(404).json({ error: "Carta não encontrada. Atualize a página e tente de novo." });
     }
     if (!asaas.asaasConfigured()) {
       return res.status(503).json({
@@ -1033,13 +1034,13 @@ app.post("/api/checkout", async (req, res) => {
       });
     }
     const parent = await currentParent(req);
-    if (parent && !letter.parentId) await db.updateLetter(letter.id, { parentId: parent.id }).catch(() => {});
+    if (parent && letter && !letter.parentId) await db.updateLetter(letter.id, { parentId: parent.id }).catch(() => {});
     const orderId = `cm${randomBytes(9).toString("base64url")}`;
     const price = asaas.PLAN_PRICES[plan];
     await db.insertOrder({
       orderId,
-      letterId: letter.id,
-      childName: letter.childName,
+      letterId: letter?.id ?? null,
+      childName: letter?.childName ?? "Família",
       amount: price.value,
       plan,
       includePhysicalDispatch: false,

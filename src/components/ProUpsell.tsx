@@ -41,7 +41,7 @@ export default function ProUpsell({
         <h4 className="font-cinzel text-xl sm:text-2xl font-bold text-white mb-2">{title}</h4>
         <p className="text-sm text-[#EDF2F4]/80 mb-4 leading-relaxed">{text}</p>
         <ul className="text-xs text-left text-[#EDF2F4]/80 space-y-1 bg-white/5 rounded-2xl p-3 mb-5 border border-white/10">
-          <li>✓ 2 crianças e 6 cartas (R$ 29,90) ou 5 crianças e 15 cartas (R$ 49,90)</li>
+          <li>✓ 2 crianças e 10 cartas (R$ 29,90) ou 5 crianças e 23 cartas (R$ 49,90)</li>
           <li>✓ 6 vozes lendo a carta inteira</li>
           <li>✓ Carta brilhante em 5 cores, PDF, imagem HD e certificado</li>
           <li>✓ 24 portinhas do Calendário do Advento</li>

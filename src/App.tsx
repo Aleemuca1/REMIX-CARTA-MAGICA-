@@ -49,11 +49,12 @@ export default function App() {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
   const [activeLetter, setActiveLetter] = useState<Letter | null>(null);
-  const [chooseFor, setChooseFor] = useState<Letter | null>(null);
+  // carta que vai junto no pagamento; "nova" = pagar antes de criar a carta
+  const [chooseFor, setChooseFor] = useState<Letter | "nova" | null>(null);
   const [payMsg, setPayMsg] = useState<{ kind: "wait" | "ok" | "error"; text: string } | null>(null);
 
   // volta do Asaas: confirma o pagamento e reabre a carta já liberada
-  usePaymentReturn(setPayMsg, setActiveLetter);
+  usePaymentReturn(setPayMsg, setActiveLetter, () => handleStartWizard("free"));
 
   useEffect(() => {
     void loadMe();
@@ -62,11 +63,11 @@ export default function App() {
     if (/^[a-z-]{2,30}$/.test(id)) setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }), 700);
   }, []);
 
-  const pay = async (letter: Letter, plan: PaidChoice) => {
+  const pay = async (letter: Letter | null, plan: PaidChoice) => {
     // a compra fica na conta do responsável (e o e-mail dele recebe tudo)
     if ((await parentForCheckout()) === "cancel") return;
     setPayMsg({ kind: "wait", text: "Abrindo o pagamento seguro do Asaas..." });
-    const err = await startCheckout(letter.id, plan);
+    const err = await startCheckout(letter?.id ?? null, plan);
     if (err) setPayMsg({ kind: "error", text: err });
   };
 
@@ -178,7 +179,7 @@ export default function App() {
         <SnowGlobe />
 
         <SnowDivider />
-        <PricingSection onSelectPlan={handleStartWizard} />
+        <PricingSection onSelectPlan={(p) => (p === "natal" || p === "familia" ? void pay(null, p) : handleStartWizard(p))} />
 
         {/* Perguntas frequentes */}
         <SnowDivider />
@@ -207,6 +208,7 @@ export default function App() {
         onClose={() => setIsWizardOpen(false)}
         plan={selectedPlan}
         onGenerated={handleLetterGenerated}
+        onSeePlans={() => setChooseFor("nova")}
       />
 
       {activeLetter && (
@@ -224,7 +226,7 @@ export default function App() {
             onPick={(p) => {
               const l = chooseFor;
               setChooseFor(null);
-              void pay(l, p);
+              void pay(l === "nova" ? null : l, p);
             }}
           />
         )}
