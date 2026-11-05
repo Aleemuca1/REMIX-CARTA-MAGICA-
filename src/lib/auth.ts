@@ -11,14 +11,16 @@ export type LoginReason = "salvar" | "pagar" | "area";
 type State = {
   parent: Parent | null;
   ready: boolean;
-  /** login por e-mail configurado no servidor */
+  /** Área dos Pais disponível (entrar com o código mágico funciona sempre) */
   available: boolean;
+  /** login por e-mail (código no e-mail) configurado no servidor */
+  email: boolean;
   /** pedido de login aberto (o AuthHost mostra a janela) */
   pending: { reason: LoginReason; resolve: (p: Parent | null) => void } | null;
   areaOpen: boolean;
 };
 
-let state: State = { parent: null, ready: false, available: false, pending: null, areaOpen: false };
+let state: State = { parent: null, ready: false, available: false, email: false, pending: null, areaOpen: false };
 const listeners = new Set<() => void>();
 const set = (patch: Partial<State>) => {
   state = { ...state, ...patch };
@@ -43,7 +45,7 @@ export function loadMe(): Promise<Parent | null> {
     loading = fetch("/api/auth/me", { credentials: "same-origin" })
       .then((r) => (r.ok ? r.json() : { parent: null }))
       .then((d) => {
-        set({ parent: d.parent ?? null, ready: true, available: d.available !== false });
+        set({ parent: d.parent ?? null, ready: true, available: d.available !== false, email: Boolean(d.email) });
         return d.parent ?? null;
       })
       .catch(() => {
@@ -73,7 +75,7 @@ export function finishLogin(parent: Parent | null) {
 /** Para pagar: pede login só se o login por e-mail já estiver funcionando. */
 export async function parentForCheckout(): Promise<"ok" | "cancel"> {
   await loadMe();
-  if (!state.available || state.parent) return "ok";
+  if (!state.email || state.parent) return "ok";
   return (await requireParent("pagar")) ? "ok" : "cancel";
 }
 
@@ -107,10 +109,43 @@ export const verifyCode = (email: string, code: string, name?: string) =>
 export const saveLetterToAccount = (letterId: string) =>
   post("/api/me/letters/save", { letterId }) as Promise<{ ok: true; emailed: boolean }>;
 
-export type MyLetter = { token: string; childName: string; age: number; date: string; theme?: string; plan: string };
+export type MyLetter = {
+  token: string; childName: string; age: number; date: string; theme?: string; plan: string;
+  wishes?: { pedidos: string[]; perguntas: string[]; contou: string[] }; protocol?: number; deliverAt?: string; review?: boolean; fromChild?: boolean;
+};
 export async function myLetters(): Promise<MyLetter[]> {
   const r = await fetch("/api/me/letters", { credentials: "same-origin" });
   const data = await r.json().catch(() => []);
   if (!r.ok) throw new Error((data as any).error || "Não foi possível carregar suas cartas.");
   return data;
+}
+
+/** Entrar com o código mágico da compra (6 letras e números). */
+export async function loginWithCode(code: string): Promise<Parent> {
+  const r = (await post("/api/auth/code", { code })) as { ok: true; parent: Parent };
+  set({ parent: r.parent });
+  return r.parent;
+}
+/** Usado pela janela de login */
+export const codeLogin = (code: string) => post("/api/auth/code", { code }) as Promise<{ ok: true; parent: Parent }>;
+
+/** Guarda a casinha/árvore na conta (só se os pais estiverem logados). */
+export async function linkToAccount(token: string, editKey: string) {
+  if (!state.parent) return;
+  await post("/api/me/link", { token, editKey }).catch(() => {});
+}
+
+export type PanelPlan = { code: string; plan: string; label: string; children: number; limit: number; used: number; remaining: number; paidAt?: string; amount: number; canUpgrade: boolean };
+export type Panel = {
+  parent: Parent;
+  plans: PanelPlan[];
+  letters: MyLetter[];
+  houses: { token: string; title: string; updatedAt?: string }[];
+  trees: { token: string; title: string; updatedAt?: string }[];
+};
+export async function loadPanel(): Promise<Panel> {
+  const r = await fetch("/api/me/panel", { credentials: "same-origin" });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((data as any).error || "Não foi possível carregar o painel.");
+  return data as Panel;
 }

@@ -591,14 +591,14 @@
 @media (prefers-reduced-motion: reduce) { .ws-fire, .ws-candle, .ws-winsnow, .ws-sparkle, .ws-shine { animation: none; } }
 
 /* ---------- Tipografia da carta ---------- */
-.font-letter { font-family: 'Lora', Georgia, serif; }
+.font-letter { font-family: 'Spectral', 'Lora', Georgia, serif; letter-spacing: 0.005em; }
 .font-ps { font-family: 'Caveat', 'Comic Sans MS', cursive; }
 .font-xmas { font-family: 'Mountains of Christmas', 'Lora', Georgia, serif; }
 .drop-cap::first-letter {
   float: left;
-  font-family: 'Cinzel', serif;
-  font-weight: 800;
-  font-size: 3.3em;
+  font-family: 'Mountains of Christmas', 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 3.6em;
   line-height: 0.85;
   padding: 0.08em 0.12em 0 0;
   color: var(--ink, #9B021A);
@@ -631,3 +631,28 @@
 @keyframes hs-snow { from { transform: translateY(0); } to { transform: translateY(660px); } }
 .hs-snow { animation: hs-snow linear infinite; }
 @media (prefers-reduced-motion: reduce) { .hs-snow { animation: none; opacity: 0; } }
+
+/* ---------- Carta: moldura animada, brilho, neve, azevinho e assinatura ---------- */
+.letter-aura{position:absolute;inset:-6px;border-radius:30px;background:conic-gradient(from var(--ang,0deg),var(--frame,#FFD166),#fff6c9,var(--accent,#D90429),var(--frame,#FFD166),#fff6c9,var(--frame,#FFD166));filter:blur(6px);opacity:.75;animation:aura-spin 6s linear infinite;z-index:-1}
+@property --ang{syntax:'<angle>';inherits:false;initial-value:0deg}
+@keyframes aura-spin{to{--ang:360deg}}
+.letter-shine{position:absolute;inset:0;pointer-events:none;z-index:5;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.75) 46%,rgba(255,240,190,.5) 50%,transparent 64%);transform:translateX(-120%);animation:letter-shine 1.8s .5s ease-out forwards}
+@keyframes letter-shine{to{transform:translateX(120%)}}
+.letter-flake{position:absolute;top:-24px;color:var(--frame,#FFD166);opacity:.35;font-size:14px;pointer-events:none;animation:letter-flake linear infinite}
+@keyframes letter-flake{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(1400px) rotate(360deg)}}
+.holly-sway{animation:holly-sway 4s ease-in-out infinite}
+@keyframes holly-sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(5deg)}}
+.santa-sign{font-family:'Great Vibes',cursive;font-size:56px;fill:transparent;stroke:var(--ink,#9B021A);stroke-width:1.2;stroke-dasharray:900;stroke-dashoffset:900;animation:santa-sign 2.4s ease-in-out forwards}
+@keyframes santa-sign{70%{fill:transparent}100%{stroke-dashoffset:0;fill:var(--ink,#9B021A)}}
+.santa-sign-line{fill:none;stroke:var(--ink,#9B021A);stroke-width:2.4;stroke-linecap:round;stroke-dasharray:240;stroke-dashoffset:240;animation:santa-line .8s ease-out forwards}
+@keyframes santa-line{to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion: reduce){.letter-aura,.letter-flake,.holly-sway{animation:none}.santa-sign{animation:none;fill:var(--ink,#9B021A);stroke-dashoffset:0}.santa-sign-line{animation:none;stroke-dashoffset:0}}
+@media print{.santa-sign{animation:none;fill:var(--ink,#9B021A);stroke-dashoffset:0}.santa-sign-line{animation:none;stroke-dashoffset:0}}
+
+/* carimbo do correio do Polo Norte, no canto da carta */
+.postmark{position:absolute;right:14px;top:14px;width:92px;height:92px;border-radius:50%;border:2.5px double var(--ink,#9B021A);color:var(--ink,#9B021A);opacity:.55;transform:rotate(-14deg);display:grid;place-items:center;text-align:center;font:800 8px/1.15 'Cinzel',serif;letter-spacing:.14em;pointer-events:none;mix-blend-mode:multiply}
+.postmark b{display:block;font:700 22px/1 'Mountains of Christmas',serif;letter-spacing:0;margin:2px 0}
+.postmark::after{content:"";position:absolute;inset:6px;border-radius:50%;border:1px dashed currentColor}
+@media (max-width:640px){.postmark{width:76px;height:76px;font-size:7px;right:10px;top:10px}.postmark b{font-size:18px}}
+/* texto da carta: parágrafos com recuo elegante e ligaduras */
+.letter-body p{font-variant-ligatures:common-ligatures;font-feature-settings:"kern","liga","onum"}

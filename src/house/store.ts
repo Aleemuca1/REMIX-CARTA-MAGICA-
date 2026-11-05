@@ -20,10 +20,10 @@ export function saveLocal(h: HouseState) {
   }
 }
 
-type Remote = { cfg: HouseCfg; items: HouseItem[] };
+type Remote = { cfg: HouseCfg; items: HouseItem[]; mine?: boolean };
 
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(url, { headers: { "Content-Type": "application/json" }, ...init });
+  const r = await fetch(url, { headers: { "Content-Type": "application/json" }, credentials: "same-origin", ...init });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d.error || "Não foi possível falar com o Polo Norte agora.");
   return d as T;

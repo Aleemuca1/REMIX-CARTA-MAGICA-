@@ -35,6 +35,7 @@ import {
   type HouseState,
 } from "../../house/model";
 import { api, loadLocal, saveLocal, shareUrl } from "../../house/store";
+import { linkToAccount } from "../../lib/auth";
 import { houseToPng } from "../../house/exportImage";
 
 type Tab = "itens" | "familia" | "casa";
@@ -44,6 +45,8 @@ export default function HouseEditor({ onClose, sharedToken, onUpgrade }: { onClo
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [house, setHouse] = useState<HouseState>(() => loadLocal());
   const [visitor, setVisitor] = useState(false);
+  // casa aberta pela conta dos pais (no Painel da Família), em outro aparelho
+  const byAccount = useRef(false);
   const [loading, setLoading] = useState(Boolean(sharedToken));
   const [tab, setTab] = useState<Tab>("itens");
   const [group, setGroup] = useState(ITEM_GROUPS[0]);
@@ -82,6 +85,10 @@ export default function HouseEditor({ onClose, sharedToken, onUpgrade }: { onClo
       api
         .get(token)
         .then((r) => {
+          if (!owner && r.mine) {
+            byAccount.current = true;
+            setVisitor(false);
+          }
           const next = owner ? { ...local, cfg: r.cfg, items: r.items } : { cfg: r.cfg, items: r.items, token };
           setHouse(next);
           if (owner) saveLocal(next);
@@ -121,11 +128,11 @@ export default function HouseEditor({ onClose, sharedToken, onUpgrade }: { onClo
   const commit = (next: HouseState, sync = true) => {
     setHouse(next);
     if (visitor) return;
-    saveLocal(next);
-    if (sync && next.token && next.editKey) {
+    if (!byAccount.current) saveLocal(next);
+    if (sync && next.token && (next.editKey || byAccount.current)) {
       window.clearTimeout(saveTimer.current);
       const { token, editKey, cfg, items } = next;
-      saveTimer.current = window.setTimeout(() => api.save(token!, editKey!, cfg, items).catch((e) => say(e.message)), 700);
+      saveTimer.current = window.setTimeout(() => api.save(token!, editKey || "", cfg, items).catch((e) => say(e.message)), 700);
     }
   };
 
@@ -318,6 +325,7 @@ export default function HouseEditor({ onClose, sharedToken, onUpgrade }: { onClo
     try {
       const r = await api.create(house.cfg, house.items);
       commit({ ...house, token: r.token, editKey: r.editKey }, false);
+      void linkToAccount(r.token, r.editKey); // se os pais estiverem logados, a casa vai para o Painel da Família
       setShare(true);
     } catch (e: any) {
       say(e.message);

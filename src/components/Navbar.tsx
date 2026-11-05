@@ -4,20 +4,11 @@ import { openParentArea, useAuth } from "../lib/auth";
 
 const MENU = [
   { id: "como-funciona", label: "✨ Como funciona" },
-  { id: "lista", label: "📜 Lista do Bom Comportamento" },
-  { id: "arvore-luz", label: "✨ Árvore de Luz (mensagens)" },
-  { id: "rastreador", label: "🛷 Rastreie o Papai Noel" },
-  { id: "natal-mundo", label: "🌍 Natal pelo mundo" },
-  { id: "jogo", label: "🎮 Jogo do Papai Noel" },
-  { id: "urso", label: "🐻‍❄️ Escorrega do Urso Polar" },
-  { id: "familia", label: "📸 Família no Trenó" },
-  { id: "memoria", label: "🃏 Memória de Natal" },
-  { id: "circo", label: "🎪 Circo de Natal" },
-  { id: "atelie", label: "🎨 Ateliê de Natal" },
-  { id: "arvore", label: "🎄 Árvore da Família" },
-  { id: "casinha", label: "🏡 Casinha de Natal" },
-  { id: "calendario", label: "📅 Calendário do Advento" },
+  { id: "correio", label: "📮 Correio do Polo Norte" },
   { id: "precos", label: "👑 Planos" },
+  { id: "extras", label: "🎁 Bônus para a família" },
+  { id: "calendario", label: "📅 Calendário do Advento" },
+  { id: "jogo", label: "🎮 Jogos de Natal" },
   { id: "duvidas", label: "❓ Dúvidas" },
 ];
 import ChristmasLights from "./ChristmasLights";
@@ -77,28 +68,10 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
             Como Funciona
           </button>
           <button
-            onClick={() => onScrollTo("calendario")}
-            className="text-xs sm:text-sm text-[#EDF2F4]/80 hover:text-white transition-colors cursor-pointer hidden lg:inline-block"
+            onClick={() => onScrollTo("extras")}
+            className="text-xs sm:text-sm text-[#FFD166] hover:text-white font-semibold transition-colors cursor-pointer hidden md:inline-block"
           >
-            📅 Calendário
-          </button>
-          <button
-            onClick={() => onScrollTo("jogo")}
-            className="text-xs sm:text-sm text-[#FFD166] hover:text-white font-semibold transition-colors cursor-pointer hidden sm:inline-block"
-          >
-            🎮 Jogo
-          </button>
-          <button
-            onClick={() => onScrollTo("atelie")}
-            className="text-xs sm:text-sm text-[#EDF2F4]/80 hover:text-white transition-colors cursor-pointer hidden lg:inline-block"
-          >
-            🎨 Ateliê
-          </button>
-          <button
-            onClick={() => onScrollTo("arvore")}
-            className="text-xs sm:text-sm text-[#EDF2F4]/80 hover:text-white transition-colors cursor-pointer hidden xl:inline-block"
-          >
-            🎄 Árvore
+            🎁 Bônus para a família
           </button>
           <button
             onClick={() => onScrollTo("duvidas")}
@@ -124,7 +97,7 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
             title="Área dos pais"
           >
             <UserRound className="w-4 h-4" />
-            <span className="hidden md:inline xl:hidden 2xl:inline">{auth.parent ? "Minhas cartas" : "Área dos pais"}</span>
+            <span className="hidden md:inline xl:hidden 2xl:inline">{auth.parent ? "Painel da Família" : "Área dos pais"}</span>
           </button>
           )}
           <button

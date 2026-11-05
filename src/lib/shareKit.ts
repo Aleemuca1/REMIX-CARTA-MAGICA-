@@ -112,7 +112,7 @@ export function drawQr(ctx: CanvasRenderingContext2D, text: string, x: number, y
 export async function ensureFonts() {
   try {
     await Promise.all(
-      ["700 40px Cinzel", "800 40px Cinzel", "40px 'Great Vibes'", "40px 'Playfair Display'", "italic 40px 'Playfair Display'", "700 40px 'Plus Jakarta Sans'", "40px Lora", "700 40px Lora", "700 40px Caveat", "700 40px 'Mountains of Christmas'"].map((f) =>
+      ["700 40px Cinzel", "800 40px Cinzel", "40px 'Great Vibes'", "40px 'Playfair Display'", "italic 40px 'Playfair Display'", "700 40px 'Plus Jakarta Sans'", "40px Lora", "700 40px Lora", "40px Spectral", "500 40px Spectral", "700 40px Caveat", "700 40px 'Mountains of Christmas'"].map((f) =>
         document.fonts.load(f),
       ),
     );
@@ -126,7 +126,7 @@ export const F = {
   serif: (px: number, italic = false) => `${italic ? "italic " : ""}${px}px 'Playfair Display', Georgia, serif`,
   hand: (px: number) => `${px}px 'Great Vibes', 'Brush Script MT', cursive`,
   sans: (px: number, w = 700) => `${w} ${px}px 'Plus Jakarta Sans', system-ui, sans-serif`,
-  letter: (px: number, w = 400) => `${w} ${px}px Lora, Georgia, serif`,
+  letter: (px: number, w = 400) => `${w} ${px}px Spectral, Lora, Georgia, serif`,
   ps: (px: number) => `700 ${px}px Caveat, 'Comic Sans MS', cursive`,
   xmas: (px: number) => `700 ${px}px 'Mountains of Christmas', Lora, Georgia, serif`,
 };

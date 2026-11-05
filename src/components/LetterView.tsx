@@ -147,10 +147,13 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
     readParas.reduce((acc, p) => (starts.push(acc / total), acc + p.length), 0);
     let last = -1;
     const voice = voiceById(isPro ? voiceId : "noel");
+    // caixinha de música bem baixinha por baixo da voz
+    void musicBox.bed(true);
     narratorRef.current = await narrate(
       text,
       letter.childName,
       () => {
+        void musicBox.bed(false);
         setSpeaking("idle");
         setReadIdx(-1);
         if (!isPro) setUpsell(true);
@@ -226,18 +229,9 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
         animate={{ opacity: 1, y: 0, rotateX: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 120, damping: 18 }}
         style={{ transformPerspective: 1200 }}
-        ref={cardRef}
-        className="print-letter relative w-full max-w-2xl parchment-bg text-[#1C2541] rounded-3xl p-6 sm:p-10 border-4 border-[var(--frame)] shadow-2xl letter-glow my-auto transition-colors duration-500 print:border-none print:shadow-none print:p-6 print:rounded-none">
-        {/* véu de cor do papel (fica atrás do texto) */}
-        <div aria-hidden="true" className="absolute inset-0 -z-10 rounded-3xl pointer-events-none transition-colors duration-500 print:hidden" style={{ background: T.tint }} />
-        {/* brilhinhos dourados piscando pela carta */}
-        {SPARKLES.map(([l, t, d, z], k) => (
-          <span key={k} aria-hidden="true" className="letter-sparkle" style={{ left: `${l}%`, top: `${t}%`, animationDelay: `${d}s`, fontSize: z }}>
-            ✦
-          </span>
-        ))}
+        className="w-full max-w-2xl my-auto print:max-w-none">
         {/* Controles (não aparecem na impressão nem no PDF) */}
-        <div data-no-pdf className="pb-4 mb-4 border-b-2 border-[#1C2541]/15 print:hidden">
+        <div data-no-pdf className="mb-4 rounded-3xl bg-[#FCF9F2]/95 border-2 border-[var(--frame)]/70 px-4 py-3 sm:px-5 text-[#1C2541] shadow-xl print:hidden">
           <div className="flex justify-between items-center gap-2">
             <span className="font-cinzel text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
               Carta do Polo Norte
@@ -386,7 +380,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                     onClick={() => onUpgrade?.()}
                     className="bg-gradient-to-r from-[var(--accent)] to-[var(--accent2)] text-white font-bold px-4 py-2 rounded-full text-xs sm:text-sm whitespace-nowrap btn-shine cursor-pointer"
                   >
-                    <span className="relative z-10">Liberar tudo · a partir de R$ 29,90</span>
+                    <span className="relative z-10">Liberar tudo · a partir de R$ 14,90</span>
                   </button>
                 </div>
               </motion.div>
@@ -394,6 +388,42 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
           </AnimatePresence>
         </div>
 
+      <div className="relative print:static">
+        {/* moldura dourada animada em volta do papel */}
+        <div aria-hidden="true" className="letter-aura print:hidden" />
+      <div
+        ref={cardRef}
+        className="print-letter relative w-full parchment-bg text-[#1C2541] rounded-3xl px-6 pt-12 pb-16 sm:px-11 sm:pt-14 sm:pb-16 border-4 border-[var(--frame)] shadow-2xl letter-glow overflow-hidden transition-colors duration-500 print:border-none print:shadow-none print:p-6 print:rounded-none">
+        {/* luz que passa pela carta quando ela abre */}
+        {!reduce && <div aria-hidden="true" className="letter-shine print:hidden" />}
+        {/* neve caindo bem de leve dentro da carta */}
+        {!reduce &&
+          [8, 22, 37, 51, 66, 79, 92].map((l, k) => (
+            <span key={`f${k}`} aria-hidden="true" className="letter-flake print:hidden" style={{ left: `${l}%`, animationDelay: `${k * 1.3}s`, animationDuration: `${9 + (k % 3) * 2}s` }}>
+              ❄
+            </span>
+          ))}
+        {/* azevinhos nos cantos */}
+        {["top-1 left-1", "top-1 right-1 -scale-x-100", "bottom-1 left-1 -scale-y-100", "bottom-1 right-1 -scale-x-100 -scale-y-100"].map((pos, k) => (
+          <Holly key={k} className={`absolute ${pos} w-10 h-10 sm:w-14 sm:h-14 pointer-events-none print:hidden`} delay={k * 0.4} />
+        ))}
+
+        {/* véu de cor do papel (fica atrás do texto) */}
+        <div aria-hidden="true" className="absolute inset-0 -z-10 rounded-3xl pointer-events-none transition-colors duration-500 print:hidden" style={{ background: T.tint }} />
+        {/* brilhinhos dourados piscando pela carta */}
+        {SPARKLES.map(([l, t, d, z], k) => (
+          <span key={k} aria-hidden="true" className="letter-sparkle" style={{ left: `${l}%`, top: `${t}%`, animationDelay: `${d}s`, fontSize: z }}>
+            ✦
+          </span>
+        ))}
+        {/* carimbo postal do Polo Norte */}
+        <div aria-hidden="true" className="postmark print:opacity-70">
+          <span>
+            CORREIO DO
+            <b>Polo Norte</b>
+            {letter.protocol ? `Nº ${letter.protocol.toLocaleString("pt-BR")}` : "DEZ 2026"}
+          </span>
+        </div>
         {/* Letterhead */}
         <div className="flex justify-between items-center mb-6 border-b border-[#1C2541]/15 pb-4">
           <div>
@@ -429,7 +459,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
         </div>
 
         {/* Letter Body */}
-        <div lang="pt-BR" className="letter-body font-letter text-[16.5px] sm:text-[18px] leading-[1.85] space-y-5 text-[#2B2118] whitespace-pre-line my-5">
+        <div lang="pt-BR" className="letter-body font-letter text-[17px] sm:text-[18.5px] leading-[1.8] space-y-5 text-[#2B2118] whitespace-pre-line my-5">
           {paragraphs.map((p, i) => {
             const reading = readIdx === i;
             const dim = readIdx >= 0 && !reading;
@@ -500,8 +530,9 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                 animate={{ scale: 1, opacity: 1, rotate: 0 }}
                 transition={{ delay: 0.8 + paragraphs.length * 0.35, type: "spring", stiffness: 300, damping: 14 }}
                 style={{ background: `radial-gradient(circle at 35% 35%, ${T.seal[0]}, ${T.seal[1]})` }}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[9px] font-bold text-[#FFD166] border border-[#FFD166] shadow">
-                2026
+                className="w-14 h-14 rounded-full flex flex-col items-center justify-center text-[#FFD166] border-2 border-[#FFD166] shadow-lg leading-none">
+                <span className="font-cinzel text-[15px] font-extrabold">PN</span>
+                <span className="text-[8px] font-bold mt-0.5">2026</span>
               </motion.span>
               <div>
                 <span className="text-[10px] uppercase font-cinzel font-bold text-[var(--ink)] block">
@@ -515,14 +546,14 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
           </div>
 
           <div className="text-right">
-            <span className="font-handwriting text-3xl sm:text-4xl text-[var(--ink)] font-bold block -mb-2 foil-text">
-              Papai Noel
-            </span>
+            <SantaSignature delay={reduce ? 0 : 1.2 + paragraphs.length * 0.35} />
             <span className="text-[10px] text-[#1C2541]/60 uppercase tracking-wider font-cinzel">
               Oficina Central de Brinquedos
             </span>
           </div>
         </div>
+      </div>
+      </div>
       </motion.div>
       )}
       </AnimatePresence>
@@ -608,5 +639,34 @@ function ToolButton({ onClick, icon, children, id }: { onClick: () => void; icon
       {icon}
       <span>{children}</span>
     </motion.button>
+  );
+}
+
+/** Azevinho (folhas + frutinhas) que balança de leve nos cantos da carta */
+function Holly({ className, delay = 0 }: { className?: string; delay?: number }) {
+  return (
+    <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
+      <g className="holly-sway" style={{ animationDelay: `${delay}s`, transformOrigin: "12px 12px" }}>
+        <path d="M8,10 C20,6 30,12 40,6 C36,16 44,22 38,30 C30,24 22,30 12,26 C16,20 8,16 8,10 Z" fill="#1F7A4D" stroke="#0F4D2E" strokeWidth="1.6" />
+        <path d="M10,12 C22,22 30,22 38,28" stroke="#0F4D2E" strokeWidth="1.2" fill="none" />
+        <path d="M10,8 C14,22 10,34 16,46 C6,40 2,30 6,22 C2,18 4,12 10,8 Z" fill="#2A9A61" stroke="#0F4D2E" strokeWidth="1.6" />
+        <circle cx="13" cy="13" r="4.2" fill="var(--accent, #D90429)" stroke="#7A0115" strokeWidth="1.2" />
+        <circle cx="20" cy="10" r="3.6" fill="var(--accent, #D90429)" stroke="#7A0115" strokeWidth="1.2" />
+        <circle cx="16" cy="19" r="3.4" fill="var(--accent, #D90429)" stroke="#7A0115" strokeWidth="1.2" />
+        <circle cx="12" cy="12" r="1.2" fill="#fff" opacity=".8" />
+      </g>
+    </svg>
+  );
+}
+
+/** Assinatura "Papai Noel" escrita na hora, como se fosse a caneta dele */
+function SantaSignature({ delay }: { delay: number }) {
+  return (
+    <svg viewBox="0 0 260 74" className="w-44 sm:w-56 h-auto block ml-auto -mb-1" aria-label="Papai Noel" role="img">
+      <text x="250" y="56" textAnchor="end" className="santa-sign" style={{ animationDelay: `${delay}s` }}>
+        Papai Noel
+      </text>
+      <path d="M40,66 C100,58 170,72 248,60" className="santa-sign-line" style={{ animationDelay: `${delay + 1.6}s` }} />
+    </svg>
   );
 }

@@ -11,8 +11,8 @@ export const PAID_PLANS: {
   price: string;
   badge?: string;
 }[] = [
-  { id: "natal", name: "Carta Completa", kids: "até 2 crianças · 10 cartas", price: "R$ 29,90", badge: "Mais escolhido" },
-  { id: "familia", name: "Pacote Família", kids: "até 5 crianças · 23 cartas", price: "R$ 49,90", badge: "Melhor para famílias grandes" },
+  { id: "natal", name: "Carta Completa", kids: "até 2 crianças · 10 cartas", price: "R$ 14,90", badge: "Mais escolhido" },
+  { id: "familia", name: "Pacote Família", kids: "até 5 crianças · 23 cartas", price: "R$ 25,90", badge: "Melhor para famílias grandes" },
 ];
 
 /** O que vem nos dois planos pagos (tudo o que temos de melhor). */

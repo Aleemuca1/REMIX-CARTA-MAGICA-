@@ -125,3 +125,56 @@ alter table public.parent_sessions enable row level security;
 -- Cada carta de irmão criada com o código do pedido pago guarda esse código, para contar o limite.
 alter table public.letters add column if not exists access_code text;
 create index if not exists letters_access_code_idx on public.letters (access_code);
+-- Carta Mágica — login do responsável (código de 6 dígitos por e-mail) e "Minhas cartas".
+-- Só o servidor (chave secreta) acessa estas tabelas: RLS ligado e sem políticas públicas.
+
+create table if not exists public.parents (
+  id uuid primary key default gen_random_uuid(),
+  email text not null unique,
+  name text,
+  created_at timestamptz not null default now(),
+  last_login_at timestamptz
+);
+
+create table if not exists public.auth_codes (
+  id bigserial primary key,
+  email text not null,
+  code_hash text not null,
+  expires_at timestamptz not null,
+  attempts int not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists auth_codes_email_idx on public.auth_codes (email);
+
+create table if not exists public.parent_sessions (
+  token_hash text primary key,
+  parent_id uuid not null references public.parents (id) on delete cascade,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists parent_sessions_parent_idx on public.parent_sessions (parent_id);
+
+alter table public.letters add column if not exists parent_id uuid references public.parents (id) on delete set null;
+create index if not exists letters_parent_idx on public.letters (parent_id);
+
+alter table public.parents enable row level security;
+alter table public.auth_codes enable row level security;
+alter table public.parent_sessions enable row level security;
+-- Carta Mágica — Painel da Família
+-- 1) casinhas e árvores ficam ligadas à conta dos pais (para aparecerem no painel em qualquer aparelho)
+alter table public.family_trees add column if not exists parent_id uuid references public.parents (id) on delete set null;
+create index if not exists family_trees_parent_idx on public.family_trees (parent_id);
+-- 2) troca de plano (Carta Completa -> Pacote Família pagando a diferença): guarda o código do pedido original
+alter table public.orders add column if not exists upgrade_of text;
+-- 3) acha rápido as compras de cada e-mail
+create index if not exists orders_customer_email_idx on public.orders (lower(customer_email));
+-- Carta Mágica — Correio do Polo Norte (a criança escreve, o Papai Noel responde)
+-- A foto da cartinha NUNCA é guardada: só o texto que a IA leu.
+alter table public.letters add column if not exists child_text     text;          -- o que a criança escreveu (transcrição)
+alter table public.letters add column if not exists wishes         jsonb;         -- {pedidos:[], perguntas:[], contou:[]}
+alter table public.letters add column if not exists deliver_at     timestamptz;   -- quando a resposta fica visível para a criança
+alter table public.letters add column if not exists review_status  text;          -- null | 'pending' (tema sensível, aguarda revisão) | 'approved' | 'blocked'
+alter table public.letters add column if not exists protocol       bigint;        -- "Sua carta é a nº 12.384"
+alter table public.letters add column if not exists preview_key    text;          -- quem enviou vê a prévia antes da entrega
+create sequence if not exists public.polo_norte_protocolo start 12001;
+create index if not exists letters_protocol_idx on public.letters (protocol);

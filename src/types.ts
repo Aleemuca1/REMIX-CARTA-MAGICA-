@@ -19,4 +19,10 @@ export interface Letter {
   photoUrl?: string;
   /** cor da carta: classico, rosa, lilas, azul ou verde */
   theme?: string;
+  /** Correio do Polo Norte */
+  childText?: string;
+  wishes?: { pedidos: string[]; perguntas: string[]; contou: string[] };
+  deliverAt?: string;
+  reviewStatus?: string;
+  protocol?: number;
 }

@@ -23,7 +23,7 @@ export const VOICES: Voice[] = [
     emoji: "🎅",
     gemini: "Algenib",
     style:
-      "Leia como o verdadeiro Papai Noel: voz grave, rouca e muito calorosa de vovô bondoso, falando devagar, sorrindo, com pausas carinhosas entre as frases e uma risada suave 'Ho ho ho' no começo. Emoção e ternura em cada palavra.",
+      "Você É o Papai Noel em pessoa, gravando um áudio especial para uma criança brasileira. Voz masculina grave, aveludada e levemente rouca de vovô bondoso de uns 70 anos. Fale DEVAGAR e com calma, como quem conta uma história na beira da lareira, sorrindo enquanto fala e fazendo pausas carinhosas entre as frases. Diga o nome da criança com alegria e um carinho especial. As risadas 'Ho ho ho' são graves, calorosas e gostosas, nunca assustadoras. Na missão secreta, fale um pouco mais baixinho, em tom de segredo animado. Sotaque brasileiro natural.",
     pitch: 0.55,
     rate: 0.84,
     pro: false,

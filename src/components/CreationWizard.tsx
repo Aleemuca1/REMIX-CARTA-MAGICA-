@@ -97,7 +97,7 @@ export default function CreationWizard({
     setLimitMsg(null);
     // carta grátis: até 3 por dia neste aparelho
     if (!credit && freeToday() >= FREE_PER_DAY) {
-      setLimitMsg(`Você já criou ${FREE_PER_DAY} cartas grátis hoje neste aparelho. Volte amanhã ou libere o Natal Completo: 10 cartas completas por R$ 29,90 ou 23 no Pacote Família.`);
+      setLimitMsg(`Você já criou ${FREE_PER_DAY} cartas grátis hoje neste aparelho. Volte amanhã ou libere o Natal Completo: 10 cartas completas por R$ 14,90 ou 23 no Pacote Família.`);
       return;
     }
 

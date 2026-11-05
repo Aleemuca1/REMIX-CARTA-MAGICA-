@@ -1,32 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Loader2, LogOut, Mail, ShieldCheck, X } from "lucide-react";
-import {
-  closeParentArea,
-  finishLogin,
-  logout,
-  myLetters,
-  sendCode,
-  useAuth,
-  verifyCode,
-  type LoginReason,
-  type MyLetter,
-} from "../../lib/auth";
-import { letterTheme } from "../../lib/letterThemes";
-import { prettyName } from "../../lib/prettyText";
+import { Loader2, Mail, ShieldCheck, X } from "lucide-react";
+import { closeParentArea, codeLogin, finishLogin, sendCode, useAuth, verifyCode, type LoginReason } from "../../lib/auth";
+import FamilyPanel from "./FamilyPanel";
 
 /** Janela de login do responsável + Área dos Pais. Fica montada uma vez no App. */
-export default function AuthHost({ onOpenLetter, onCreateLetter }: { onOpenLetter: (token: string) => void; onCreateLetter: () => void }) {
+export default function AuthHost({
+  onOpenLetter,
+  onCreateLetter,
+  onPay,
+}: {
+  onOpenLetter: (token: string) => void;
+  onCreateLetter: () => void;
+  onPay: (plan: "natal" | "familia" | "upgrade", code?: string) => void;
+}) {
   const auth = useAuth();
   return (
     <>
       <AnimatePresence>{auth.pending && <LoginModal key="login" reason={auth.pending.reason} />}</AnimatePresence>
       <AnimatePresence>
         {auth.areaOpen && auth.parent && (
-          <ParentArea
+          <FamilyPanel
             key="area"
-            email={auth.parent.email}
-            name={auth.parent.name}
             onOpen={(t) => {
               closeParentArea();
               onOpenLetter(t);
@@ -34,6 +29,10 @@ export default function AuthHost({ onOpenLetter, onCreateLetter }: { onOpenLette
             onCreate={() => {
               closeParentArea();
               onCreateLetter();
+            }}
+            onPay={(plan, code) => {
+              closeParentArea();
+              onPay(plan, code);
             }}
           />
         )}
@@ -48,10 +47,10 @@ let gatePassed = false;
 const TITLES: Record<LoginReason, { title: string; sub: string }> = {
   salvar: { title: "Guardar a carta", sub: "Entre como responsável para guardar a carta e receber o link no seu e-mail." },
   pagar: { title: "Antes de pagar", sub: "Entre como responsável. Assim a compra fica na sua conta e você recebe tudo por e-mail." },
-  area: { title: "Área dos pais", sub: "Entre para ver as cartas que você já guardou." },
+  area: { title: "Painel da Família", sub: "Acompanhe as cartas de cada criança, quantas ainda faltam, a casinha e a árvore da família." },
 };
 
-function Shell({ children, onClose, id }: { children: React.ReactNode; onClose: () => void; id: string }) {
+export function Shell({ children, onClose, id }: { children: React.ReactNode; onClose: () => void; id: string }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -86,7 +85,10 @@ function Shell({ children, onClose, id }: { children: React.ReactNode; onClose: 
 }
 
 function LoginModal({ reason }: { reason: LoginReason }) {
-  const [step, setStep] = useState<"gate" | "email" | "code">(gatePassed ? "email" : "gate");
+  const auth = useAuth();
+  const first = auth.email ? "email" : "magic";
+  const [step, setStep] = useState<"gate" | "email" | "code" | "magic">(gatePassed ? first : "gate");
+  const [magic, setMagic] = useState("");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
@@ -123,6 +125,24 @@ function LoginModal({ reason }: { reason: LoginReason }) {
     }
   };
 
+  const enterWithMagic = async () => {
+    const v = magic.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (v.length !== 6) {
+      setErr("O código mágico tem 6 letras e números.");
+      return;
+    }
+    setErr(null);
+    setBusy(true);
+    try {
+      const r = await codeLogin(v);
+      finishLogin(r.parent);
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const confirm = async (value = code) => {
     if (value.length !== 6 || busy) return;
     setErr(null);
@@ -144,7 +164,7 @@ function LoginModal({ reason }: { reason: LoginReason }) {
         <ParentGate
           onPass={() => {
             gatePassed = true;
-            setStep("email");
+            setStep(first);
           }}
         />
       ) : (
@@ -156,7 +176,48 @@ function LoginModal({ reason }: { reason: LoginReason }) {
           <h2 className="font-cinzel text-xl sm:text-2xl font-bold mb-1">{t.title}</h2>
           <p className="text-sm text-white/75 mb-4">{t.sub}</p>
 
-          {step === "email" ? (
+          {step === "magic" ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void enterWithMagic();
+              }}
+              className="space-y-3"
+            >
+              <label className="block">
+                <span className="text-xs font-semibold text-white/80">Código mágico da compra</span>
+                <input
+                  value={magic}
+                  onChange={(e) => setMagic(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
+                  autoFocus
+                  autoCapitalize="characters"
+                  placeholder="EX: K7Q2MB"
+                  className="mt-1 w-full bg-white text-[#0B132B] rounded-2xl px-4 py-3 text-center text-2xl font-extrabold tracking-[0.35em] focus:outline-none focus:ring-4 focus:ring-[#FFD166]/50"
+                  id="login-magic"
+                />
+              </label>
+              <p className="text-[11px] text-white/60 leading-snug">
+                O código aparece na tela depois do pagamento e no Calendário do Advento. Ele liga você ao e-mail usado na compra.
+              </p>
+              {err && <p className="text-sm text-[#FF8FA3]">{err}</p>}
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full rounded-full py-3.5 font-extrabold bg-gradient-to-r from-[#2DC653] to-[#1a9e3e] border border-[#FFD166]/50 inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                id="login-magic-btn"
+              >
+                {busy && <Loader2 className="w-5 h-5 animate-spin" />}
+                Entrar no Painel da Família
+              </button>
+              {auth.email ? (
+                <button type="button" onClick={() => setStep("email")} className="w-full text-xs text-white/70 underline cursor-pointer">
+                  Prefiro receber um código no e-mail
+                </button>
+              ) : (
+                <p className="text-[11px] text-white/55 text-center">Ainda não comprou? Crie as cartas grátis normalmente. O painel aparece depois da compra.</p>
+              )}
+            </form>
+          ) : step === "email" ? (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -198,6 +259,9 @@ function LoginModal({ reason }: { reason: LoginReason }) {
               >
                 {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mail className="w-5 h-5" />}
                 Receber código no e-mail
+              </button>
+              <button type="button" onClick={() => setStep("magic")} className="w-full text-xs text-[#FFD166] underline cursor-pointer">
+                Já comprei: entrar com o código mágico
               </button>
               <p className="text-[11px] text-white/55 leading-snug">
                 Sem senha: enviamos um código de 6 números. Usamos seu e-mail só para você entrar e receber as cartas, conforme a{" "}
@@ -308,79 +372,5 @@ function ParentGate({ onPass }: { onPass: () => void }) {
       </form>
       {wrong && <p className="text-sm text-[#FF8FA3] mt-2">Ops, não é isso. Tente esta outra conta.</p>}
     </div>
-  );
-}
-
-function ParentArea({ email, name, onOpen, onCreate }: { email: string; name?: string; onOpen: (token: string) => void; onCreate: () => void }) {
-  const [list, setList] = useState<MyLetter[] | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  useEffect(() => {
-    myLetters()
-      .then(setList)
-      .catch((e) => setErr(e.message));
-  }, []);
-  const hello = useMemo(() => (name ? `Olá, ${prettyName(name)}!` : "Olá!"), [name]);
-  return (
-    <Shell onClose={closeParentArea} id="parent-area">
-      <div className="flex items-center gap-2 mb-1">
-        <ShieldCheck className="w-5 h-5 text-[#FFD166]" />
-        <span className="text-[11px] uppercase tracking-widest font-bold text-[#FFD166]">Área dos pais</span>
-      </div>
-      <h2 className="font-cinzel text-xl sm:text-2xl font-bold">{hello}</h2>
-      <p className="text-xs text-white/60 mb-4 break-all">{email}</p>
-
-      <h3 className="text-sm font-bold mb-2">✉️ Minhas cartas</h3>
-      {err && <p className="text-sm text-[#FF8FA3]">{err}</p>}
-      {!list && !err && (
-        <div className="py-6 flex justify-center">
-          <Loader2 className="w-6 h-6 animate-spin text-[#FFD166]" />
-        </div>
-      )}
-      {list && list.length === 0 && (
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-4 text-center">
-          <p className="text-sm text-white/75 mb-3">Nenhuma carta guardada ainda. Ao criar uma carta com você conectado, ela aparece aqui.</p>
-          <button onClick={onCreate} className="rounded-full px-5 py-2.5 font-bold bg-gradient-to-r from-[#D90429] to-[#EF233C] cursor-pointer">
-            Criar uma carta
-          </button>
-        </div>
-      )}
-      {list && list.length > 0 && (
-        <ul className="space-y-2" id="my-letters">
-          {list.map((l) => {
-            const th = letterTheme(l.theme);
-            return (
-              <li key={l.token}>
-                <button
-                  onClick={() => onOpen(l.token)}
-                  className="w-full flex items-center gap-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 p-3 text-left cursor-pointer"
-                >
-                  <span
-                    className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 border border-white/30"
-                    style={{ background: `linear-gradient(135deg, ${th.envelope[0]}, ${th.envelope[1]})` }}
-                  >
-                    ✉️
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block font-bold truncate">Carta para {prettyName(l.childName)}</span>
-                    <span className="block text-xs text-white/60">
-                      {l.age} anos · {l.date}
-                    </span>
-                  </span>
-                  <span
-                    className={`text-[10px] font-bold rounded-full px-2 py-1 ${l.plan === "free" ? "bg-white/10 text-white/70" : "bg-[#FFD166] text-[#0B132B]"}`}
-                  >
-                    {l.plan === "free" ? "Grátis" : l.plan === "familia" ? "Pacote Família" : "Natal Completo"}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      <button onClick={() => void logout()} className="mt-5 w-full rounded-full py-2.5 text-sm font-semibold bg-white/10 hover:bg-white/15 inline-flex items-center justify-center gap-2 cursor-pointer" id="logout-btn">
-        <LogOut className="w-4 h-4" /> Sair
-      </button>
-    </Shell>
   );
 }

@@ -274,6 +274,27 @@ export class ChristmasMusicBox {
     this.master!.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
   }
 
+  private bedWasPlaying = false;
+  /** Música bem baixinha por baixo da voz do Papai Noel (e volta como estava depois). */
+  async bed(on: boolean) {
+    if (on) {
+      this.bedWasPlaying = this.playing;
+      if (!this.playing) await this.play();
+      const t = this.ctx!.currentTime;
+      this.master!.gain.cancelScheduledValues(t);
+      this.master!.gain.setValueAtTime(Math.max(0.0001, this.master!.gain.value), t);
+      this.master!.gain.exponentialRampToValueAtTime(0.16, t + 0.8);
+    } else if (this.ctx) {
+      if (!this.bedWasPlaying) this.pause();
+      else {
+        const t = this.ctx.currentTime;
+        this.master!.gain.cancelScheduledValues(t);
+        this.master!.gain.setValueAtTime(Math.max(0.0001, this.master!.gain.value), t);
+        this.master!.gain.exponentialRampToValueAtTime(0.9, t + 1.2);
+      }
+    }
+  }
+
   next() {
     this.songIdx = (this.songIdx + 1) % SONGS.length;
     this.noteIdx = 0;

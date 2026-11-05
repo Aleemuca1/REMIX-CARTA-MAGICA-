@@ -71,6 +71,39 @@ function tooMany(key: string, max: number, windowMs: number) {
   return arr.length > max;
 }
 
+async function startSession(req: any, res: any, parentId: string) {
+  const token = randomBytes(32).toString("base64url");
+  await db.createSession(sha(`sess:${token}`), parentId, new Date(Date.now() + SESSION_DAYS * 864e5));
+  res.setHeader(
+    "Set-Cookie",
+    `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}${isHttps(req) ? "; Secure" : ""}`,
+  );
+}
+
+// Entrar com o código mágico da compra (funciona mesmo sem o e-mail configurado):
+// o código liga a pessoa ao e-mail usado no pagamento.
+app.post("/api/auth/code", async (req, res) => {
+  const code = String(req.body?.code ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (code.length !== 6) return res.status(400).json({ error: "O código mágico tem 6 letras e números." });
+  if (tooMany(`codelogin:${ipOf(req)}`, 10, 15 * 60 * 1000)) {
+    return res.status(429).json({ error: "Muitas tentativas. Espere alguns minutos e tente de novo." });
+  }
+  try {
+    const order = await db.findPaidOrderByCode(code);
+    if (!order) return res.status(404).json({ error: "Código não encontrado. Confira as letras e tente de novo." });
+    const email = cleanEmail(order.customerEmail);
+    if (!validEmail(email)) {
+      return res.status(400).json({ error: "Esse código ainda não tem um e-mail ligado. Fale com a gente pelo WhatsApp que resolvemos rapidinho." });
+    }
+    const parent = await db.upsertParent(email);
+    await startSession(req, res, parent.id);
+    res.json({ ok: true, parent: { email: parent.email, name: parent.name } });
+  } catch (err: any) {
+    console.error("auth/code:", err?.message || err);
+    res.status(500).json({ error: "Não foi possível entrar agora. Tente de novo." });
+  }
+});
+
 app.post("/api/auth/start", async (req, res) => {
   const email = cleanEmail(req.body?.email);
   if (!validEmail(email)) return res.status(400).json({ error: "Confira o e-mail digitado." });
@@ -124,12 +157,7 @@ app.post("/api/auth/verify", async (req, res) => {
     }
     await db.clearLoginCodes(email);
     const parent = await db.upsertParent(email, name);
-    const token = randomBytes(32).toString("base64url");
-    await db.createSession(sha(`sess:${token}`), parent.id, new Date(Date.now() + SESSION_DAYS * 864e5));
-    res.setHeader(
-      "Set-Cookie",
-      `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}${isHttps(req) ? "; Secure" : ""}`,
-    );
+    await startSession(req, res, parent.id);
     res.json({ ok: true, parent: { email: parent.email, name: parent.name } });
   } catch (err: any) {
     console.error("auth/verify:", err?.message || err);
@@ -142,7 +170,10 @@ app.get("/api/auth/me", async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   const devMode = process.env.NODE_ENV !== "production" && !process.env.VERCEL;
   // available=false: o e-mail (Resend) ainda não foi configurado, então o site não pede login
-  res.json({ parent: p ? { email: p.email, name: p.name } : null, available: mailer.emailConfigured() || devMode });
+  // available: a Área dos Pais aparece (entrar com o código mágico funciona sempre)
+  // email: o login por e-mail (Resend) está configurado; só aí pedimos login antes de pagar
+  const ready = await db.authReady().catch(() => false);
+  res.json({ parent: p ? { email: p.email, name: p.name } : null, available: ready, email: ready && (mailer.emailConfigured() || devMode) });
 });
 
 app.post("/api/auth/logout", async (req, res) => {
@@ -163,6 +194,72 @@ app.get("/api/me/letters", async (req, res) => {
   } catch (err: any) {
     console.error("me/letters:", err?.message || err);
     res.status(500).json({ error: "Não foi possível carregar suas cartas." });
+  }
+});
+
+// Painel da Família: planos, cartas usadas/restantes, cartas por criança, casinhas e árvores
+const PLAN_LABEL: Record<string, string> = { natal: "Carta Completa", familia: "Pacote Família", pro: "Magia Completa" };
+app.get("/api/me/panel", async (req, res) => {
+  const p = await currentParent(req);
+  if (!p) return res.status(401).json({ error: "Entre na Área dos Pais." });
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    const orders = (await db.paidOrdersByEmail(p.email)).filter((o) => o.plan !== "upgrade" && o.accessCode);
+    const plans = [];
+    for (const o of orders) {
+      const st = await codeStatus(o.accessCode!);
+      if (!st) continue;
+      plans.push({
+        code: st.code,
+        plan: st.plan,
+        label: PLAN_LABEL[st.plan] || "Natal Completo",
+        children: st.children,
+        limit: st.limit,
+        used: st.used,
+        remaining: st.remaining,
+        paidAt: o.paidAt,
+        amount: o.amount,
+        canUpgrade: st.plan === "natal",
+      });
+    }
+    const codes = plans.map((x) => x.code);
+    const [mine, byCode, trees] = await Promise.all([db.lettersOfParent(p.id), db.lettersByCodes(codes), db.treesOfParent(p.id)]);
+    const seen = new Set<string>();
+    const letters = [...mine, ...byCode]
+      .filter((l) => (seen.has(l.token) ? false : (seen.add(l.token), true)))
+      .map((l) => ({
+        token: l.token, childName: l.childName, age: l.age, date: l.date, theme: l.theme, plan: l.plan,
+        wishes: l.wishes, protocol: l.protocol, deliverAt: l.deliverAt, review: l.reviewStatus === "pending",
+        fromChild: Boolean(l.childText),
+      }));
+    res.json({
+      parent: { email: p.email, name: p.name },
+      plans,
+      letters,
+      houses: trees.filter((t) => t.token.startsWith("casa")).map((t) => ({ token: t.token, title: t.title, updatedAt: t.updatedAt })),
+      trees: trees.filter((t) => !t.token.startsWith("casa")).map((t) => ({ token: t.token, title: t.title, updatedAt: t.updatedAt })),
+    });
+  } catch (err: any) {
+    console.error("me/panel:", err?.message || err);
+    res.status(500).json({ error: "Não foi possível carregar o painel agora." });
+  }
+});
+
+// Guarda a casinha ou a árvore na conta (quem criou prova com a chave de edição)
+app.post("/api/me/link", async (req, res) => {
+  const p = await currentParent(req);
+  if (!p) return res.status(401).json({ error: "Entre na Área dos Pais." });
+  try {
+    const token = String(req.body?.token || "").toLowerCase();
+    const t = await db.findTree(token);
+    if (!t) return res.status(404).json({ error: "Não encontrada." });
+    if (t.parentId === p.id) return res.json({ ok: true });
+    if (t.parentId || !ownerOk(t, req.body?.editKey)) return res.status(403).json({ error: "Só quem criou pode guardar na conta." });
+    await db.linkTreeToParent(token, p.id);
+    res.json({ ok: true });
+  } catch (err: any) {
+    console.error("me/link:", err?.message || err);
+    res.status(500).json({ error: "Não foi possível guardar agora." });
   }
 });
 
@@ -402,13 +499,200 @@ app.get("/api/letters", requireAdmin, async (_req, res) => {
     res.status(500).json({ error: "Erro ao listar cartas" });
   }
 });
+
+// ======================= Correio do Polo Norte =======================
+// A criança escreve a cartinha (à mão, na folha timbrada, ou digitada). Os pais mandam a foto.
+// A foto é lida na hora pela IA e NUNCA é guardada: só o texto lido fica no banco.
+type ReadLetter = { text: string; wishes: ChildLetter["wishes"]; sensitive: boolean; why: string };
+const SENSITIVE_WORDS = /\b(morreu|faleceu|c[eé]u|separa|divorc|briga|bateu|apanh|hospital|doen[cç]a|c[aâ]ncer|remédio|tratamento|triste|chorar|medo|fome|sem casa|bebida|b[eê]bado|machuc)/i;
+function emptyWishes() {
+  return { pedidos: [] as string[], perguntas: [] as string[], contou: [] as string[] };
+}
+function cleanList(v: unknown, max = 6) {
+  return (Array.isArray(v) ? v : []).map((x) => sanitizeText(x, 120)).filter(Boolean).slice(0, max);
+}
+/** Lê a cartinha (foto ou texto) e tira pedidos, perguntas e o que a criança contou. */
+async function readChildLetter(input: { imageBase64?: string; mime?: string; text?: string }): Promise<ReadLetter> {
+  const ai = getGeminiClient();
+  const typed = sanitizeText(input.text, 1500);
+  const instruction = `Você trabalha no Correio do Polo Norte e lê as cartinhas que as crianças escrevem para o Papai Noel.
+${input.imageBase64 ? "Leia a cartinha manuscrita na imagem (pode ter erros de ortografia, letras invertidas e desenhos; interprete com carinho e NÃO corrija o que a criança quis dizer)." : "Leia a cartinha abaixo."}
+Responda SOMENTE um JSON com este formato exato:
+{"transcricao":"texto da cartinha, fiel ao que a criança escreveu, corrigindo só a ortografia para ficar legível","pedidos":["cada presente ou desejo pedido"],"perguntas":["cada pergunta que a criança fez ao Papai Noel"],"contou":["coisas que ela contou sobre ela: conquistas, família, bichinho, escola"],"sensivel":false,"motivo":""}
+Marque "sensivel": true (e explique em "motivo") se a cartinha falar de luto, morte, doença grave, separação dos pais, violência, fome, medo ou tristeza profunda. Se a imagem não for uma cartinha (ou não der para ler nada), devolva "transcricao":"" e listas vazias.${typed ? `\n\nCARTINHA:\n"""${typed}"""` : ""}`;
+  if (ai) {
+    for (const model of LETTER_MODELS) {
+      try {
+        const parts: any[] = [{ text: instruction }];
+        if (input.imageBase64) parts.push({ inlineData: { mimeType: input.mime || "image/jpeg", data: input.imageBase64 } });
+        const resp = await ai.models.generateContent({ model, contents: [{ parts }], config: { temperature: 0.2, responseMimeType: "application/json" } });
+        const raw = String(resp?.text || "").trim().replace(/^```json\s*|```$/g, "");
+        const j = JSON.parse(raw);
+        const text = sanitizeText(j.transcricao, 1500);
+        const wishes = { pedidos: cleanList(j.pedidos), perguntas: cleanList(j.perguntas), contou: cleanList(j.contou, 8) };
+        const sensitive = Boolean(j.sensivel) || SENSITIVE_WORDS.test(text);
+        return { text, wishes, sensitive, why: sanitizeText(j.motivo, 200) };
+      } catch (e: any) {
+        console.warn(`Leitura da cartinha (${model}) falhou:`, e?.message || e);
+      }
+    }
+  }
+  // sem IA: usa o texto digitado como está
+  const text = typed;
+  return { text, wishes: emptyWishes(), sensitive: SENSITIVE_WORDS.test(text), why: "" };
+}
+
+/** Quando a resposta fica visível para a criança, conforme a escolha dos pais. */
+function deliveryDate(when: unknown): string | null {
+  const w = String(when || "agora");
+  const now = new Date();
+  const y = now.getFullYear();
+  // horário de Brasília (UTC-3), independente do fuso do servidor
+  const at = (m: number, d: number, h: number) => {
+    const dt = new Date(Date.UTC(y, m, d, h + 3, 0, 0));
+    return dt < now ? null : dt.toISOString(); // se já passou, entrega agora
+  };
+  if (w === "3dias") return new Date(now.getTime() + 3 * 864e5).toISOString();
+  if (w === "vespera") return at(11, 24, 19); // 24/12 às 19h
+  if (w === "natal") return at(11, 25, 7); // 25/12 às 7h
+  return null;
+}
+
+app.post("/api/correio", async (req, res) => {
+  try {
+    const { childName, age, city, parentalConsent, parentNotes = "", achievements = "", style = "mágico" } = req.body || {};
+    if (parentalConsent !== true) return res.status(400).json({ error: "É preciso confirmar que você é o responsável pela criança e autoriza o uso dos dados." });
+    if (!childName || !age || !city) return res.status(400).json({ error: "Preencha o nome, a idade e a cidade da criança." });
+    const image = typeof req.body?.imageBase64 === "string" ? req.body.imageBase64.replace(/^data:[^;]+;base64,/, "") : "";
+    const mime = /^image\/(jpeg|png|webp|heic|heif)$/.test(String(req.body?.mime)) ? String(req.body.mime) : "image/jpeg";
+    const typed = sanitizeText(req.body?.text, 1500);
+    if (!image && !typed) return res.status(400).json({ error: "Mande a foto da cartinha ou digite o que a criança escreveu." });
+    if (image.length > 6_000_000) return res.status(413).json({ error: "A foto ficou grande demais. Tente outra foto ou uma mais próxima da folha." });
+    const covered = await coveredByCode(req.body?.accessCode);
+    if (!covered && tooMany(`correio:${ipOf(req)}`, 6, 24 * 60 * 60 * 1000)) {
+      return res.status(429).json({ error: "Hoje já chegaram muitas cartinhas por aqui. Volte amanhã ou libere o Natal Completo.", limit: true });
+    }
+    // 1) o Polo Norte lê a cartinha (a foto é usada só aqui e descartada)
+    const read = await readChildLetter({ imageBase64: image || undefined, mime, text: typed || undefined });
+    if (!read.text && !typed) {
+      return res.status(422).json({ error: "Não consegui ler a cartinha nessa foto. Tente com mais luz, a folha inteira aparecendo e sem sombra. Ou digite o texto dela." });
+    }
+    const childText = read.text || typed;
+    // 2) o Papai Noel escreve a resposta
+    const plan = covered ? covered.plan : "free";
+    const isPro = plan !== "free";
+    const extras = cleanExtras(req.body?.extras);
+    const giftRequest = read.wishes.pedidos.slice(0, 3).join(", ");
+    const composed = await composeLetter({
+      childName, age, city, achievements: String(achievements), giftRequest, parentNotes: String(parentNotes), style: String(style),
+      extras, extrasText: extrasForPrompt(extras), toneDesc: TONES[String(style)] ?? TONES["mágico"], isPro,
+      childLetter: { text: childText, wishes: read.wishes },
+    });
+    const theme = LETTER_THEME_IDS.includes(String(req.body?.theme)) ? String(req.body.theme) : "classico";
+    const token = `${String(childName).toLowerCase().replace(/[^a-z0-9]/g, "")}-${Date.now().toString(36)}`;
+    const previewKey = randomBytes(12).toString("base64url");
+    const protocol = await db.nextProtocol().catch(() => undefined);
+    const rec = {
+      id: `cm-${Date.now()}`,
+      childName, age: Number(age), city, achievements: String(achievements), giftRequest, parentNotes: String(parentNotes), style: String(style), theme,
+      parentId: (await currentParent(req))?.id,
+      plan: covered ? covered.plan : "free",
+      accessCode: covered ? covered.code : undefined,
+      parentalConsentAt: new Date().toISOString(),
+      content: composed.content,
+      date: new Date().toLocaleDateString("pt-BR"),
+      token, deliveryStatus: "awaiting_approval",
+      childText, wishes: read.wishes, previewKey, protocol,
+      // tema sensível: a resposta fica retida até alguém da equipe revisar
+      reviewStatus: read.sensitive ? "pending" : undefined,
+      // até os pais aprovarem, a carta não aparece para a criança
+      deliverAt: "2099-01-01T00:00:00.000Z",
+    };
+    await db.insertLetter(rec as any);
+    if (read.sensitive) console.warn(`[correio] carta ${token} retida para revisão: ${read.why}`);
+    res.json({
+      success: true,
+      token, previewKey, protocol,
+      childText, wishes: read.wishes,
+      sensitive: read.sensitive,
+      letter: { ...rec, previewKey: undefined },
+      generatedWithAI: composed.generatedWithAI,
+    });
+  } catch (err: any) {
+    console.error("Erro no correio:", err?.message || err);
+    res.status(500).json({ error: "O Correio do Polo Norte está com muita neve agora. Tente de novo em instantes." });
+  }
+});
+
+/** Os pais aprovam a resposta e escolhem quando ela chega para a criança. */
+app.post("/api/correio/aprovar", async (req, res) => {
+  try {
+    const letter = await db.findLetter(String(req.body?.token || "").toLowerCase());
+    if (!letter) return res.status(404).json({ error: "Carta não encontrada." });
+    const me = await currentParent(req);
+    const owner = (letter.previewKey && req.body?.previewKey === letter.previewKey) || (me && letter.parentId === me.id);
+    if (!owner) return res.status(403).json({ error: "Só quem enviou a cartinha pode aprovar a resposta." });
+    if (letter.reviewStatus === "pending") {
+      return res.status(409).json({ error: "Esta resposta está em revisão carinhosa pela nossa equipe. Avisaremos assim que for liberada.", review: true });
+    }
+    const when = String(req.body?.when || "agora");
+    const deliverAt = deliveryDate(when);
+    await db.updateLetter(letter.id, { deliverAt: deliverAt ?? (null as any), deliveryStatus: deliverAt ? "scheduled" : "digital_only" });
+    if (me && !letter.parentId) await db.updateLetter(letter.id, { parentId: me.id }).catch(() => {});
+    // e-mail para os pais com o link (se o e-mail estiver configurado)
+    const email = me?.email;
+    if (email) {
+      const site = siteUrlFrom(req);
+      await mailer.sendLetterLink({ to: email, childName: letter.childName, letterUrl: `${site}/natal/${letter.token}`, siteUrl: site }).catch(() => false);
+    }
+    res.json({ ok: true, deliverAt, when });
+  } catch (err: any) {
+    console.error("correio/aprovar:", err?.message || err);
+    res.status(500).json({ error: "Não foi possível agendar agora." });
+  }
+});
+
+// Equipe: cartas retidas para revisão (tema sensível)
+app.get("/api/admin/revisao", requireAdmin, async (_req, res) => {
+  res.json(await db.lettersPendingReview());
+});
+app.post("/api/admin/revisao/:token", requireAdmin, async (req, res) => {
+  const letter = await db.findLetter(String(req.params.token).toLowerCase());
+  if (!letter) return res.status(404).json({ error: "Carta não encontrada." });
+  const ok = req.body?.approve !== false;
+  await db.updateLetter(letter.id, { reviewStatus: ok ? "approved" : "blocked", ...(ok ? {} : { deliverAt: "2099-01-01T00:00:00.000Z" }) });
+  res.json({ ok: true });
+});
+// ===================================================================
+
 app.get("/api/letter/:token", async (req, res) => {
   try {
     const letter = await db.findLetter(req.params.token);
     if (!letter) {
       return res.status(404).json({ error: "Carta n\xE3o encontrada" });
     }
-    res.json(letter);
+    // Correio do Polo Norte: quem enviou (chave de prévia ou conta) vê tudo; a criança só depois da entrega
+    const me = letter.parentId ? await currentParent(req) : null;
+    const owner = (letter.previewKey && req.query.k === letter.previewKey) || (me && me.id === letter.parentId);
+    const locked = letter.deliverAt && Date.parse(letter.deliverAt) > Date.now();
+    const blocked = letter.reviewStatus === "pending" || letter.reviewStatus === "blocked";
+    res.setHeader("Cache-Control", "no-store");
+    if (!owner && (locked || blocked)) {
+      return res.status(423).json({
+        error: blocked ? "Esta carta ainda está sendo preparada no Polo Norte." : "A carta do Papai Noel ainda está a caminho!",
+        locked: true,
+        deliverAt: blocked ? undefined : letter.deliverAt,
+        childName: letter.childName,
+        protocol: letter.protocol,
+      });
+    }
+    const { previewKey, ...pub } = letter;
+    if (!owner) {
+      // a criança não vê a transcrição da própria cartinha nem a lista de desejos (isso é dos pais)
+      delete (pub as any).childText;
+      delete (pub as any).wishes;
+    }
+    res.json(pub);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erro ao buscar a carta" });
@@ -424,7 +708,7 @@ async function codeStatus(raw: unknown) {
   const limit = asaas.PLAN_LETTERS[order.plan] ?? 1;
   const extra = await db.countLettersByCode(code);
   if (extra === null) return { code, plan: order.plan, limit, used: limit, remaining: 0 };
-  const used = 1 + extra; // a carta do pagamento + as dos irmãos
+  const used = (order.letterId ? 1 : 0) + extra; // a carta do pagamento (se pagou junto com uma carta) + as outras
   return { code, plan: order.plan, limit, used, remaining: Math.max(0, limit - used), children: asaas.PLAN_CHILDREN[order.plan] ?? 1 };
 }
 async function coveredByCode(raw: unknown) {
@@ -447,8 +731,103 @@ app.get("/api/access/status/:code", async (req, res) => {
     res.status(500).json({ error: "Erro ao conferir o código." });
   }
 });
-const LETTER_THEME_IDS = ["classico", "rosa", "lilas", "azul", "verde"];
+/** Escreve a carta (IA com modelos reserva; se tudo falhar, a carta reserva). childLetter = resposta ao Correio do Polo Norte. */
 const LETTER_MODELS = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
+type ChildLetter = { text: string; wishes: { pedidos: string[]; perguntas: string[]; contou: string[] } };
+async function composeLetter(o: {
+  childName: string; age: number | string; city: string; achievements: string; giftRequest: string; parentNotes: string;
+  style: string; extras: LetterExtras; extrasText: string; toneDesc: string; isPro: boolean; childLetter?: ChildLetter;
+}) {
+  const { childName, age, city, achievements, giftRequest, parentNotes, style, extras, extrasText, toneDesc, isPro, childLetter } = o;
+  let letterContent = "";
+  let generatedWithAI = false;
+  const ai = getGeminiClient();
+  if (ai) {
+    try {
+      const systemInstruction = `Você é o verdadeiro Papai Noel escrevendo, de próprio punho, uma carta mágica, divertida e emocionante para uma criança brasileira de ${age} anos. A carta será lida em voz alta pelos pais ou pela voz do Papai Noel, então escreva para a CRIANÇA entender e se encantar: frases curtas, palavras simples, muita imaginação e humor carinhoso.
+
+ESTRUTURA (cada parte em um parágrafo separado por uma linha em branco):
+1. SAUDAÇÃO: uma única linha animada e criativa com o nome, por exemplo "Ho Ho Ho! Olá, ${childName}, meu ajudante favorito de ${city}!". Varie: não repita sempre a mesma frase.
+2. ABERTURA MÁGICA: conte uma cena engraçada ou surpreendente que acabou de acontecer COM O PRÓPRIO PAPAI NOEL no Polo Norte por causa da criança (ex.: deu uma gargalhada tão grande que a barba balançou; o gorro saiu voando de alegria ao ler o nome dela; os duendes fizeram uma festa). Seja inventivo e diferente a cada carta.
+3. CONQUISTAS (OBRIGATÓRIO): cite UMA POR UMA, de forma explícita e concreta, TODAS as conquistas que a família escreveu (ex.: se escreveram "aprendeu matemática, foi obediente e passou de ano", a carta precisa falar da matemática, da obediência e de ter passado de ano). Corrija a ortografia do que os pais digitaram, sem mudar o sentido. Lembre a idade e a cidade.
+4. PEDIDO DE NATAL: diga que o próprio Papai Noel anotou o pedido (${giftRequest || "uma surpresa especial"}) no Grande Livro Dourado, com carinho e sem prometer que o presente vai chegar.
+5. CARINHO DA FAMÍLIA: ${parentNotes ? `inclua com delicadeza o recado dos responsáveis: "${parentNotes}".` : "lembre que a família tem muito orgulho e amor por ela."}
+6. MISSÃO SECRETA: um parágrafo que começa exatamente com "🎯 Missão secreta de Natal:" e traz uma pequena missão gentil e divertida para a criança cumprir até o Natal (ex.: dar um abraço surpresa em alguém, ajudar a pôr a mesa, desenhar algo para o Papai Noel e deixar na janela). Uma frase ou duas.
+7. DESPEDIDA: uma frase final criativa e carinhosa que use o nome da criança e uma imagem divertida do Polo Norte (ex.: "Até a noite de Natal, ${childName}! Vou passar pertinho da sua casa e mandar um tchauzinho lá do trenó."). NÃO escreva assinatura nem "Papai Noel" no final: a assinatura já aparece desenhada na carta.
+8. P.S.: depois da despedida, um parágrafo que começa com "P.S.:" curtinho e engraçado, envolvendo o Papai Noel, a Mamãe Noel ou os duendes e, se houver, um detalhe pessoal da criança (bichinho, comida, amigo ou brincadeira favorita).
+${childLetter ? `\nA CARTINHA QUE A CRIANÇA ESCREVEU (ela mesma escreveu para o Papai Noel; esta carta é a RESPOSTA):\n"""${childLetter.text.slice(0, 1500)}"""\n- Pedidos que ela fez: ${childLetter.wishes.pedidos.join("; ") || "nenhum"}\n- Perguntas que ela fez: ${childLetter.wishes.perguntas.join("; ") || "nenhuma"}\n- O que ela contou: ${childLetter.wishes.contou.join("; ") || "nada em especial"}\nREGRAS DA RESPOSTA: comece dizendo que a carta dela CHEGOU no Polo Norte (fale de algo específico que ela escreveu ou desenhou); RESPONDA CADA PERGUNTA dela com carinho e imaginação (isso é o que mais encanta); cite os pedidos dizendo que anotou no Grande Livro Dourado, sem prometer; se ela pediu algo para outra pessoa, elogie o coração generoso; nunca corrija a letra ou a ortografia dela, só elogie o capricho.\n` : ""}${extrasText ? `\nDETALHES PESSOAIS (use TODOS, de forma natural e espalhada pela carta — é isso que faz a família se emocionar):\n${extrasText}\n` : ""}
+REGRAS IMPORTANTES:
+- O protagonista é sempre o Papai Noel. Fale de "as renas", "os duendes" e "a Mamãe Noel" de forma genérica: NUNCA cite personagens de filmes, desenhos ou marcas (por exemplo, não use o nome "Rudolph").
+- NUNCA use chantagem ("se não obedecer não ganha presente") nem prometa presentes. O Papai Noel é pura bondade e aconchego.
+- Use no máximo 3 emojis na carta toda, além do 🎯 da missão.
+- Use o nome da criança pelo menos 3 vezes ao longo da carta.
+- Tudo o que a família escreveu (conquistas, pedido e recado) TEM que aparecer na carta. Antes de terminar, confira se nada ficou de fora.
+- Escreva com ortografia e acentuação perfeitas: esta carta será impressa e guardada pela criança para sempre.
+- Tom da carta: ${toneDesc}.
+- Tamanho: ${isPro ? "carta completa e caprichada, com cerca de 230 a 300 palavras" : "carta acolhedora com cerca de 150 a 190 palavras"}.
+- Idioma: português do Brasil, simples, mágico e afetuoso. Escreva somente a carta, sem títulos nem marcações.`;
+      const userPrompt = `Escreva a carta de Natal personalizada com as informa\xE7\xF5es:
+- Crian\xE7a: ${childName}
+- Idade: ${age} anos
+- Cidade: ${city}
+- Conquistas e atitudes especiais (citar TODAS na carta): ${achievements || "Foi gentil e espalhou alegria"}
+- Pedido de presente na cartinha: ${giftRequest || "Um presente feito com amor"}
+- Palavras especiais dos pais/respons\xE1veis: ${parentNotes || "Nenhum detalhe extra"}
+${extrasText ? `${extrasText}\n` : ""}- Plano: ${isPro ? "PRO (m\xE1xima profundidade emocional, detalhes sensoriais e magia liter\xE1ria)" : "Gratuito (b\xE1sica, terna e envolvente)"}
+- Estilo: ${style}${childLetter ? `\n- Esta carta é a RESPOSTA à cartinha que a criança enviou (veja as instruções). Responda tudo o que ela perguntou.` : ""}`;
+      // se um modelo falhar (fila cheia, instabilidade), tenta o próximo antes de usar a carta reserva
+      for (const model of LETTER_MODELS) {
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents: userPrompt,
+            config: { systemInstruction, temperature: 0.9 },
+          });
+          const txt = response?.text?.trim();
+          if (txt && txt.length > 200) {
+            letterContent = txt;
+            generatedWithAI = true;
+            break;
+          }
+        } catch (e) {
+          console.warn(`Gemini (${model}) falhou:`, e?.message || e);
+        }
+      }
+    } catch (err) {
+      console.warn(
+        "Gemini API call failed, falling back to local generator:",
+        err?.message || err,
+      );
+    }
+  }
+  if (!letterContent && childLetter) {
+    // sem IA: a carta reserva ganha um parágrafo sobre a cartinha que a criança mandou
+    const w = childLetter.wishes;
+    const perguntas = w.perguntas.length ? ` Você me perguntou: "${w.perguntas[0]}". Que pergunta boa! Aqui no Polo Norte a resposta é sempre cheia de magia, e eu adoro quando você fica curioso(a).` : "";
+    const pedidos = w.pedidos.length ? ` Anotei no Grande Livro Dourado tudo o que você pediu: ${w.pedidos.join(", ")}. Os duendes já estão de olho!` : "";
+    const extraPara = `A sua cartinha chegou aqui no Polo Norte e foi direto para a minha mesa! Li cada palavrinha com os meus óculos de aumento e fiquei encantado com o seu capricho.${perguntas}${pedidos}`;
+    const base = generateFallbackLetter({ childName, age: Number(age), city, achievements, giftRequest, parentNotes, style, extras, plan: isPro ? "pro" : "free" });
+    const paras = base.split("\n\n");
+    paras.splice(1, 0, extraPara);
+    letterContent = paras.join("\n\n");
+  }
+  if (!letterContent) {
+    letterContent = generateFallbackLetter({
+      childName,
+      age: Number(age),
+      city,
+      achievements,
+      giftRequest,
+      parentNotes,
+      style,
+      extras,
+      plan: isPro ? "pro" : "free",
+    });
+  }
+  return { content: letterContent, generatedWithAI };
+}
+
+const LETTER_THEME_IDS = ["classico", "rosa", "lilas", "azul", "verde"];
 app.post("/api/generate-letter", async (req, res) => {
   try {
     const {
@@ -493,80 +872,9 @@ app.post("/api/generate-letter", async (req, res) => {
     // o plano pedido só define o tamanho da carta; o acesso pago só é liberado
     // depois que o Asaas confirma o pagamento (webhook)
     const isPro = plan === "pro" || plan === "natal" || plan === "familia";
-    let letterContent = "";
-    let generatedWithAI = false;
-    const ai = getGeminiClient();
-    if (ai) {
-      try {
-        const systemInstruction = `Você é o verdadeiro Papai Noel escrevendo, de próprio punho, uma carta mágica, divertida e emocionante para uma criança brasileira de ${age} anos. A carta será lida em voz alta pelos pais ou pela voz do Papai Noel, então escreva para a CRIANÇA entender e se encantar: frases curtas, palavras simples, muita imaginação e humor carinhoso.
-
-ESTRUTURA (cada parte em um parágrafo separado por uma linha em branco):
-1. SAUDAÇÃO: uma única linha animada e criativa com o nome, por exemplo "Ho Ho Ho! Olá, ${childName}, meu ajudante favorito de ${city}!". Varie: não repita sempre a mesma frase.
-2. ABERTURA MÁGICA: conte uma cena engraçada ou surpreendente que acabou de acontecer COM O PRÓPRIO PAPAI NOEL no Polo Norte por causa da criança (ex.: deu uma gargalhada tão grande que a barba balançou; o gorro saiu voando de alegria ao ler o nome dela; os duendes fizeram uma festa). Seja inventivo e diferente a cada carta.
-3. CONQUISTAS (OBRIGATÓRIO): cite UMA POR UMA, de forma explícita e concreta, TODAS as conquistas que a família escreveu (ex.: se escreveram "aprendeu matemática, foi obediente e passou de ano", a carta precisa falar da matemática, da obediência e de ter passado de ano). Corrija a ortografia do que os pais digitaram, sem mudar o sentido. Lembre a idade e a cidade.
-4. PEDIDO DE NATAL: diga que o próprio Papai Noel anotou o pedido (${giftRequest || "uma surpresa especial"}) no Grande Livro Dourado, com carinho e sem prometer que o presente vai chegar.
-5. CARINHO DA FAMÍLIA: ${parentNotes ? `inclua com delicadeza o recado dos responsáveis: "${parentNotes}".` : "lembre que a família tem muito orgulho e amor por ela."}
-6. MISSÃO SECRETA: um parágrafo que começa exatamente com "🎯 Missão secreta de Natal:" e traz uma pequena missão gentil e divertida para a criança cumprir até o Natal (ex.: dar um abraço surpresa em alguém, ajudar a pôr a mesa, desenhar algo para o Papai Noel e deixar na janela). Uma frase ou duas.
-7. DESPEDIDA: uma frase final criativa e carinhosa que use o nome da criança e uma imagem divertida do Polo Norte (ex.: "Até a noite de Natal, ${childName}! Vou passar pertinho da sua casa e mandar um tchauzinho lá do trenó."). NÃO escreva assinatura nem "Papai Noel" no final: a assinatura já aparece desenhada na carta.
-8. P.S.: depois da despedida, um parágrafo que começa com "P.S.:" curtinho e engraçado, envolvendo o Papai Noel, a Mamãe Noel ou os duendes e, se houver, um detalhe pessoal da criança (bichinho, comida, amigo ou brincadeira favorita).
-${extrasText ? `\nDETALHES PESSOAIS (use TODOS, de forma natural e espalhada pela carta — é isso que faz a família se emocionar):\n${extrasText}\n` : ""}
-REGRAS IMPORTANTES:
-- O protagonista é sempre o Papai Noel. Fale de "as renas", "os duendes" e "a Mamãe Noel" de forma genérica: NUNCA cite personagens de filmes, desenhos ou marcas (por exemplo, não use o nome "Rudolph").
-- NUNCA use chantagem ("se não obedecer não ganha presente") nem prometa presentes. O Papai Noel é pura bondade e aconchego.
-- Use no máximo 3 emojis na carta toda, além do 🎯 da missão.
-- Use o nome da criança pelo menos 3 vezes ao longo da carta.
-- Tudo o que a família escreveu (conquistas, pedido e recado) TEM que aparecer na carta. Antes de terminar, confira se nada ficou de fora.
-- Escreva com ortografia e acentuação perfeitas: esta carta será impressa e guardada pela criança para sempre.
-- Tom da carta: ${toneDesc}.
-- Tamanho: ${isPro ? "carta completa e caprichada, com cerca de 230 a 300 palavras" : "carta acolhedora com cerca de 150 a 190 palavras"}.
-- Idioma: português do Brasil, simples, mágico e afetuoso. Escreva somente a carta, sem títulos nem marcações.`;
-        const userPrompt = `Escreva a carta de Natal personalizada com as informa\xE7\xF5es:
-- Crian\xE7a: ${childName}
-- Idade: ${age} anos
-- Cidade: ${city}
-- Conquistas e atitudes especiais (citar TODAS na carta): ${achievements || "Foi gentil e espalhou alegria"}
-- Pedido de presente na cartinha: ${giftRequest || "Um presente feito com amor"}
-- Palavras especiais dos pais/respons\xE1veis: ${parentNotes || "Nenhum detalhe extra"}
-${extrasText ? `${extrasText}\n` : ""}- Plano: ${isPro ? "PRO (m\xE1xima profundidade emocional, detalhes sensoriais e magia liter\xE1ria)" : "Gratuito (b\xE1sica, terna e envolvente)"}
-- Estilo: ${style}`;
-        // se um modelo falhar (fila cheia, instabilidade), tenta o próximo antes de usar a carta reserva
-        for (const model of LETTER_MODELS) {
-          try {
-            const response = await ai.models.generateContent({
-              model,
-              contents: userPrompt,
-              config: { systemInstruction, temperature: 0.9 },
-            });
-            const txt = response?.text?.trim();
-            if (txt && txt.length > 200) {
-              letterContent = txt;
-              generatedWithAI = true;
-              break;
-            }
-          } catch (e) {
-            console.warn(`Gemini (${model}) falhou:`, e?.message || e);
-          }
-        }
-      } catch (err) {
-        console.warn(
-          "Gemini API call failed, falling back to local generator:",
-          err?.message || err,
-        );
-      }
-    }
-    if (!letterContent) {
-      letterContent = generateFallbackLetter({
-        childName,
-        age: Number(age),
-        city,
-        achievements,
-        giftRequest,
-        parentNotes,
-        style,
-        extras,
-        plan: isPro ? "pro" : "free",
-      });
-    }
+    const composed = await composeLetter({ childName, age, city, achievements, giftRequest, parentNotes, style, extras, extrasText, toneDesc, isPro });
+    const letterContent = composed.content;
+    const generatedWithAI = composed.generatedWithAI;
     const token = `${childName.toLowerCase().replace(/[^a-z0-9]/g, "")}-${Date.now().toString(36)}`;
     const newRecord = {
       id: `cm-${Date.now()}`,
@@ -604,6 +912,18 @@ ${extrasText ? `${extrasText}\n` : ""}- Plano: ${isPro ? "PRO (m\xE1xima profund
 });
 // guarda áudios já gerados (mesmo texto = mesma voz), para não pagar duas vezes
 const ttsCache = new Map<string, string>();
+/** Deixa a carta gostosa de ouvir: sem emojis, com transições faladas e a despedida do Papai Noel. */
+function speechText(content: string, voiceId: string) {
+  let t = String(content || "")
+    .replace(/🎯\s*Miss[aã]o secreta de Natal:?/gi, "E agora... uma missão secreta de Natal, só para você:")
+    .replace(/^\s*P\.?\s?S\.?:?/gim, "Ah... e antes que eu me esqueça:")
+    .replace(/\((a|o|as|os)\)/g, "")
+    .replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+  if (voiceId === "noel" || voiceId === "noel-alegre") t += "\n\nCom todo o carinho do Polo Norte... Papai Noel. Ho ho ho!";
+  return t;
+}
 app.post("/api/tts", async (req, res) => {
   try {
     const { token, adventDay, name, voiceId, treeToken, ornamentId } = req.body || {};
@@ -636,9 +956,9 @@ app.post("/api/tts", async (req, res) => {
       childName = letterRec.childName;
       const paras = String(letterRec.content || "").split(/\n\s*\n/).filter(Boolean);
       const paidVoice = letterRec.plan === "pro" || letterRec.plan === "natal" || letterRec.plan === "familia";
-      text = paidVoice ? letterRec.content : paras.slice(0, 2).join("\n\n");
       // outras vozes são do plano pago
       if (!paidVoice) voice = voiceById("noel");
+      text = paidVoice ? speechText(letterRec.content, voice.id) : speechText(paras.slice(0, 2).join("\n\n"), "");
     }
     if (!text) {
       return res
@@ -657,7 +977,7 @@ app.post("/api/tts", async (req, res) => {
             {
               parts: [
                 {
-                  text: `${voice.style} Fale em português do Brasil, com naturalidade. Texto:\n\n${String(text).slice(0, 2500)}`,
+                  text: `${voice.style}\n\nLeia em português do Brasil, com naturalidade, respeitando as pausas de cada parágrafo. Não leia estas instruções, só o texto abaixo.\n\n${String(text).slice(0, 2800)}`,
                 },
               ],
             },
@@ -1019,10 +1339,18 @@ function siteUrlFrom(req: any) {
 app.post("/api/checkout", async (req, res) => {
   try {
     const { letterId } = req.body || {};
-    // um único plano pago: Natal Completo (R$ 29,90). "pro" antigo vira "natal".
-    const plan = req.body?.plan === "familia" ? "familia" : asaas.isPaidPlan(req.body?.plan) ? "natal" : null;
+    // Carta Completa (natal), Pacote Família (familia) ou troca de plano (upgrade). "pro" antigo vira "natal".
+    const plan: "natal" | "familia" | "upgrade" | null =
+      req.body?.plan === "upgrade" ? "upgrade" : req.body?.plan === "familia" ? "familia" : asaas.isPaidPlan(req.body?.plan) ? "natal" : null;
     if (!plan) {
       return res.status(400).json({ error: "Plano inválido." });
+    }
+    let upgradeOf: string | undefined;
+    if (plan === "upgrade") {
+      const code = String(req.body?.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const orig = await db.findPaidOrderByCode(code);
+      if (!orig || orig.plan !== "natal") return res.status(400).json({ error: "Essa compra já é Pacote Família ou o código não foi encontrado." });
+      upgradeOf = code;
     }
     // dá para pagar direto pelos planos, antes de criar a carta (ex.: quem já usou as 3 grátis do dia)
     const letter = letterId ? await db.findLetter(String(letterId)) : null;
@@ -1048,6 +1376,7 @@ app.post("/api/checkout", async (req, res) => {
       status: "pending",
       paymentMethod: "Asaas (Pix / Cartão)",
       createdAt: new Date().toLocaleString("pt-BR"),
+      ...(upgradeOf ? { upgradeOf } : {}),
     });
     if (parent?.email) await db.updateOrder(orderId, { customerEmail: parent.email }).catch(() => {});
     const checkout = await asaas.createCheckout({ orderId, plan, siteUrl: siteUrlFrom(req) });
@@ -1152,7 +1481,7 @@ app.get("/arvore/:token", async (req, res, next) => {
       .replace(/<title>[^<]*<\/title>/, `<title>${escAttr(title)}</title>`)
       .replace(/\s*<meta (property="og:[^"]+"|name="twitter:card")[^>]*>/g, "")
       .replace("</head>", `${tags}\n  </head>`);
-    res.set("Cache-Control", "public, max-age=300").type("html").send(out);
+    res.set("Cache-Control", "public, max-age=300").set("X-Robots-Tag", "noindex").type("html").send(out);
   } catch {
     next();
   }
@@ -1179,7 +1508,7 @@ app.get("/casa/:token", async (req, res, next) => {
       .replace(/<title>[^<]*<\/title>/, `<title>${escAttr(title)}</title>`)
       .replace(/\s*<meta (property="og:[^"]+"|name="twitter:card")[^>]*>/g, "")
       .replace("</head>", `${tags}\n  </head>`);
-    res.set("Cache-Control", "public, max-age=300").type("html").send(out);
+    res.set("Cache-Control", "public, max-age=300").set("X-Robots-Tag", "noindex").type("html").send(out);
   } catch {
     next();
   }
@@ -1208,7 +1537,7 @@ app.get("/natal/:token", async (req, res, next) => {
       .replace(/<title>[^<]*<\/title>/, `<title>${escAttr(title)}</title>`)
       .replace(/\s*<meta (property="og:[^"]+"|name="twitter:card")[^>]*>/g, "")
       .replace("</head>", `${tags}\n  </head>`);
-    res.set("Cache-Control", "public, max-age=300").type("html").send(out);
+    res.set("Cache-Control", "public, max-age=300").set("X-Robots-Tag", "noindex").type("html").send(out);
   } catch {
     next();
   }
@@ -1370,7 +1699,9 @@ app.get("/api/house/:token", async (req, res) => {
     const token = String(req.params.token).toLowerCase();
     const t = isHouseToken(token) ? await db.findTree(token) : null;
     if (!t) return res.status(404).json({ error: "Casinha não encontrada. Confira o link." });
-    res.json(houseOf(t));
+    const me = t.parentId ? await currentParent(req) : null;
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ ...houseOf(t), mine: Boolean(me && me.id === t.parentId) });
   } catch {
     res.status(500).json({ error: "Erro ao abrir a casinha." });
   }
@@ -1401,7 +1732,10 @@ app.put("/api/house/:token", async (req, res) => {
     const token = String(req.params.token).toLowerCase();
     const t = isHouseToken(token) ? await db.findTree(token) : null;
     if (!t) return res.status(404).json({ error: "Casinha não encontrada." });
-    if (!ownerOk(t, req.headers["x-edit-key"])) return res.status(403).json({ error: "Só quem criou a casinha pode mudar as coisas de lugar." });
+    const me = t.parentId ? await currentParent(req) : null;
+    if (!ownerOk(t, req.headers["x-edit-key"]) && !(me && me.id === t.parentId)) {
+      return res.status(403).json({ error: "Só quem criou a casinha pode mudar as coisas de lugar." });
+    }
     const cfg = cleanHouseCfg(req.body?.cfg);
     const list = Array.isArray(req.body?.items) ? req.body.items.slice(0, 120) : [];
     const items = list.map(cleanHouseItem).filter(Boolean);
@@ -1442,13 +1776,18 @@ app.post("/api/asaas/webhook", async (req, res) => {
     const closed = ["CHECKOUT_CANCELED", "CHECKOUT_EXPIRED"].includes(event);
     const refunded = ["PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED"].includes(event);
 
-    if (paid && order.status !== "paid") {
+    if (paid && order.status !== "paid" && order.plan === "upgrade") {
+      await db.updateOrder(order.orderId, { status: "paid" });
+      const orig = order.upgradeOf ? await db.findPaidOrderByCode(order.upgradeOf) : null;
+      if (orig) await db.updateOrder(orig.orderId, { plan: "familia" });
+    } else if (paid && order.status !== "paid") {
       const accessCode = asaas.newAccessCode();
       const customerId = evt.payment?.customer || evt.checkout?.customer;
       const customerEmail =
+        // o e-mail da conta (quem estava logado ao pagar) vale mais; senão, o e-mail digitado no Asaas
+        order.customerEmail ||
         (typeof evt.checkout?.customerData?.email === "string" && evt.checkout.customerData.email) ||
-        (customerId ? await asaas.getCustomerEmail(String(customerId)) : undefined) ||
-        order.customerEmail;
+        (customerId ? await asaas.getCustomerEmail(String(customerId)) : undefined);
       await db.updateOrder(order.orderId, { status: "paid", accessCode, customerEmail: customerEmail || undefined });
       const letter = await db.findLetter(order.letterId);
       if (letter) await db.updateLetter(letter.id, { plan: order.plan as any });

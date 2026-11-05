@@ -8,19 +8,26 @@ import { CHECKOUT_IMAGE_BASE64 } from "./checkoutImage.js";
 
 export type PaidPlan = "pro" | "natal" | "familia";
 
-export const PLAN_PRICES: Record<PaidPlan, { value: number; name: string; description: string }> = {
+/** o que pode ser cobrado: os planos e a troca Carta Completa -> Pacote Família */
+export type CheckoutPlan = PaidPlan | "upgrade";
+export const PLAN_PRICES: Record<CheckoutPlan, { value: number; name: string; description: string }> = {
+  upgrade: {
+    value: 11,
+    name: "Carta Mágica: vire Família",
+    description: "Troca da Carta Completa pelo Pacote Família: até 5 crianças e 23 cartas completas no total (paga só a diferença)",
+  },
   pro: {
-    value: 19.9,
+    value: 14.9,
     name: "Magia Completa",
     description: "Carta narrada pelo Papai Noel, PDF para imprimir, certificado e link para a família",
   },
   natal: {
-    value: 29.9,
+    value: 14.9,
     name: "Carta Mágica (até 2 crianças)",
     description: "Até 2 crianças, 10 cartas completas com 6 vozes, PDF, imagem HD, certificado, carta brilhante em 5 cores e Calendário do Advento",
   },
   familia: {
-    value: 49.9,
+    value: 25.9,
     name: "Carta Mágica Família (até 5)",
     description: "Até 5 crianças, 23 cartas completas com 6 vozes, PDF, imagem HD, certificado, carta brilhante em 5 cores e Calendário do Advento",
   },
@@ -54,7 +61,7 @@ export function checkoutPageUrl(id: string) {
 /** Cria a sessão de checkout e devolve { id, link }. */
 export async function createCheckout(opts: {
   orderId: string;
-  plan: PaidPlan;
+  plan: CheckoutPlan;
   siteUrl: string;
 }): Promise<{ id: string; link: string }> {
   const price = PLAN_PRICES[opts.plan];

@@ -43,7 +43,7 @@ export default function LandingHero({
           {/* Subtle Tag */}
           <motion.div {...item(0)} className="inline-flex items-center gap-2 bg-[#0B132B]/90 border border-[#FFD166]/40 rounded-full px-4 py-1.5 text-xs text-[#FFD166] shadow-md mx-auto lg:mx-0">
             <span className="flex h-2 w-2 rounded-full bg-[#EF233C] animate-ping" />
-            <span className="font-semibold tracking-wide">Experiência Mágica de Natal com Inteligência Artificial</span>
+            <span className="font-semibold tracking-wide">Carta do Papai Noel com o nome do seu filho · grátis em 2 minutos</span>
           </motion.div>
 
           {/* Headline Mandated by User */}
@@ -59,7 +59,7 @@ export default function LandingHero({
 
           {/* Subheadline Mandated by User */}
           <motion.p {...item(2)} className="text-base sm:text-lg text-[#EDF2F4]/80 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
-            Crie uma experiência mágica e personalizada que seu filho vai lembrar para sempre.
+            Uma carta escrita só para ele, com as conquistas do ano, lida pela voz do Papai Noel. Você vê a carta antes de pagar qualquer coisa.
           </motion.p>
 
           {/* Elegant Christmas Countdown for Dec 25 */}
@@ -107,7 +107,7 @@ export default function LandingHero({
 
           {/* Guarantee Tag */}
           <p className="text-xs text-[#EDF2F4]/60 text-center lg:text-left">
-            🎁 Comece gratuitamente agora • Nenhuma cobrança oculta • Você vê a carta antes de qualquer decisão.
+            🎁 Grátis para começar • Natal Completo a partir de R$ 14,90, pagamento único • Seu filho escreveu? <button onClick={() => onScrollTo("correio")} className="underline text-[#FFD166] cursor-pointer">O Papai Noel responde</button>
           </p>
         </div>
 

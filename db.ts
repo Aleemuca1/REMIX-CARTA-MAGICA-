@@ -29,6 +29,16 @@ export type LetterRecord = {
   /** código do pedido pago que cobriu esta carta (irmãos do mesmo plano) */
   accessCode?: string;
   createdAt?: string;
+  /** Correio do Polo Norte: a cartinha que a criança escreveu (texto lido da foto ou digitado) */
+  childText?: string;
+  /** o que a IA entendeu da cartinha */
+  wishes?: { pedidos: string[]; perguntas: string[]; contou: string[] };
+  /** quando a resposta fica visível (ISO). Antes disso, só quem enviou vê a prévia */
+  deliverAt?: string;
+  /** tema sensível: "pending" aguarda revisão humana; "approved" liberado; "blocked" não sai */
+  reviewStatus?: string;
+  protocol?: number;
+  previewKey?: string;
 };
 
 export type OrderRecord = {
@@ -45,6 +55,8 @@ export type OrderRecord = {
   gatewayChargeId?: string;
   accessCode?: string;
   customerEmail?: string;
+  /** troca de plano: código do pedido que vira Pacote Família */
+  upgradeOf?: string;
 };
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -85,6 +97,12 @@ const letterToRow = (l: Partial<LetterRecord>) => {
     theme: l.theme,
     parent_id: l.parentId,
     access_code: l.accessCode,
+    child_text: l.childText,
+    wishes: l.wishes,
+    deliver_at: l.deliverAt,
+    review_status: l.reviewStatus,
+    protocol: l.protocol,
+    preview_key: l.previewKey,
   };
   Object.keys(row).forEach((k) => row[k] === undefined && delete row[k]);
   return row;
@@ -114,6 +132,12 @@ const rowToLetter = (r: any): LetterRecord => ({
   parentId: r.parent_id ?? undefined,
   accessCode: r.access_code ?? undefined,
   createdAt: r.created_at,
+  childText: r.child_text ?? undefined,
+  wishes: r.wishes ?? undefined,
+  deliverAt: r.deliver_at ?? undefined,
+  reviewStatus: r.review_status ?? undefined,
+  protocol: r.protocol ?? undefined,
+  previewKey: r.preview_key ?? undefined,
 });
 
 const orderToRow = (o: OrderRecord) => ({
@@ -127,6 +151,7 @@ const orderToRow = (o: OrderRecord) => ({
   payment_method: o.paymentMethod,
   gateway_charge_id: o.gatewayChargeId ?? null,
   paid_at: o.status === "paid" ? new Date().toISOString() : null,
+  ...(o.upgradeOf ? { upgrade_of: o.upgradeOf } : {}),
 });
 
 const rowToOrder = (r: any): OrderRecord => ({
@@ -143,6 +168,7 @@ const rowToOrder = (r: any): OrderRecord => ({
   gatewayChargeId: r.gateway_charge_id ?? undefined,
   accessCode: r.access_code ?? undefined,
   customerEmail: r.customer_email ?? undefined,
+  upgradeOf: r.upgrade_of ?? undefined,
 });
 
 // ---------- fallback em memória ----------
@@ -170,7 +196,7 @@ export async function insertLetter(letter: LetterRecord): Promise<void> {
     ({ error } = await supabase.from("letters").insert(row));
   }
   // se as migrações 006 (cor) ou 007 (login) ainda não foram aplicadas, salva sem essas colunas
-  for (const col of ["theme", "parent_id", "access_code"]) {
+  for (const col of ["theme", "parent_id", "access_code", "child_text", "wishes", "deliver_at", "review_status", "protocol", "preview_key"]) {
     if (error && new RegExp(col).test(error.message) && col in row) {
       console.warn(`Coluna ${col} ausente em letters: rode as migrações 006/007 do Supabase`);
       delete row[col];
@@ -207,6 +233,14 @@ export async function updateLetter(
   }
   const row = letterToRow(patch);
   let { error } = await supabase.from("letters").update(row).eq("id", id);
+  for (const col of ["deliver_at", "review_status", "child_text", "wishes", "preview_key"]) {
+    if (error && new RegExp(col).test(error.message) && col in row) {
+      console.warn(`Coluna ${col} ausente em letters: rode supabase/migrations/010_correio_polo_norte.sql`);
+      delete row[col];
+      if (!Object.keys(row).length) return;
+      ({ error } = await supabase.from("letters").update(row).eq("id", id));
+    }
+  }
   if (error && /theme/.test(error.message) && "theme" in row) {
     console.warn("Coluna theme ausente: rode supabase/migrations/006_cor_da_carta.sql");
     delete row.theme;
@@ -263,6 +297,7 @@ export async function updateOrder(
     paymentMethod?: string;
     accessCode?: string;
     customerEmail?: string;
+    plan?: string;
   },
 ): Promise<void> {
   if (!supabase) {
@@ -280,6 +315,7 @@ export async function updateOrder(
   if (patch.paymentMethod) row.payment_method = patch.paymentMethod;
   if (patch.accessCode) row.access_code = patch.accessCode;
   if (patch.customerEmail) row.customer_email = patch.customerEmail;
+  if (patch.plan) row.plan = patch.plan;
   let { error } = await supabase.from("orders").update(row).eq("order_id", orderId);
   // se a migração 004 ainda não foi aplicada, salva o resto (não trava a liberação do plano)
   if (error && /access_code|customer_email/.test(error.message)) {
@@ -344,6 +380,7 @@ export type TreeRecord = {
   title: string;
   ornaments: any[];
   updatedAt?: string;
+  parentId?: string;
 };
 const memTrees = new Map<string, TreeRecord>();
 
@@ -367,7 +404,7 @@ export async function findTree(token: string): Promise<TreeRecord | null> {
   const { data, error } = await supabase.from("family_trees").select("*").eq("token", token).maybeSingle();
   if (error) throw new Error(`Supabase findTree: ${error.message}`);
   return data
-    ? { token: data.token, editKeyHash: data.edit_key_hash, title: data.title, ornaments: data.ornaments || [], updatedAt: data.updated_at }
+    ? { token: data.token, editKeyHash: data.edit_key_hash, title: data.title, ornaments: data.ornaments || [], updatedAt: data.updated_at, parentId: data.parent_id ?? undefined }
     : null;
 }
 
@@ -517,4 +554,71 @@ export async function countLettersByCode(code: string): Promise<number | null> {
     return null;
   }
   return count ?? 0;
+}
+
+
+// ---------- Painel da Família ----------
+/** Compras pagas de um e-mail (o e-mail do Asaas ou o da conta, na hora de pagar). */
+export async function paidOrdersByEmail(email: string): Promise<OrderRecord[]> {
+  if (!email) return [];
+  if (!supabase) return memOrders.filter((o) => o.status === "paid" && (o.customerEmail || "").toLowerCase() === email.toLowerCase());
+  const { data, error } = await supabase.from("orders").select("*").eq("status", "paid").ilike("customer_email", email).order("created_at", { ascending: true });
+  if (error) throw new Error(`Supabase paidOrdersByEmail: ${error.message}`);
+  return (data ?? []).map(rowToOrder);
+}
+
+/** Cartas feitas com os códigos mágicos da família. */
+export async function lettersByCodes(codes: string[], limit = 80): Promise<LetterRecord[]> {
+  const ok = codes.filter((c) => /^[A-Z0-9]{6}$/.test(c));
+  if (!ok.length) return [];
+  if (!supabase) return memLetters.filter((l) => l.accessCode && ok.includes(l.accessCode)).slice(0, limit);
+  const { data, error } = await supabase.from("letters").select("*").in("access_code", ok).order("created_at", { ascending: false }).limit(limit);
+  if (error) return [];
+  return (data ?? []).map(rowToLetter);
+}
+
+/** Liga uma casinha/árvore à conta dos pais. */
+export async function linkTreeToParent(token: string, parentId: string): Promise<void> {
+  if (!supabase) {
+    const t = memTrees.get(token);
+    if (t) t.parentId = parentId;
+    return;
+  }
+  const { error } = await supabase.from("family_trees").update({ parent_id: parentId }).eq("token", token);
+  if (error) throw new Error(`Supabase linkTreeToParent: ${error.message}`);
+}
+
+export async function treesOfParent(parentId: string): Promise<TreeRecord[]> {
+  if (!supabase) return [...memTrees.values()].filter((t) => t.parentId === parentId);
+  const { data, error } = await supabase.from("family_trees").select("token,title,updated_at,parent_id").eq("parent_id", parentId).order("updated_at", { ascending: false }).limit(20);
+  if (error) return [];
+  return (data ?? []).map((d: any) => ({ token: d.token, editKeyHash: "", title: d.title, ornaments: [], updatedAt: d.updated_at, parentId: d.parent_id }));
+}
+
+/** As tabelas do login (migrações 007 e 009) já existem? Guarda a resposta por 5 minutos. */
+let authReadyCache: { ok: boolean; at: number } | null = null;
+export async function authReady(): Promise<boolean> {
+  if (!supabase) return true;
+  if (authReadyCache && Date.now() - authReadyCache.at < 5 * 60 * 1000) return authReadyCache.ok;
+  const { error } = await supabase.from("parents").select("id", { head: true, count: "exact" }).limit(1);
+  const ok = !error;
+  authReadyCache = { ok, at: Date.now() };
+  return ok;
+}
+
+/** Número de protocolo do Correio do Polo Norte ("Sua carta é a nº 12.384"). */
+let memProtocol = 12000;
+export async function nextProtocol(): Promise<number> {
+  if (!supabase) return ++memProtocol;
+  const { count } = await supabase.from("letters").select("id", { count: "exact", head: true });
+  // começa em 12.001 para a numeração parecer de um correio de verdade
+  return 12000 + (count ?? 0) + 1;
+}
+
+/** Cartas que ficaram retidas para revisão humana (tema sensível). */
+export async function lettersPendingReview(limit = 50): Promise<LetterRecord[]> {
+  if (!supabase) return memLetters.filter((l) => l.reviewStatus === "pending").slice(0, limit);
+  const { data, error } = await supabase.from("letters").select("*").eq("review_status", "pending").order("created_at", { ascending: false }).limit(limit);
+  if (error) return [];
+  return (data ?? []).map(rowToLetter);
 }

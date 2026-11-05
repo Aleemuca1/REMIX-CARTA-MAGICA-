@@ -309,6 +309,43 @@ function drawRich(ctx: CanvasRenderingContext2D, lay: ReturnType<typeof richLayo
   return yy;
 }
 
+/** Página de lembrança: o que a criança escreveu para o Papai Noel (transcrição), com data e protocolo. */
+export function renderChildLetterPage(l: Letter) {
+  useTheme(l);
+  const W = 1240, H = 1754;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext("2d")!;
+  parchment(ctx, 0, 0, W, H, 0, T);
+  const m = 120;
+  ctx.textAlign = "center";
+  ctx.fillStyle = T.ink;
+  ctx.font = F.cinzel(34, 800);
+  ctx.fillText("✦ A CARTINHA QUE CHEGOU AO POLO NORTE ✦", W / 2, 150);
+  ctx.fillStyle = "rgba(28,37,65,0.7)";
+  ctx.font = F.serif(24, true);
+  ctx.fillText(`Escrita por ${prettyName(l.childName)}, ${l.age} anos, de ${prettyCity(l.city)} · Natal ${new Date().getFullYear()}${l.protocol ? ` · Carta nº ${l.protocol.toLocaleString("pt-BR")}` : ""}`, W / 2, 200);
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#2B2118";
+  ctx.font = F.ps(44);
+  let y = 300;
+  for (const para of String(l.childText).split(/\n+/)) {
+    for (const line of wrapLines(ctx, para, W - m * 2)) {
+      ctx.fillText(line, m, y);
+      y += 62;
+      if (y > H - 300) break;
+    }
+    y += 24;
+  }
+  waxSeal(ctx, W / 2, H - 190, 60, T);
+  ctx.textAlign = "center";
+  ctx.fillStyle = T.ink + "BF";
+  ctx.font = F.cinzel(20, 700);
+  ctx.fillText("Guardada com carinho pelo Correio do Polo Norte", W / 2, H - 90);
+  return c;
+}
+
 /** A carta completa numa folha A4 (1240x1754), com QR code para ouvir a voz. */
 export async function renderLetterPage(l: Letter, withQr = true) {
   useTheme(l);
@@ -485,6 +522,11 @@ export async function letterPdf(l: Letter) {
   const [page, { jsPDF }] = await Promise.all([renderLetterPage(l, true), import("jspdf")]);
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   pdf.addImage(page.toDataURL("image/jpeg", 0.93), "JPEG", 0, 0, 210, 297);
+  // Correio do Polo Norte: a cartinha que a criança escreveu vira a página 2 (lembrança "Natal 2026")
+  if (l.childText) {
+    pdf.addPage();
+    pdf.addImage(renderChildLetterPage(l).toDataURL("image/jpeg", 0.93), "JPEG", 0, 0, 210, 297);
+  }
   pdf.setProperties({ title: `Carta do Papai Noel para ${l.childName}`, author: "Papai Noel • Carta Mágica" });
   return pdf.output("blob") as Blob;
 }

@@ -41,6 +41,7 @@ export default function Footer({ onScrollTo }: { onScrollTo: (id: string) => voi
           ))}
         </nav>
         <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-1 text-[11px] text-[#EDF2F4]/55">
+          <a href="/guia-de-natal" className="hover:text-[#FFD166] underline-offset-2 hover:underline">Guia de Natal</a>
           <a href="/termos" className="hover:text-[#FFD166] underline-offset-2 hover:underline">Termos de Uso</a>
           <a href="/privacidade" className="hover:text-[#FFD166] underline-offset-2 hover:underline">Política de Privacidade</a>
           <a href="/cookies" className="hover:text-[#FFD166] underline-offset-2 hover:underline">Política de Cookies</a>

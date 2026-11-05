@@ -5,9 +5,6 @@ import HowItWorks from "./components/HowItWorks";
 import PricingSection from "./components/PricingSection";
 import SnowCanvas from "./components/SnowCanvas";
 import TwinkleStars from "./components/TwinkleStars";
-import ScrollProgress from "./components/ScrollProgress";
-import MagicCursor from "./components/MagicCursor";
-import FloatingOrnaments from "./components/FloatingOrnaments";
 import StickyMobileCTA from "./components/StickyMobileCTA";
 import FAQSection from "./components/FAQSection";
 import GiftSurprise from "./components/GiftSurprise";
@@ -16,7 +13,6 @@ import SantaGame from "./components/SantaGame";
 import PolarBearGame from "./components/PolarBearGame";
 import FamilySection from "./components/family/FamilySection";
 import MemoryGame from "./components/memory/MemoryGame";
-import CircusGame from "./components/CircusGame";
 import NiceListQuiz from "./components/NiceListQuiz";
 import SantaTracker from "./components/SantaTracker";
 import LightTree from "./components/LightTree";
@@ -24,13 +20,16 @@ import WorldChristmas from "./components/WorldChristmas";
 import SnowDivider from "./components/SnowDivider";
 import Footer from "./components/Footer";
 import SnowToggle from "./components/SnowToggle";
-import FrostEdges from "./components/FrostEdges";
 import SnowGlobe from "./components/SnowGlobe";
 import AdventCalendar from "./components/advent/AdventCalendar";
 import AtelierSection from "./components/atelier/AtelierSection";
 import TreeSection from "./components/tree/TreeSection";
-import HouseSection from "./components/house/HouseSection";
-import SantaPeek from "./components/SantaPeek";
+import ExtrasHub, { isExtraId, openExtra } from "./components/ExtrasHub";
+import CorreioSection from "./components/correio/CorreioSection";
+import WhyUs from "./components/WhyUs";
+import CorreioFlow from "./components/correio/CorreioFlow";
+import OnTheWay from "./components/correio/OnTheWay";
+import { fetchLetter } from "./lib/correio";
 import { celebrateFrom } from "./lib/celebrate";
 import { startCheckout, usePaymentReturn } from "./lib/payment";
 import { loadMe, parentForCheckout } from "./lib/auth";
@@ -52,6 +51,8 @@ export default function App() {
   const [activeLetter, setActiveLetter] = useState<Letter | null>(null);
   // carta que vai junto no pagamento; "nova" = pagar antes de criar a carta
   const [chooseFor, setChooseFor] = useState<Letter | "nova" | null>(null);
+  const [correioOpen, setCorreioOpen] = useState(false);
+  const [onTheWay, setOnTheWay] = useState<{ childName: string; deliverAt?: string; protocol?: number; message: string } | null>(null);
   const [payMsg, setPayMsg] = useState<{ kind: "wait" | "ok" | "error"; text: string } | null>(null);
 
   // volta do Asaas: confirma o pagamento e reabre a carta já liberada
@@ -61,14 +62,25 @@ export default function App() {
     void loadMe();
     // links compartilhados como /#lista ou /#rastreador abrem direto na seção
     const id = window.location.hash.slice(1);
+    // links das páginas do guia: /#criar abre direto a criação da carta
+    if (id === "criar") {
+      setTimeout(() => setIsWizardOpen(true), 400);
+      window.history.replaceState(null, "", "/");
+      return;
+    }
+    if (id === "enviar-cartinha") {
+      setTimeout(() => setCorreioOpen(true), 400);
+      window.history.replaceState(null, "", "/");
+      return;
+    }
     if (/^[a-z-]{2,30}$/.test(id)) setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }), 700);
   }, []);
 
-  const pay = async (letter: Letter | null, plan: PaidChoice) => {
+  const pay = async (letter: Letter | null, plan: PaidChoice | "upgrade", code?: string) => {
     // a compra fica na conta do responsável (e o e-mail dele recebe tudo)
     if ((await parentForCheckout()) === "cancel") return;
     setPayMsg({ kind: "wait", text: "Abrindo o pagamento seguro do Asaas..." });
-    const err = await startCheckout(letter?.id ?? null, plan);
+    const err = await startCheckout(letter?.id ?? null, plan, code);
     if (err) setPayMsg({ kind: "error", text: err });
   };
 
@@ -76,9 +88,11 @@ export default function App() {
   useEffect(() => {
     const m = window.location.pathname.match(/^\/natal\/([a-z0-9-]+)\/?$/i);
     if (!m) return;
-    fetch(`/api/letter/${m[1].toLowerCase()}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((l) => l && setActiveLetter(l))
+    fetchLetter(m[1].toLowerCase())
+      .then((r) => {
+        if (r.letter) setActiveLetter(r.letter);
+        else if (r.locked) setOnTheWay(r.locked);
+      })
       .catch(() => {});
   }, []);
 
@@ -110,6 +124,7 @@ export default function App() {
   };
 
   const handleScrollTo = (id: string) => {
+    if (!document.getElementById(id) && isExtraId(id)) return openExtra(id);
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth" });
@@ -127,10 +142,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#060B19] text-[#EDF2F4] relative flex flex-col selection:bg-[#FFD166] selection:text-[#060B19]">
       {/* Falling snow atmospheric effect */}
-      <ScrollProgress />
       <TwinkleStars />
-      <FloatingOrnaments />
-      <MagicCursor />
       <SnowCanvas />
 
       {/* Navigation Header */}
@@ -145,45 +157,37 @@ export default function App() {
           onViewSample={() => setIsSampleOpen(true)}
         />
 
-        {/* How It Works Section */}
+        {/* Correio do Polo Norte: a criança escreve, o Papai Noel responde */}
+        <CorreioSection onStart={() => setCorreioOpen(true)} />
+
+        {/* Como funciona: 3 passos */}
         <SnowDivider />
         <HowItWorks onStartWizard={handleStartWizard} />
 
-        {/* Presente surpresa interativo */}
-        <GiftSurprise onStart={() => handleStartWizard("free")} />
-        <NiceListQuiz onCreateLetter={() => handleStartWizard("free")} />
-        <LightTree onCreateLetter={() => handleStartWizard("free")} />
-        <SantaTracker onCreateLetter={() => handleStartWizard("free")} />
-        <WorldChristmas onCreateLetter={() => handleStartWizard("free")} />
+        {/* Por que a Carta Mágica */}
+        <WhyUs />
 
-        {/* Jogo de Natal */}
-        <SantaGame onCreateLetter={() => handleStartWizard("free")} />
-
-        {/* Jogo do ursinho polar */}
-        <PolarBearGame onCreateLetter={() => handleStartWizard("free")} />
-
-        {/* Família no trenó (fotos ficam só no aparelho) */}
-        <FamilySection onUpgrade={() => handleStartWizard("natal")} />
-        <MemoryGame onUpgrade={() => handleStartWizard("natal")} onCreateLetter={() => handleStartWizard("free")} />
-        <CircusGame onCreateLetter={() => handleStartWizard("free")} />
-
-        {/* Ateliê de Natal: colorir e desenhar */}
-        <AtelierSection onUpgrade={() => handleStartWizard("natal")} />
-
-        {/* Árvore de Natal da Família: enfeites com frases */}
-        <TreeSection onUpgrade={() => handleStartWizard("natal")} />
-
-        {/* Nossa Casinha de Natal: a família monta a casa junta */}
-        <HouseSection onUpgrade={() => setChooseFor("nova")} />
-
-        {/* Pricing & Value Section */}
-        <SnowDivider />
-        <AdventCalendar onUpgrade={() => handleScrollTo("precos")} />
-
-        <SnowGlobe />
-
+        {/* Planos logo depois: o foco é a carta */}
         <SnowDivider />
         <PricingSection onSelectPlan={(p) => (p === "natal" || p === "familia" ? void pay(null, p) : handleStartWizard(p))} />
+
+        {/* Bônus para a família: tudo guardado num baú, abre quando a família quiser */}
+        <SnowDivider />
+        <ExtrasHub>
+          <TreeSection onUpgrade={() => setChooseFor("nova")} />
+          <AdventCalendar onUpgrade={() => setChooseFor("nova")} />
+          <NiceListQuiz onCreateLetter={() => handleStartWizard("free")} />
+          <SantaTracker onCreateLetter={() => handleStartWizard("free")} />
+          <SantaGame onCreateLetter={() => handleStartWizard("free")} />
+          <PolarBearGame onCreateLetter={() => handleStartWizard("free")} />
+          <MemoryGame onUpgrade={() => setChooseFor("nova")} onCreateLetter={() => handleStartWizard("free")} />
+          <AtelierSection onUpgrade={() => setChooseFor("nova")} />
+          <FamilySection onUpgrade={() => setChooseFor("nova")} />
+          <LightTree onCreateLetter={() => handleStartWizard("free")} />
+          <WorldChristmas onCreateLetter={() => handleStartWizard("free")} />
+          <GiftSurprise onStart={() => handleStartWizard("free")} />
+          <SnowGlobe />
+        </ExtrasHub>
 
         {/* Perguntas frequentes */}
         <SnowDivider />
@@ -196,9 +200,7 @@ export default function App() {
 
       <StickyMobileCTA onClick={() => handleStartWizard("free")} />
       <MusicToggle />
-      <SantaPeek />
       <SnowToggle />
-      <FrostEdges />
 
       {/* Interactive Modals */}
       <SampleLetterPreview
@@ -224,6 +226,32 @@ export default function App() {
       )}
 
       <AnimatePresence>
+        {correioOpen && (
+          <CorreioFlow
+            onClose={() => setCorreioOpen(false)}
+            onOpenLetter={(l) => {
+              setCorreioOpen(false);
+              setActiveLetter(l);
+            }}
+            onSeePlans={() => {
+              setCorreioOpen(false);
+              setChooseFor("nova");
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {onTheWay && (
+          <OnTheWay
+            {...onTheWay}
+            onClose={() => {
+              setOnTheWay(null);
+              setTimeout(() => window.history.replaceState(null, "", "/"), 80);
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
         {chooseFor && (
           <PlanChooser
             onClose={() => setChooseFor(null)}
@@ -238,12 +266,12 @@ export default function App() {
 
       <AuthHost
         onOpenLetter={(token) =>
-          fetch(`/api/letter/${encodeURIComponent(token)}`)
-            .then((r) => (r.ok ? r.json() : null))
-            .then((l) => l && setActiveLetter(l))
+          fetchLetter(token)
+            .then((r) => (r.letter ? setActiveLetter(r.letter) : r.locked && setOnTheWay(r.locked)))
             .catch(() => {})
         }
         onCreateLetter={() => handleStartWizard("free")}
+        onPay={(plan, code) => void pay(null, plan, code)}
       />
 
       <ScrollTopButton />

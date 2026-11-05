@@ -1,16 +1,17 @@
 import { useEffect } from "react";
 import type { Letter } from "../types";
 import { grantFullAccess, saveAccessCode } from "../advent/access";
+import { loginWithCode } from "./auth";
 
 type Msg = { kind: "wait" | "ok" | "error"; text: string } | null;
 
 /** Cria o pedido no servidor e leva para a página de pagamento do Asaas. Devolve uma mensagem de erro, se houver. */
-export async function startCheckout(letterId: string | null, plan: "pro" | "natal" | "familia"): Promise<string | null> {
+export async function startCheckout(letterId: string | null, plan: "pro" | "natal" | "familia" | "upgrade", code?: string): Promise<string | null> {
   try {
     const res = await fetch("/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ letterId, plan }),
+      body: JSON.stringify({ letterId, plan, code }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.checkoutUrl) {
@@ -60,7 +61,16 @@ export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Lette
             const o = await r.json();
             if (o.status === "paid") {
               grantFullAccess();
-              if (o.accessCode) saveAccessCode(o.accessCode);
+              if (o.accessCode) {
+                saveAccessCode(o.accessCode);
+                // já entra na Área dos Pais com o código da compra (sem senha)
+                void loginWithCode(o.accessCode).catch(() => {});
+              }
+              if (o.plan === "upgrade") {
+                clean();
+                setMsg({ kind: "ok", text: "Pronto! Agora vocês têm o Pacote Família: até 5 crianças e 23 cartas completas. 🎄 Veja tudo no Painel da Família." });
+                return;
+              }
               if (o.letterToken) {
                 const lr = await fetch(`/api/letter/${encodeURIComponent(o.letterToken)}`);
                 if (lr.ok) openLetter(await lr.json());
@@ -74,9 +84,9 @@ export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Lette
                 text:
                   "Pagamento confirmado! As 6 vozes, o PDF, o certificado e o Calendário do Advento estão liberados. 🎄" +
                   (o.plan === "familia"
-                    ? " Agora é só criar as cartas: até 5 crianças e 23 cartas completas no total."
+                    ? " Agora é só criar as cartas: até 5 crianças e 23 cartas completas no total. Acompanhe tudo no Painel da Família (botão Área dos pais)."
                     : o.plan === "natal"
-                      ? " Agora é só criar as cartas: até 2 crianças e 10 cartas completas no total."
+                      ? " Agora é só criar as cartas: até 2 crianças e 10 cartas completas no total. Acompanhe tudo no Painel da Família (botão Área dos pais)."
                       : "") +
                   (o.accessCode
                     ? ` Seu código mágico para abrir em outro aparelho: ${o.accessCode} (guarde, ele também aparece no Calendário).`

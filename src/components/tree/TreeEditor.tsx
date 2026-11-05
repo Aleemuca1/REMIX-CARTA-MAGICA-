@@ -30,6 +30,7 @@ import {
 import { api, loadLocal, saveLocal, shareUrl } from "../../tree/store";
 import { treeToPng } from "../../tree/exportImage";
 import { getChildName } from "../../advent/access";
+import { linkToAccount } from "../../lib/auth";
 
 const GOAL = 8; // frases para a estrela brilhar
 
@@ -239,6 +240,7 @@ export default function TreeEditor({
     try {
       const r = await api.create(tree.title, tree.ornaments);
       update({ ...tree, token: r.token, editKey: r.editKey });
+      void linkToAccount(r.token, r.editKey);
       setShare(true);
     } catch (e: any) {
       say(e.message);
