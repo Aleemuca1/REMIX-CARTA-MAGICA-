@@ -1,6 +1,7 @@
 import { Check, Sparkles, Crown } from "lucide-react";
 import { PlanType } from "../types";
 import Reveal from "./Reveal";
+import { PROMO, promoActive, promoEndsLabel } from "../lib/promo";
 
 interface PricingSectionProps {
   onSelectPlan: (plan: PlanType) => void;
@@ -21,6 +22,7 @@ type Plan = {
 const PAID: { text: string; strong?: boolean }[] = [
   { text: "Cartas completas com o nome de cada criança", strong: true },
   { text: "6 vozes lendo a carta inteira: Papai Noel, Noel animado, Mamãe Noel, Duende, Contador de histórias e Anjinho", strong: true },
+  { text: "🎵 NOVO: Música de Natal cantada com o nome da criança (1 por criança)", strong: true },
   { text: "Carta brilhante em 5 cores, com moldura que brilha", strong: true },
   { text: "PDF para imprimir, imagem HD e vídeo com a voz" },
   { text: "Certificado de Bom Comportamento" },
@@ -106,8 +108,15 @@ export default function PricingSection({ onSelectPlan }: PricingSectionProps) {
                 </div>
                 {p.kids && <p className="text-sm font-bold text-[#FFE9A8] -mt-2 mb-2">{p.kids}</p>}
                 <div className="mb-6">
+                  {promoActive() && PROMO.from[p.id] && (
+                    <div className="flex items-center gap-2 mb-1">
+                      <s className="text-sm text-[#EDF2F4]/55">{PROMO.from[p.id]}</s>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider bg-[#FFD166] text-[#0B132B] rounded-full px-2 py-0.5">🖤 {PROMO.name} · -{PROMO.off[p.id]}</span>
+                    </div>
+                  )}
                   <span className={`text-3xl sm:text-4xl font-extrabold font-cinzel ${p.id === "free" ? "text-white" : "text-[#FFD166]"}`}>{p.price}</span>
                   <span className="text-xs text-[#EDF2F4]/60 ml-2">{p.note}</span>
+                  {promoActive() && PROMO.from[p.id] && <span className="block text-[11px] text-[#FFD166]/80 mt-1">Promoção válida até {promoEndsLabel()}</span>}
                 </div>
                 <ul className="space-y-3 text-xs sm:text-sm text-[#EDF2F4]/85 mb-8">
                   {p.features.map((f) => (

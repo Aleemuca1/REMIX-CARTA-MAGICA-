@@ -28,6 +28,10 @@ const FAQS = [
     q: "Posso fazer cartas para mais de um filho?",
     a: "Claro! Cada carta é única e personalizada. É só criar uma para cada criança.",
   },
+  {
+    q: "Como funciona a Música de Natal?",
+    a: "Nos planos pagos, cada criança ganha uma música de Natal cantada de verdade, com o nome dela e as conquistas do ano. Você escolhe o ritmo (alegre, festa, clássica ou de ninar), a música fica pronta em 1 a 3 minutos e dá para baixar em MP3 e tocar na ceia. Até 2 crianças = 2 músicas; Pacote Família = 5 músicas.",
+  },
 ];
 
 export default function FAQSection() {

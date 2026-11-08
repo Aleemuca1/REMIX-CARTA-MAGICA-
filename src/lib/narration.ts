@@ -1,6 +1,6 @@
 /**
  * Narração da carta com a voz do Papai Noel.
- * 1) Tenta o áudio do servidor (Gemini TTS, PCM 24 kHz) e converte em WAV.
+ * 1) Tenta o áudio do servidor (ElevenLabs em MP3; ou Gemini TTS, PCM 24 kHz convertido em WAV).
  * 2) Se não houver, usa a voz do próprio navegador (speechSynthesis), grave e lenta.
  */
 import { VOICES, type Voice } from "./voices";
@@ -28,8 +28,19 @@ export function pcmBase64ToWavBlob(b64: string, sampleRate = 24000) {
   return new Blob([header, pcm], { type: "audio/wav" });
 }
 
-function pcmBase64ToWavUrl(b64: string) {
-  return URL.createObjectURL(pcmBase64ToWavBlob(b64));
+function b64ToBlob(b64: string, type: string) {
+  const bin = atob(b64);
+  const u = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return new Blob([u], { type });
+}
+
+/** Áudio do servidor: link do Storage (ElevenLabs), MP3 em base64 ou PCM do Gemini. */
+async function audioFromResponse(data: any): Promise<{ url: string; revoke: boolean; blob?: Blob } | null> {
+  if (data?.audioUrl) return { url: data.audioUrl, revoke: false };
+  if (!data?.audioBase64) return null;
+  const blob = data.mime === "audio/mpeg" ? b64ToBlob(data.audioBase64, "audio/mpeg") : pcmBase64ToWavBlob(data.audioBase64);
+  return { url: URL.createObjectURL(blob), revoke: true, blob };
 }
 
 /** Busca o áudio da voz (WAV) para baixar ou gravar em vídeo. Devolve null se o servidor de voz não estiver ativo. */
@@ -42,7 +53,12 @@ export async function fetchNarrationAudio(source: Source, voice?: Voice): Promis
     });
     if (!res.ok) return null;
     const data = await res.json();
-    return data.audioBase64 ? pcmBase64ToWavBlob(data.audioBase64) : null;
+    if (data.audioUrl) {
+      const r = await fetch(data.audioUrl);
+      return r.ok ? await r.blob() : null;
+    }
+    if (!data.audioBase64) return null;
+    return data.mime === "audio/mpeg" ? b64ToBlob(data.audioBase64, "audio/mpeg") : pcmBase64ToWavBlob(data.audioBase64);
   } catch {
     return null;
   }
@@ -84,8 +100,9 @@ export async function narrate(
     });
     if (res.ok) {
       const data = await res.json();
-      if (data.audioBase64) {
-        const url = pcmBase64ToWavUrl(data.audioBase64);
+      const src = await audioFromResponse(data);
+      if (src) {
+        const url = src.url;
         const audio = new Audio(url);
         let raf = 0;
         const tick = () => {
@@ -94,7 +111,7 @@ export async function narrate(
         };
         const finish = () => {
           cancelAnimationFrame(raf);
-          URL.revokeObjectURL(url);
+          if (src.revoke) URL.revokeObjectURL(url);
           onEnd();
         };
         audio.onended = finish;

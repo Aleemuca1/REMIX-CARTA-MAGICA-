@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import { Check, Crown, X } from "lucide-react";
 import { useBackClose } from "../lib/backClose";
+import { PROMO, promoActive } from "../lib/promo";
 
 export type PaidChoice = "natal" | "familia";
 
@@ -19,6 +20,7 @@ export const PAID_PLANS: {
 export const PAID_FEATURES = [
   "10 cartas completas (Carta Completa) ou 23 (Pacote Família): dá para refazer, fazer a da véspera e um recado especial",
   "6 vozes lendo a carta inteira (Papai Noel, Noel animado, Mamãe Noel, Duende, Contador de histórias e Anjinho)",
+  "🎵 Música de Natal cantada com o nome da criança (uma por criança)",
   "Carta brilhante em 5 cores, com moldura que brilha",
   "PDF para imprimir, imagem HD e vídeo com a voz",
   "Certificado de Bom Comportamento",
@@ -53,7 +55,7 @@ export default function PlanChooser({ onPick, onClose }: { onPick: (p: PaidChoic
           <div className="text-4xl mb-1" aria-hidden="true">
             🎅👑
           </div>
-          <h3 className="font-cinzel text-xl sm:text-2xl font-bold">Escolha o seu Natal Completo</h3>
+          <h3 className="font-cinzel text-xl sm:text-2xl font-bold">{promoActive() ? `🖤 ${PROMO.name}: escolha o seu Natal Completo` : "Escolha o seu Natal Completo"}</h3>
           <p className="text-sm text-white/70 mt-1">Pagamento único, no Pix ou cartão. Cada criança ganha a sua carta com o próprio nome.</p>
         </div>
 
@@ -78,6 +80,7 @@ export default function PlanChooser({ onPick, onClose }: { onPick: (p: PaidChoic
                   <p className="text-sm text-[#FFD166] font-bold">👧👦 {p.kids}</p>
                 </div>
                 <div className="text-right shrink-0">
+                  {promoActive() && <p className="text-xs text-white/50 -mb-1"><s>{PROMO.from[p.id]}</s> <span className="text-[#FFD166] font-bold">-{PROMO.off[p.id]}</span></p>}
                   <p className="font-cinzel text-2xl font-extrabold text-[#FFD166]">{p.price}</p>
                   <p className="text-[10px] text-white/60">pagamento único</p>
                 </div>

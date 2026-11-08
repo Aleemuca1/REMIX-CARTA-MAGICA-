@@ -27,6 +27,7 @@ import TreeSection from "./components/tree/TreeSection";
 import ExtrasHub, { isExtraId, openExtra } from "./components/ExtrasHub";
 import CorreioSection from "./components/correio/CorreioSection";
 import WhyUs from "./components/WhyUs";
+import PromoBar from "./components/PromoBar";
 import CorreioFlow from "./components/correio/CorreioFlow";
 import OnTheWay from "./components/correio/OnTheWay";
 import { fetchLetter } from "./lib/correio";
@@ -144,6 +145,9 @@ export default function App() {
       {/* Falling snow atmospheric effect */}
       <TwinkleStars />
       <SnowCanvas />
+
+      {/* Black Friday */}
+      <PromoBar onClick={() => handleScrollTo("precos")} />
 
       {/* Navigation Header */}
       <Navbar onStartWizard={handleStartWizard} onScrollTo={handleScrollTo} />

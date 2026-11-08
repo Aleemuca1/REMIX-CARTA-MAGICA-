@@ -1,7 +1,9 @@
 import { motion, useReducedMotion } from "motion/react";
+import HeroFlakes from "./HeroFlakes";
 import { Sparkles, ArrowRight, ShieldCheck, Timer, Volume2 } from "lucide-react";
 import ChristmasCountdown from "./ChristmasCountdown";
 import HeroLetters from "./HeroLetters";
+import { PROMO, promoActive } from "../lib/promo";
 import NightSky from "./NightSky";
 import SnowyVillage from "./SnowyVillage";
 import HangingOrnaments from "./HangingOrnaments";
@@ -36,6 +38,7 @@ export default function LandingHero({
       <NightSky />
       <HangingOrnaments />
       <SnowyVillage />
+      <HeroFlakes />
 
       <div className="max-w-6xl xl:max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 xl:gap-12 items-center">
         {/* Left Column: Emotional Copy & CTAs */}
@@ -107,7 +110,7 @@ export default function LandingHero({
 
           {/* Guarantee Tag */}
           <p className="text-xs text-[#EDF2F4]/60 text-center lg:text-left">
-            🎁 Grátis para começar • Natal Completo a partir de R$ 14,90, pagamento único • Seu filho escreveu? <button onClick={() => onScrollTo("correio")} className="underline text-[#FFD166] cursor-pointer">O Papai Noel responde</button>
+            🎁 Grátis para começar • Natal Completo a partir de R$ 14,90{promoActive() && <> <s className="opacity-60">R$ 29,90</s> na {PROMO.name}</>} • Seu filho escreveu? <button onClick={() => onScrollTo("correio")} className="underline text-[#FFD166] cursor-pointer">O Papai Noel responde</button>
           </p>
         </div>
 

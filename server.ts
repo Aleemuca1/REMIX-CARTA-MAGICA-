@@ -10,6 +10,8 @@ import * as asaas from "./asaas.js";
 import { ADVENT_DAYS } from "./src/advent/days.js";
 import { voiceById, voiceForSender } from "./src/lib/voices.js";
 import * as mailer from "./mailer.js";
+import * as eleven from "./elevenlabs.js";
+import * as audioStore from "./audioStore.js";
 import { createHash, timingSafeEqual } from "crypto";
 import { MAX_AUTHOR, MAX_ORNAMENTS, MAX_TEXT, ORNAMENT_TYPES, VIEW_H, VIEW_W, sanitizeText } from "./src/tree/model.js";
 import { CATALOG as HOUSE_CATALOG, isPersonRef, VIEW_W as HOUSE_W, VIEW_H as HOUSE_H } from "./src/house/model.js";
@@ -924,6 +926,32 @@ function speechText(content: string, voiceId: string) {
   if (voiceId === "noel" || voiceId === "noel-alegre") t += "\n\nCom todo o carinho do Polo Norte... Papai Noel. Ho ho ho!";
   return t;
 }
+/** Ajusta o texto para a voz ler sem tropeçar: números, abreviações e pontuação que confunde a leitura. */
+const UNITS = ["zero","um","dois","três","quatro","cinco","seis","sete","oito","nove","dez","onze","doze","treze","quatorze","quinze","dezesseis","dezessete","dezoito","dezenove"];
+const TENS = ["","","vinte","trinta","quarenta","cinquenta","sessenta","setenta","oitenta","noventa"];
+function numberWords(n: number): string {
+  if (n < 20) return UNITS[n];
+  if (n < 100) return TENS[Math.floor(n / 10)] + (n % 10 ? " e " + UNITS[n % 10] : "");
+  if (n === 100) return "cem";
+  return String(n);
+}
+function elevenText(t: string) {
+  return t
+    .replace(/\bSr\.\s?/g, "Senhor ")
+    .replace(/\bSra\.\s?/g, "Senhora ")
+    .replace(/\bDr\.\s?/g, "Doutor ")
+    .replace(/\bvc\b/gi, "você")
+    .replace(/\bpq\b/gi, "porque")
+    .replace(/\b(\d{1,2})\s?anos\b/g, (_m, d) => `${numberWords(Number(d))} anos`)
+    .replace(/\b(\d{1,2})º/g, (_m, d) => `${numberWords(Number(d))}º`)
+    .replace(/Ho\s*,?\s*ho\s*,?\s*ho/gi, "Ho, ho, ho")
+    .replace(/[“”"]/g, "")
+    .replace(/\s*[—–]\s*/g, ", ")
+    .replace(/!{2,}/g, "!")
+    .replace(/\.{4,}/g, "...")
+    .replace(/\n{3,}/g, "\n\n")
+    .slice(0, 4500);
+}
 app.post("/api/tts", async (req, res) => {
   try {
     const { token, adventDay, name, voiceId, treeToken, ornamentId } = req.body || {};
@@ -932,6 +960,7 @@ app.post("/api/tts", async (req, res) => {
     // nunca para um texto qualquer vindo do navegador
     let text = "";
     let childName = "";
+    let paidLetter = false;
     if (treeToken) {
       // Modo Ceia da árvore: o Papai Noel lê a frase de um enfeite
       const t = await db.findTree(String(treeToken).toLowerCase());
@@ -956,6 +985,7 @@ app.post("/api/tts", async (req, res) => {
       childName = letterRec.childName;
       const paras = String(letterRec.content || "").split(/\n\s*\n/).filter(Boolean);
       const paidVoice = letterRec.plan === "pro" || letterRec.plan === "natal" || letterRec.plan === "familia";
+      paidLetter = paidVoice;
       // outras vozes são do plano pago
       if (!paidVoice) voice = voiceById("noel");
       text = paidVoice ? speechText(letterRec.content, voice.id) : speechText(paras.slice(0, 2).join("\n\n"), "");
@@ -964,6 +994,28 @@ app.post("/api/tts", async (req, res) => {
       return res
         .status(400)
         .json({ error: "Texto n\xE3o fornecido para s\xEDntese de voz." });
+    }
+    // 1) ElevenLabs: pronúncia certinha em português. Cada texto é narrado UMA vez e fica guardado.
+    const freeLetter = !treeToken && !adventDay && !paidLetter;
+    const elevenOk = eleven.elevenEnabled() && (!freeLetter || process.env.ELEVENLABS_GRATIS !== "nao");
+    if (elevenOk) {
+      const spoken = elevenText(freeLetter ? text.slice(0, 650) : text);
+      const key = `tts/${createHash("sha256").update(`${voice.id}|${freeLetter ? "flash" : "v2"}|${spoken}`).digest("hex").slice(0, 40)}.mp3`;
+      try {
+        let audioUrl = await audioStore.url(key).catch(() => null);
+        if (!audioUrl) {
+          if (tooMany(`eleven:${ipOf(req)}`, 30, 60 * 60 * 1000)) throw new Error("limite de narrações por hora");
+          const mp3 = await eleven.speak(spoken, voice.id, { cheap: freeLetter });
+          const saved = await audioStore.put(key, mp3, "audio/mpeg");
+          audioUrl = saved ? await audioStore.url(key) : null;
+          if (!audioUrl) {
+            return res.json({ success: true, provider: "elevenlabs", mime: "audio/mpeg", audioBase64: mp3.toString("base64") });
+          }
+        }
+        return res.json({ success: true, provider: "elevenlabs", mime: "audio/mpeg", audioUrl });
+      } catch (e: any) {
+        console.warn("ElevenLabs TTS falhou, usando a voz do Google:", e?.message || e);
+      }
     }
     const ai = getGeminiClient();
     const cacheKey = `${voice.id}|${text}`;
@@ -985,6 +1037,7 @@ app.post("/api/tts", async (req, res) => {
           config: {
             responseModalities: ["AUDIO"],
             speechConfig: {
+              languageCode: "pt-BR",
               voiceConfig: {
                 prebuiltVoiceConfig: {
                   voiceName: voice.gemini,
@@ -2144,12 +2197,204 @@ app.get("/api/admin/metrics", requireAdmin, async (_req, res) => {
       geminiStatus: process.env.GEMINI_API_KEY
         ? "Operacional"
         : "Chave n\xE3o detectada (Modo Fallback Ativo)",
-      ttsStatus: "Nativo + Web Speech Operacional",
+      ttsStatus: eleven.elevenEnabled() ? "ElevenLabs (voz e música) Operacional" : "Gemini + Web Speech (sem ElevenLabs)",
       pdfStatus: "Renderizador de Alta Precis\xE3o Operacional",
       logisticsStatus: "Integra\xE7\xE3o Postal Operacional",
     },
   });
 });
+// ======================= Música de Natal (planos pagos) =======================
+// Uma música cantada por criança do plano: até 2 crianças = 2 músicas; até 5 = 5.
+// A letra é escrita pela IA (Gemini) e a música é composta e cantada pela ElevenLabs Music.
+// Tudo fica guardado no Storage (songs/<código>/<criança>.json + .mp3).
+type SongMeta = {
+  child: string;
+  title: string;
+  style: string;
+  sections: eleven.SongSection[];
+  status: "pending" | "ready" | "error";
+  createdAt: string;
+  letterToken?: string;
+};
+const slugChild = (n: string) =>
+  String(n || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) || "crianca";
+const firstName = (n: string) => String(n || "").trim().split(/\s+/)[0] || "criança";
+
+async function songCodeFor(body: any): Promise<{ code: string; plan: string; letter: db.LetterRecord | null } | null> {
+  let letter: db.LetterRecord | null = null;
+  let code = String(body?.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (body?.token) {
+    letter = await db.findLetter(String(body.token).toLowerCase());
+    if (!letter) return null;
+    if (letter.plan === "free") {
+      if (code.length !== 6) return null; // carta grátis só entra com o código do plano (Painel da Família)
+    } else if (letter.accessCode) code = letter.accessCode;
+    else {
+      const o = await db.findPaidOrderByLetter(letter.id);
+      if (o?.accessCode) code = o.accessCode;
+    }
+  }
+  if (code.length !== 6) return null;
+  const order = await db.findPaidOrderByCode(code);
+  if (!order) return null;
+  return { code, plan: order.plan, letter };
+}
+async function songsOf(code: string): Promise<SongMeta[]> {
+  const names = (await audioStore.list(`songs/${code}`)).filter((n) => n.endsWith(".json"));
+  const out: SongMeta[] = [];
+  for (const n of names) {
+    const raw = await audioStore.get(`songs/${code}/${n}`);
+    if (!raw) continue;
+    try {
+      const m = JSON.parse(raw.toString("utf8")) as SongMeta;
+      // pedido que travou no meio (mais de 8 minutos) não conta
+      if (m.status === "pending" && Date.now() - Date.parse(m.createdAt) > 8 * 60 * 1000) m.status = "error";
+      out.push(m);
+    } catch {
+      /* ignora arquivo quebrado */
+    }
+  }
+  return out;
+}
+async function publicSong(code: string, m: SongMeta) {
+  const slug = slugChild(m.child);
+  return {
+    child: m.child,
+    title: m.title,
+    style: m.style,
+    status: m.status,
+    lyrics: m.sections,
+    url: m.status === "ready" ? await audioStore.url(`songs/${code}/${slug}.mp3`) : null,
+  };
+}
+function fallbackLyrics(name: string, achievements: string, gift: string): { title: string; sections: eleven.SongSection[] } {
+  const n = firstName(name);
+  const feito = sanitizeText(achievements, 80).split(/[,;.\n]/)[0]?.trim().toLowerCase() || "foi muito legal";
+  const pedido = sanitizeText(gift, 60).split(/[,;.\n]/)[0]?.trim().toLowerCase();
+  return {
+    title: `O Natal de ${n}`,
+    sections: [
+      { name: "Intro", lines: [] },
+      { name: "Verso 1", lines: [`Lá no Polo Norte tem festa e alegria`, `O trenó já brilha, é quase o grande dia`, `O Papai Noel abriu o seu livrão`, `E o nome de ${n} tem estrela e coração`] },
+      { name: "Refrão", lines: [`${n}, ${n}, que Natal especial`, `Os sinos tocam forte, tem magia no quintal`, `${n}, ${n}, o Noel mandou dizer`, `Que este ano ele tem orgulho de você`] },
+      { name: "Verso 2", lines: [`Contaram lá na oficina que ${feito}`, `As renas comemoram, o duende fez um hino`, pedido ? `Sua cartinha falou de ${pedido} com carinho` : `Sua cartinha chegou cheia de carinho`, `E o Papai Noel guardou ela pertinho`] },
+      { name: "Refrão", lines: [`${n}, ${n}, que Natal especial`, `Os sinos tocam forte, tem magia no quintal`, `${n}, ${n}, o Noel mandou dizer`, `Que este ano ele tem orgulho de você`] },
+      { name: "Final", lines: [`Ho, ho, ho, feliz Natal, ${n}!`] },
+    ],
+  };
+}
+async function writeLyrics(o: { name: string; age?: number; city?: string; achievements: string; gift: string; extras?: string }) {
+  const ai = getGeminiClient();
+  const prompt = `Você é compositor de músicas infantis de Natal no Brasil. Escreva a LETRA de uma música curta e alegre para a criança ${firstName(o.name)}${o.age ? `, de ${o.age} anos` : ""}${o.city ? `, de ${sanitizeText(o.city, 40)}` : ""}.
+O que ela fez de bom este ano: ${sanitizeText(o.achievements, 300) || "foi uma criança muito carinhosa"}.
+O que ela pediu ao Papai Noel: ${sanitizeText(o.gift, 120) || "uma surpresa"}.
+${o.extras ? `Detalhes: ${sanitizeText(o.extras, 200)}.` : ""}
+Regras: português do Brasil, palavras simples que uma criança canta junto, rimas fáceis, versos curtos (6 a 10 sílabas). O NOME da criança aparece no refrão. Cite 1 ou 2 conquistas reais dela. Pode citar o pedido, mas NUNCA prometa que o presente vai chegar. Não use marcas, nomes de artistas nem trechos de músicas existentes. Nada triste.
+Responda SOMENTE um JSON: {"titulo":"...","secoes":[{"nome":"Intro","linhas":[]},{"nome":"Verso 1","linhas":[4 linhas]},{"nome":"Refrão","linhas":[4 linhas]},{"nome":"Verso 2","linhas":[4 linhas]},{"nome":"Refrão","linhas":[as mesmas 4 linhas do refrão]},{"nome":"Final","linhas":[1 ou 2 linhas]}]}`;
+  if (ai) {
+    for (const model of LETTER_MODELS) {
+      try {
+        const r = await ai.models.generateContent({ model, contents: [{ parts: [{ text: prompt }] }], config: { temperature: 0.9, responseMimeType: "application/json" } });
+        const j = JSON.parse(String(r?.text || "").trim().replace(/^```json\s*|```$/g, ""));
+        const sections: eleven.SongSection[] = (Array.isArray(j.secoes) ? j.secoes : [])
+          .slice(0, 7)
+          .map((x: any) => ({ name: sanitizeText(x?.nome, 40) || "Verso", lines: (Array.isArray(x?.linhas) ? x.linhas : []).map((l: any) => sanitizeText(l, 140)).filter(Boolean).slice(0, 6) }));
+        if (sections.filter((x) => x.lines.length).length >= 3) return { title: sanitizeText(j.titulo, 60) || `O Natal de ${firstName(o.name)}`, sections };
+      } catch (e: any) {
+        console.warn(`Letra da música (${model}) falhou:`, e?.message || e);
+      }
+    }
+  }
+  return fallbackLyrics(o.name, o.achievements, o.gift);
+}
+
+app.post("/api/music/status", async (req, res) => {
+  try {
+    if (tooMany(`musicst:${ipOf(req)}`, 60, 10 * 60 * 1000)) return res.status(429).json({ error: "Muitas tentativas." });
+    const c = await songCodeFor(req.body);
+    res.setHeader("Cache-Control", "no-store");
+    if (!c) return res.json({ enabled: eleven.elevenEnabled(), allowed: false });
+    const limit = asaas.PLAN_CHILDREN[c.plan] ?? 1;
+    const songs = await songsOf(c.code);
+    const used = songs.filter((m) => m.status !== "error").length;
+    res.json({
+      enabled: eleven.elevenEnabled(),
+      allowed: true,
+      limit,
+      used,
+      remaining: Math.max(0, limit - used),
+      songs: await Promise.all(songs.filter((m) => m.status !== "error").map((m) => publicSong(c.code, m))),
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: "Erro ao conferir as músicas." });
+  }
+});
+
+app.post("/api/music", async (req, res) => {
+  try {
+    if (!eleven.elevenEnabled()) return res.status(503).json({ error: "A Música de Natal está sendo preparada no Polo Norte. Volte em breve!" });
+    if (tooMany(`music:${ipOf(req)}`, 6, 60 * 60 * 1000)) return res.status(429).json({ error: "Calma, os duendes estão cantando! Tente daqui a pouco." });
+    const c = await songCodeFor(req.body);
+    if (!c) return res.status(403).json({ error: "A Música de Natal faz parte dos planos pagos.", needPlan: true });
+    const name = sanitizeText(c.letter?.childName || req.body?.childName, 40);
+    if (!name) return res.status(400).json({ error: "Diga o nome da criança." });
+    const style = eleven.SONG_STYLES.includes(String(req.body?.style)) ? String(req.body.style) : "alegre";
+    const slug = slugChild(name);
+    const limit = asaas.PLAN_CHILDREN[c.plan] ?? 1;
+    const songs = await songsOf(c.code);
+    const mine = songs.find((m) => slugChild(m.child) === slug);
+    if (mine && mine.status !== "error") return res.json({ song: await publicSong(c.code, mine), existing: true });
+    const used = songs.filter((m) => m.status !== "error").length;
+    if (used >= limit) return res.status(409).json({ error: `Seu plano já usou as ${limit} músicas (uma por criança).`, limitReached: true });
+
+    const lyr = await writeLyrics({
+      name,
+      age: c.letter?.age || Number(req.body?.age) || undefined,
+      city: c.letter?.city || req.body?.city,
+      achievements: c.letter?.achievements || req.body?.achievements || "",
+      gift: c.letter?.giftRequest || req.body?.giftRequest || "",
+    });
+    const meta: SongMeta = { child: name, title: lyr.title, style, sections: lyr.sections, status: "pending", createdAt: new Date().toISOString(), letterToken: c.letter?.token };
+    const metaPath = `songs/${c.code}/${slug}.json`;
+    await audioStore.put(metaPath, Buffer.from(JSON.stringify(meta)), "application/json");
+    let mp3: Buffer;
+    try {
+      mp3 = await eleven.compose({ title: lyr.title, sections: lyr.sections, style });
+    } catch (e: any) {
+      console.warn("Música (1ª tentativa) falhou:", e?.message);
+      // letra recusada (ex.: nome parecido com marca): tenta com a letra reserva
+      const fb = fallbackLyrics(name, c.letter?.achievements || "", "");
+      try {
+        mp3 = await eleven.compose({ title: fb.title, sections: fb.sections, style });
+        meta.title = fb.title;
+        meta.sections = fb.sections;
+      } catch (e2: any) {
+        console.error("Música falhou:", e2?.message);
+        meta.status = "error";
+        await audioStore.put(metaPath, Buffer.from(JSON.stringify(meta)), "application/json");
+        return res.status(502).json({ error: "Os duendes desafinaram! Tente de novo em alguns minutos (não foi descontado do seu plano)." });
+      }
+    }
+    await audioStore.put(`songs/${c.code}/${slug}.mp3`, mp3, "audio/mpeg");
+    meta.status = "ready";
+    await audioStore.put(metaPath, Buffer.from(JSON.stringify(meta)), "application/json");
+    res.json({ song: await publicSong(c.code, meta) });
+  } catch (e: any) {
+    console.error("music:", e);
+    res.status(500).json({ error: "Erro ao criar a música." });
+  }
+});
+
+// só no desenvolvimento (sem Supabase): entrega os áudios guardados em memória
+app.get("/api/audio-dev/:path", (req, res) => {
+  if (db.usingSupabase()) return res.status(404).end();
+  const buf = audioStore.devGet(String(req.params.path));
+  if (!buf) return res.status(404).end();
+  res.setHeader("Content-Type", req.params.path.endsWith(".json") ? "application/json" : "audio/mpeg");
+  res.send(buf);
+});
+// =================================================================================
+
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     // Vite só é carregado em desenvolvimento (não entra no servidor da Vercel)

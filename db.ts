@@ -71,6 +71,8 @@ if (SUPABASE_URL && SUPABASE_SECRET_KEY) {
 }
 
 export const usingSupabase = () => Boolean(supabase);
+/** cliente do Supabase (só no servidor) para o armazenamento de áudios */
+export const supabaseClient = () => supabase;
 
 // ---------- mapeamento camelCase <-> snake_case ----------
 const letterToRow = (l: Partial<LetterRecord>) => {
@@ -621,4 +623,13 @@ export async function lettersPendingReview(limit = 50): Promise<LetterRecord[]> 
   const { data, error } = await supabase.from("letters").select("*").eq("review_status", "pending").order("created_at", { ascending: false }).limit(limit);
   if (error) return [];
   return (data ?? []).map(rowToLetter);
+}
+
+/** Pedido pago feito junto com esta carta (para achar o código mágico de cartas antigas). */
+export async function findPaidOrderByLetter(letterId: string): Promise<OrderRecord | null> {
+  if (!letterId) return null;
+  if (!supabase) return memOrders.find((o) => o.letterId === letterId && o.status === "paid") ?? null;
+  const { data, error } = await supabase.from("orders").select("*").eq("letter_id", letterId).eq("status", "paid").limit(1).maybeSingle();
+  if (error) return null;
+  return data ? rowToOrder(data) : null;
 }

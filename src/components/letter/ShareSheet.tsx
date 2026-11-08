@@ -20,7 +20,7 @@ import {
 import { letterParagraphs, letterPdf, letterUrl, recordLetterVideo, renderLetterPage, renderPost, renderStory, videoMime } from "../../lib/letterExport";
 import ProUpsell from "../ProUpsell";
 
-type Kind = "story" | "post" | "pdf" | "png" | "jpg" | "video" | "audio" | "txt";
+type Kind = "story" | "post" | "pdf" | "cert" | "png" | "jpg" | "video" | "audio" | "txt";
 
 /**
  * Central de compartilhamento da carta: WhatsApp, redes sociais e download em vários formatos.
@@ -134,6 +134,19 @@ export default function ShareSheet({
         }),
     },
     {
+      k: "cert",
+      emoji: "🏅",
+      title: "Certificado de Bom Comportamento",
+      sub: "Diploma A4 para imprimir",
+      pro: true,
+      act: () =>
+        run("cert", true, async () => {
+          const { goodCertificatePdf } = await import("../../lib/certificate");
+          downloadBlob(await goodCertificatePdf(letter), `Certificado-${base}.pdf`);
+          say("Certificado baixado! Imprima e entregue junto com a carta. 🏅");
+        }),
+    },
+    {
       k: "png",
       emoji: "🖼️",
       title: "Imagem HD",
@@ -190,7 +203,7 @@ export default function ShareSheet({
             say("A voz em áudio ainda não está disponível. Tente o vídeo ou ouça pela carta.");
             return;
           }
-          const r = await shareOrDownload(a, `${base}-voz.wav`, msg, "Voz do Papai Noel");
+          const r = await shareOrDownload(a, `${base}-voz.${a.type === "audio/mpeg" ? "mp3" : "wav"}`, msg, "Voz do Papai Noel");
           if (r === "downloaded") say("Áudio baixado! Mande no WhatsApp para os avós. 🎧");
         }),
     },

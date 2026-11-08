@@ -429,6 +429,42 @@ export default function AtelierEditor({
             </motion.div>
           )}
         </AnimatePresence>
+        {/* barra rápida no celular: cores e ferramentas logo abaixo do desenho (sem precisar rolar) */}
+        <div className="lg:hidden mt-2 rounded-2xl bg-[#0B132B]/90 border border-white/10 p-2 space-y-2" id="atelier-quickbar">
+          <div className="flex items-center gap-1.5">
+            {TOOLS.filter((t) => t.id !== "adesivo").map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTool(t.id)}
+                aria-label={t.label}
+                className={`shrink-0 w-10 h-10 rounded-xl text-lg grid place-items-center border-2 cursor-pointer ${tool === t.id ? "border-[#FFD166] bg-[#FFD166]/20" : "border-white/10 bg-white/5"}`}
+              >
+                {t.icon}
+              </button>
+            ))}
+            <button
+              onClick={doUndo}
+              disabled={!canUndo}
+              aria-label="Desfazer"
+              className="ml-auto shrink-0 w-10 h-10 rounded-xl grid place-items-center border-2 border-white/10 bg-white/5 text-white cursor-pointer disabled:opacity-40"
+            >
+              <Undo2 className="w-4 h-4" />
+            </button>
+          </div>
+          {tool !== "borracha" && tool !== "adesivo" && (
+            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-0.5 px-0.5">
+              {COLORS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  className={`shrink-0 w-9 h-9 rounded-full border-2 cursor-pointer transition-transform ${color === c ? "border-white scale-110 ring-2 ring-[#FFD166]" : "border-white/20"}`}
+                  style={{ background: c }}
+                  aria-label={`Cor ${c}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ferramentas */}
@@ -543,7 +579,7 @@ export default function AtelierEditor({
           </div>
         ) : (
           tool !== "borracha" && (
-            <div className="grid grid-cols-8 gap-1.5">
+            <div className="hidden lg:grid grid-cols-8 gap-1.5">
               {COLORS.map((c) => (
                 <button
                   key={c}

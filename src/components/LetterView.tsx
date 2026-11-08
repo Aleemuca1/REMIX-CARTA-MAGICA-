@@ -14,6 +14,7 @@ import { narrate, type Narrator } from "../lib/narration";
 import { musicBox } from "../lib/christmasMusic";
 import { VOICES, voiceById, type VoiceId } from "../lib/voices";
 import { LETTER_THEMES, letterTheme } from "../lib/letterThemes";
+import SongStudio from "./music/SongStudio";
 
 // [esquerda %, topo %, atraso s, tamanho]
 const SPARKLES: [number, number, number, number][] = [
@@ -80,6 +81,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
   const [toast, setToast] = useState<string | null>(null);
   const [upsell, setUpsell] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [songOpen, setSongOpen] = useState(false);
   const [voiceId, setVoiceId] = useState<VoiceId>("noel");
   const [readIdx, setReadIdx] = useState(-1);
   const paraRefs = useRef<(HTMLParagraphElement | null)[]>([]);
@@ -282,6 +284,16 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
               <WhatsIcon className="w-4 h-4" />
               WhatsApp
             </motion.a>
+            <motion.button
+              onClick={() => setSongOpen(true)}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              id="letter-song"
+              className="rounded-full text-xs sm:text-sm font-bold flex items-center gap-1.5 px-3.5 py-2 shadow-md cursor-pointer bg-gradient-to-r from-[#FFD166] to-[#F4A261] text-[#0B132B]"
+            >
+              <span aria-hidden="true">🎵</span>
+              Música de Natal{!isPro && <Lock className="w-3.5 h-3.5" />}
+            </motion.button>
             <ToolButton onClick={() => setShareOpen(true)} icon={<Share2 className="w-4 h-4 text-[#FFD166]" />} id="letter-share">
               Compartilhar e baixar
             </ToolButton>
@@ -595,6 +607,17 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
               Parar
             </button>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {songOpen && (
+          <SongStudio
+            token={letter.token}
+            childName={letter.childName}
+            onClose={() => setSongOpen(false)}
+            onUpgrade={onUpgrade ? () => { setSongOpen(false); onUpgrade(); } : undefined}
+          />
         )}
       </AnimatePresence>
 

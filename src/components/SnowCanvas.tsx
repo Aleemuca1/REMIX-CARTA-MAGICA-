@@ -22,22 +22,28 @@ export default function SnowCanvas() {
     if (!canvas || !ctx) return;
 
     let W = 0, H = 0;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
     const resize = () => {
-      W = canvas.width = window.innerWidth;
-      H = canvas.height = window.innerHeight;
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width = `${W}px`;
+      canvas.style.height = `${H}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     window.addEventListener("resize", resize);
 
     const mobile = W < 700;
-    const base = mobile ? 55 : 110;
+    const base = mobile ? 120 : 230;
     let target = base;
     const flakes: Flake[] = [];
     const bursts: Burst[] = [];
 
     const make = (y?: number): Flake => {
       const roll = Math.random();
-      const layer: 0 | 1 | 2 = roll < 0.55 ? 0 : roll < 0.92 ? 1 : 2;
+      const layer: 0 | 1 | 2 = roll < 0.5 ? 0 : roll < 0.9 ? 1 : 2;
       const r = layer === 0 ? Math.random() * 1.3 + 0.6 : layer === 1 ? Math.random() * 2 + 1.6 : Math.random() * 5 + 5;
       return {
         x: Math.random() * W,
@@ -47,10 +53,10 @@ export default function SnowCanvas() {
         sway: layer === 0 ? 6 : layer === 1 ? 14 : 22,
         phase: Math.random() * Math.PI * 2,
         layer,
-        crystal: layer === 1 && Math.random() < 0.35,
+        crystal: layer === 1 && Math.random() < 0.45,
         rot: Math.random() * Math.PI,
         vr: (Math.random() - 0.5) * 1.5,
-        alpha: layer === 0 ? 0.35 + Math.random() * 0.3 : layer === 1 ? 0.6 + Math.random() * 0.3 : 0.12 + Math.random() * 0.12,
+        alpha: layer === 0 ? 0.45 + Math.random() * 0.3 : layer === 1 ? 0.7 + Math.random() * 0.3 : 0.18 + Math.random() * 0.14,
       };
     };
     for (let i = 0; i < base; i++) flakes.push(make());
@@ -60,7 +66,7 @@ export default function SnowCanvas() {
     const off = snow.on((e) => {
       if (e.type === "blizzard") {
         blizzardTarget = e.on ? 1 : 0;
-        target = e.on ? base * 3 : base;
+        target = e.on ? base * 2.5 : base;
       } else {
         for (let i = 0; i < 16; i++) {
           const a = (Math.PI * 2 * i) / 16 + Math.random() * 0.3;
@@ -159,5 +165,5 @@ export default function SnowCanvas() {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-10 opacity-80" aria-hidden="true" />;
+  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-10 opacity-95" aria-hidden="true" />;
 }

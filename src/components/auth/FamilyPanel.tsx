@@ -9,8 +9,9 @@ import { getProgress, grantFullAccess, saveAccessCode } from "../../advent/acces
 import { loadLocal as localHouse } from "../../house/store";
 import { loadLocal as localTree } from "../../tree/store";
 import { PAID_FEATURES } from "../PlanChooser";
+import SongStudio from "../music/SongStudio";
 
-type Tab = "cartas" | "casa" | "calendario" | "planos";
+type Tab = "cartas" | "musicas" | "casa" | "calendario" | "planos";
 
 /** Painel da Família: quantas cartas já foram feitas, quantas faltam, cartas por criança, casinha, árvore e plano. */
 export default function FamilyPanel({
@@ -28,6 +29,7 @@ export default function FamilyPanel({
   const [err, setErr] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("cartas");
   const [copied, setCopied] = useState(false);
+  const [songFor, setSongFor] = useState<string | null>(null);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -81,7 +83,8 @@ export default function FamilyPanel({
 
   const tabs: [Tab, string][] = [
     ["cartas", "💌 Cartas"],
-    ["casa", "🏡 Casinha e Árvore"],
+    ["musicas", "🎵 Músicas"],
+    ["casa", "🎄 Árvore"],
     ["calendario", "📅 Calendário"],
     ["planos", "👑 Plano"],
   ];
@@ -240,16 +243,33 @@ export default function FamilyPanel({
                   </div>
                 ))}
 
+              {tab === "musicas" && (
+                <div className="rounded-2xl bg-gradient-to-br from-[#2B0B10] to-[#1C2541] border border-[#FFD166]/40 p-4" id="panel-songs">
+                  <p className="font-bold text-lg">🎵 Música de Natal cantada</p>
+                  <p className="text-sm text-white/75 mt-1">Uma música de verdade, cantada com o nome e as conquistas de cada criança. O plano inclui uma música por criança.</p>
+                  {!plan ? (
+                    <button onClick={() => onPay("natal")} className="mt-3 rounded-full px-5 py-2.5 font-bold bg-[#FFD166] text-[#0B132B] cursor-pointer">
+                      Liberar com um plano 🎁
+                    </button>
+                  ) : byChild.length === 0 ? (
+                    <p className="mt-3 text-sm text-[#FFD166]">Crie a carta de cada criança primeiro: a música usa o que vocês contaram nela.</p>
+                  ) : (
+                    <ul className="mt-3 grid sm:grid-cols-2 gap-2">
+                      {byChild.map(([child, list]) => (
+                        <li key={child}>
+                          <button onClick={() => setSongFor(list[0].token)} className="w-full flex items-center justify-between gap-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 p-3 cursor-pointer" id={`panel-song-${child.toLowerCase()}`}>
+                            <span className="font-bold">🧒 {child}</span>
+                            <span className="text-xs font-bold rounded-full px-3 py-1 bg-[#FFD166] text-[#0B132B]">Abrir estúdio ♪</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
               {tab === "casa" && (
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <Place
-                    emoji="🏡"
-                    title="Casinha de Natal"
-                    items={data.houses.map((h) => ({ label: h.title || "Casinha da família", href: `/casa/${h.token}` }))}
-                    emptyText="Montem a casinha juntos e chamem os avós pelo link."
-                    onStart={() => go("casinha")}
-                    start="Montar a casinha"
-                  />
+                <div className="grid gap-3">
                   <Place
                     emoji="🎄"
                     title="Árvore da Família"
@@ -259,7 +279,7 @@ export default function FamilyPanel({
                     start="Montar a árvore"
                   />
                   <p className="sm:col-span-2 text-[11px] text-white/55">
-                    A casinha e a árvore entram no painel quando vocês criam o link para a família com a conta conectada. Assim dá para abrir e arrumar em qualquer celular.
+                    A árvore entra no painel quando vocês criam o link para a família com a conta conectada. Assim dá para abrir e arrumar em qualquer celular.
                   </p>
                 </div>
               )}
@@ -324,6 +344,18 @@ export default function FamilyPanel({
           <LogOut className="w-4 h-4" /> Sair
         </button>
       </motion.div>
+      {songFor && (
+        <SongStudio
+          token={songFor}
+          code={plan?.code}
+          childName={data?.letters.find((l) => l.token === songFor)?.childName || ""}
+          onClose={() => setSongFor(null)}
+          onUpgrade={() => {
+            setSongFor(null);
+            onPay("natal");
+          }}
+        />
+      )}
     </motion.div>
   );
 }

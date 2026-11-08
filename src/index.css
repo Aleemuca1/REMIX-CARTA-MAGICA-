@@ -656,3 +656,34 @@
 @media (max-width:640px){.postmark{width:76px;height:76px;font-size:7px;right:10px;top:10px}.postmark b{font-size:18px}}
 /* texto da carta: parágrafos com recuo elegante e ligaduras */
 .letter-body p{font-variant-ligatures:common-ligatures;font-feature-settings:"kern","liga","onum"}
+
+/* flocos grandes do topo (HeroFlakes) */
+.hero-flake {
+  position: absolute;
+  top: -40px;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(173, 216, 255, 0.9), 0 0 2px #fff;
+  font-family: "Segoe UI Symbol", "DejaVu Sans", sans-serif;
+  animation-name: hero-flake-fall, hero-flake-spin;
+  animation-timing-function: linear, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+  will-change: transform;
+}
+@keyframes hero-flake-fall {
+  0% { transform: translate3d(0, -40px, 0); }
+  100% { transform: translate3d(var(--drift, 40px), 105vh, 0); }
+}
+@keyframes hero-flake-spin {
+  0%, 100% { rotate: -25deg; }
+  50% { rotate: 25deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-flake { display: none; }
+}
+
+/* No celular em pé o jogo fica no meio da tela: céu em cima e neve embaixo preenchem as faixas vazias */
+@media (max-width: 639px) {
+  .game-stage {
+    background: linear-gradient(to bottom, #050b1b 0%, #0a1634 49.9%, #dce8fa 50%, #c9d8ee 100%) !important;
+  }
+}

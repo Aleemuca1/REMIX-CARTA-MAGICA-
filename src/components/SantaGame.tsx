@@ -273,7 +273,7 @@ export function GameModal({
       exit={{ opacity: 0 }}
     >
       <motion.div
-        className="relative w-full max-w-5xl h-[100dvh] rounded-none border-0 sm:h-auto sm:aspect-[16/10] sm:max-h-[92vh] sm:rounded-3xl sm:border-2 [@media(max-height:520px)]:h-[100dvh] [@media(max-height:520px)]:max-h-none [@media(max-height:520px)]:max-w-none [@media(max-height:520px)]:aspect-auto [@media(max-height:520px)]:rounded-none [@media(max-height:520px)]:border-0 overflow-hidden border-[#FFD166] shadow-2xl bg-[#050A1A]"
+        className="game-stage relative w-full max-w-5xl h-[100dvh] rounded-none border-0 sm:h-auto sm:aspect-[16/10] sm:max-h-[92vh] sm:rounded-3xl sm:border-2 [@media(max-height:520px)]:h-[100dvh] [@media(max-height:520px)]:max-h-none [@media(max-height:520px)]:max-w-none [@media(max-height:520px)]:aspect-auto [@media(max-height:520px)]:rounded-none [@media(max-height:520px)]:border-0 overflow-hidden border-[#FFD166] shadow-2xl bg-[#050A1A]"
         initial={{ scale: 0.9, y: 30 }}
         animate={{ scale: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 22 }}
