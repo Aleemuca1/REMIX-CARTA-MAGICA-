@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { AVULSA, NORMAL, brl } from "../../lib/pricing";
 import { AnimatePresence, motion } from "motion/react";
 import confetti from "canvas-confetti";
 import { Camera, Check, Loader2, Mail, Printer, Sparkles, Type } from "lucide-react";
@@ -16,7 +17,7 @@ import { createPortal } from "react-dom";
 type Step = "dados" | "cartinha" | "lendo" | "recebida" | "agendar" | "pronto";
 
 /** Fluxo do Correio do Polo Norte: dados → cartinha (foto ou texto) → carta recebida → prévia e agendamento. */
-export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans }: { onClose: () => void; onOpenLetter: (l: Letter) => void; onSeePlans: () => void }) {
+export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans, onBuyAvulsa }: { onClose: () => void; onOpenLetter: (l: Letter) => void; onSeePlans: () => void; /** Resposta Mágica avulsa (R$ 4,90) */ onBuyAvulsa?: (l: Letter) => void }) {
   useBackClose(true, onClose);
   const [step, setStep] = useState<Step>("dados");
   const [childName, setName] = useState("");
@@ -273,6 +274,20 @@ export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans }: { onC
                 <b>💛 Esta cartinha merece um cuidado especial.</b> A resposta do Papai Noel vai passar por uma revisão carinhosa da nossa equipe antes de ser liberada. Você pode ver a prévia agora; avisamos quando estiver pronta para entregar.
               </div>
             ) : null}
+            {result.letter.plan === "free" && onBuyAvulsa && (
+              <button onClick={() => onBuyAvulsa(result.letter)} className="w-full text-left rounded-2xl border-2 border-[#FFD166] bg-gradient-to-r from-[#2B0B10] to-[#1C2541] p-4 cursor-pointer hover:brightness-110" id="correio-comprar-avulsa">
+                <span className="flex items-center justify-between gap-3">
+                  <span>
+                    <b className="block text-sm text-[#FFD166]">✨ Resposta Mágica completa</b>
+                    <span className="block text-xs text-white/75 leading-snug">O Papai Noel lê a resposta inteira com a voz dele + PDF para imprimir</span>
+                  </span>
+                  <span className="text-right shrink-0">
+                    <s className="block text-[11px] text-white/45">{brl(NORMAL.pro)}</s>
+                    <b className="font-cinzel text-xl text-[#FFD166]">{brl(AVULSA)}</b>
+                  </span>
+                </span>
+              </button>
+            )}
             <div className="grid gap-2">
               <button onClick={() => onOpenLetter(result.letter)} className="w-full rounded-full py-3.5 font-extrabold bg-[#FFD166] text-[#0B132B] inline-flex items-center justify-center gap-2 cursor-pointer" id="correio-ver-previa">
                 <Sparkles className="w-5 h-5" /> Ver a resposta do Papai Noel (prévia)
@@ -327,6 +342,20 @@ export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans }: { onC
               <b>Link da carta</b> (mande para {first} na hora certa, ou para os avós):
               <div className="mt-1 break-all text-[#FFD166] select-all">{`${window.location.origin}/natal/${result.token}`}</div>
             </div>
+            {result.letter.plan === "free" && onBuyAvulsa && (
+              <button onClick={() => onBuyAvulsa(result.letter)} className="w-full text-left rounded-2xl border-2 border-[#FFD166] bg-gradient-to-r from-[#2B0B10] to-[#1C2541] p-4 cursor-pointer hover:brightness-110" id="correio-comprar-avulsa">
+                <span className="flex items-center justify-between gap-3">
+                  <span>
+                    <b className="block text-sm text-[#FFD166]">✨ Resposta Mágica completa</b>
+                    <span className="block text-xs text-white/75 leading-snug">O Papai Noel lê a resposta inteira com a voz dele + PDF para imprimir</span>
+                  </span>
+                  <span className="text-right shrink-0">
+                    <s className="block text-[11px] text-white/45">{brl(NORMAL.pro)}</s>
+                    <b className="font-cinzel text-xl text-[#FFD166]">{brl(AVULSA)}</b>
+                  </span>
+                </span>
+              </button>
+            )}
             <div className="grid gap-2">
               <a href={`https://wa.me/?text=${encodeURIComponent(`🎅 Chegou uma carta do Papai Noel para ${first}! ${window.location.origin}/natal/${result.token}`)}`} target="_blank" rel="noreferrer" className="w-full rounded-full py-3 font-extrabold bg-[#25D366] text-[#0B132B]">
                 Mandar no WhatsApp

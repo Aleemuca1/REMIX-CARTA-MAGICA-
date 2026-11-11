@@ -247,6 +247,10 @@ export default function App() {
               setCorreioOpen(false);
               setChooseFor("nova");
             }}
+            onBuyAvulsa={(l) => {
+              setCorreioOpen(false);
+              void pay(l, "avulsa");
+            }}
           />
         )}
       </AnimatePresence>

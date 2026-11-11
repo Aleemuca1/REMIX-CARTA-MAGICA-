@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { AVULSA, NORMAL, brl } from "../../lib/pricing";
 import { Camera, Mail, Printer, Sparkles } from "lucide-react";
 import Reveal from "../Reveal";
 
@@ -27,6 +28,10 @@ export default function CorreioSection({ onStart }: { onStart: () => void }) {
                 <Sparkles className="w-4 h-4 text-[#FFD166]" /> Resposta com voz, PDF e número de protocolo
               </li>
             </ul>
+            <p className="mb-5 text-sm text-white/85">
+              Prévia da resposta em texto <b className="text-[#2DC653]">grátis</b> · Resposta Mágica com a voz do Papai Noel e PDF por{" "}
+              <s className="text-white/50">{brl(NORMAL.pro)}</s> <b className="text-[#FFD166] text-base">{brl(AVULSA)}</b>
+            </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
               <button onClick={onStart} className="bg-gradient-to-r from-[#D90429] to-[#EF233C] text-white font-extrabold px-7 py-4 rounded-full inline-flex items-center justify-center gap-2 shadow-lg border border-[#FFD166]/60 btn-shine animate-soft-pulse cursor-pointer text-base sm:text-lg" id="correio-open-btn" data-celebrate>
                 <Mail className="w-5 h-5 relative z-10" />
