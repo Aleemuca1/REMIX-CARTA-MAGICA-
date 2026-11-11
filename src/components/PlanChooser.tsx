@@ -1,7 +1,9 @@
 import { motion } from "motion/react";
+import { useFeatures } from "../lib/features";
 import { Check, Crown, X } from "lucide-react";
 import { useBackClose } from "../lib/backClose";
 import { PROMO, promoActive } from "../lib/promo";
+import { AVULSA, NORMAL, brl, priceLabel } from "../lib/pricing";
 
 export type PaidChoice = "natal" | "familia";
 
@@ -9,18 +11,17 @@ export const PAID_PLANS: {
   id: PaidChoice;
   name: string;
   kids: string;
-  price: string;
+  readonly price: string;
   badge?: string;
 }[] = [
-  { id: "natal", name: "Carta Completa", kids: "até 2 crianças · 10 cartas", price: "R$ 14,90", badge: "Mais escolhido" },
-  { id: "familia", name: "Pacote Família", kids: "até 5 crianças · 23 cartas", price: "R$ 25,90", badge: "Melhor para famílias grandes" },
+  { id: "natal", name: "Carta Completa", kids: "até 2 crianças · 10 cartas", get price() { return priceLabel("natal"); }, badge: "Mais escolhido" },
+  { id: "familia", name: "Pacote Família", kids: "até 5 crianças · 23 cartas", get price() { return priceLabel("familia"); }, badge: "Melhor para famílias grandes" },
 ];
 
 /** O que vem nos dois planos pagos (tudo o que temos de melhor). */
 export const PAID_FEATURES = [
   "10 cartas completas (Carta Completa) ou 23 (Pacote Família): dá para refazer, fazer a da véspera e um recado especial",
   "6 vozes lendo a carta inteira (Papai Noel, Noel animado, Mamãe Noel, Duende, Contador de histórias e Anjinho)",
-  "🎵 Música de Natal cantada com o nome da criança (uma por criança)",
   "Carta brilhante em 5 cores, com moldura que brilha",
   "PDF para imprimir, imagem HD e vídeo com a voz",
   "Certificado de Bom Comportamento",
@@ -28,7 +29,9 @@ export const PAID_FEATURES = [
 ];
 
 /** Escolha do plano antes de pagar: Carta Completa (até 2 crianças) ou Pacote Família (até 5). */
-export default function PlanChooser({ onPick, onClose }: { onPick: (p: PaidChoice) => void; onClose: () => void }) {
+export default function PlanChooser({ onPick, onClose, onAvulsa }: { onPick: (p: PaidChoice) => void; onClose: () => void; /** cartinha do Correio: oferece liberar só ela */ onAvulsa?: () => void }) {
+  const feat = useFeatures();
+  const paidList = feat.music ? ["🎵 Música de Natal cantada com o nome da criança (uma por criança)", ...PAID_FEATURES] : PAID_FEATURES;
   useBackClose(true, onClose);
   return (
     <motion.div
@@ -89,9 +92,30 @@ export default function PlanChooser({ onPick, onClose }: { onPick: (p: PaidChoic
           ))}
         </div>
 
+        {onAvulsa && (
+          <button
+            onClick={onAvulsa}
+            className="mt-3 w-full text-left rounded-2xl p-3.5 border border-dashed border-white/30 bg-white/5 hover:border-[#FFD166]/70 cursor-pointer"
+            id="choose-avulsa"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="font-bold text-sm">📮 Só esta cartinha: Resposta Mágica</p>
+                <p className="text-[11px] text-white/65 leading-snug">A resposta lida inteira com a voz do Papai Noel + PDF para imprimir</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-[11px] text-white/50 -mb-0.5">
+                  <s>{brl(NORMAL.pro)}</s>
+                </p>
+                <p className="font-cinzel text-xl font-extrabold text-[#FFD166]">{brl(AVULSA)}</p>
+              </div>
+            </div>
+          </button>
+        )}
+
         <p className="mt-4 text-xs font-bold uppercase tracking-widest text-[#FFD166]">Os dois planos têm tudo:</p>
         <ul className="mt-2 space-y-1.5">
-          {PAID_FEATURES.map((f) => (
+          {paidList.map((f) => (
             <li key={f} className="flex gap-2 text-xs sm:text-sm text-white/85">
               <Check className="w-4 h-4 text-[#2DC653] shrink-0 mt-0.5" />
               {f}

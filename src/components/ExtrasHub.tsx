@@ -11,9 +11,10 @@ export const EXTRAS: { id: string; emoji: string; title: string; text: string }[
   { id: "rastreador", emoji: "🛷", title: "Rastreie o Papai Noel", text: "Siga o trenó pelo mundo." },
   { id: "jogo", emoji: "🎮", title: "Jogos de Natal", text: "Papai Noel, urso polar e memória." },
   { id: "atelie", emoji: "🎨", title: "Ateliê para colorir", text: "Desenhos para pintar e imprimir." },
+  { id: "cartao", emoji: "💌", title: "Cartão de Natal", text: "9 modelos com a foto da família: PDF, imagem e vídeo." },
   { id: "familia", emoji: "📸", title: "Família no Trenó", text: "Coloque o rosto da família no trenó." },
 ];
-const ALL_IDS = new Set([...EXTRAS.map((e) => e.id), "urso", "memoria", "arvore-luz", "natal-mundo", "globo", "presente"]);
+const ALL_IDS = new Set([...EXTRAS.map((e) => e.id), "retrato", "meus-cartoes", "urso", "memoria", "arvore-luz", "natal-mundo", "globo", "presente"]);
 
 export const isExtraId = (id: string) => ALL_IDS.has(id);
 /** Abre o baú de brincadeiras e rola até a seção pedida (usado pelo menu). */

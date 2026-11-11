@@ -6,7 +6,7 @@ import { loginWithCode } from "./auth";
 type Msg = { kind: "wait" | "ok" | "error"; text: string } | null;
 
 /** Cria o pedido no servidor e leva para a página de pagamento do Asaas. Devolve uma mensagem de erro, se houver. */
-export async function startCheckout(letterId: string | null, plan: "pro" | "natal" | "familia" | "upgrade", code?: string): Promise<string | null> {
+export async function startCheckout(letterId: string | null, plan: "pro" | "natal" | "familia" | "upgrade" | "avulsa", code?: string): Promise<string | null> {
   try {
     const res = await fetch("/api/checkout", {
       method: "POST",
@@ -59,6 +59,16 @@ export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Lette
           const r = await fetch(`/api/order/${encodeURIComponent(orderId)}`);
           if (r.ok) {
             const o = await r.json();
+            if (o.status === "paid" && o.plan === "pro") {
+              // Resposta Mágica avulsa: libera só aquela cartinha
+              clean();
+              if (o.letterToken) {
+                const lr = await fetch(`/api/letter/${encodeURIComponent(o.letterToken)}`);
+                if (lr.ok) openLetter(await lr.json());
+              }
+              setMsg({ kind: "ok", text: "Pagamento confirmado! A Resposta Mágica está liberada: ouça a carta inteira com a voz do Papai Noel e baixe o PDF. 🎅" });
+              return;
+            }
             if (o.status === "paid") {
               grantFullAccess();
               if (o.accessCode) {

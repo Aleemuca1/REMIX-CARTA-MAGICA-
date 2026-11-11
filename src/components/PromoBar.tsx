@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { PROMO, promoActive, promoEndsLabel } from "../lib/promo";
+import { priceLabel } from "../lib/pricing";
 
 /** Faixa fina no topo com a promoção (some sozinha quando a promoção acaba). */
 export default function PromoBar({ onClick }: { onClick: () => void }) {
@@ -20,7 +21,7 @@ export default function PromoBar({ onClick }: { onClick: () => void }) {
     >
       <span className="bg-[#FFD166] text-[#0B132B] rounded-full px-2.5 py-0.5 text-[11px] uppercase tracking-widest">🖤 {PROMO.name}</span>
       <span>
-        Natal Completo por <b className="text-[#FFD166]">R$ 14,90</b> <s className="opacity-70">R$ 29,90</s> · Família <b className="text-[#FFD166]">R$ 25,90</b> <s className="opacity-70">R$ 49,90</s>
+        Carta Completa <s className="opacity-70">{PROMO.from.natal}</s> por <b className="text-[#FFD166]">{priceLabel("natal")}</b> · Família <s className="opacity-70">{PROMO.from.familia}</s> por <b className="text-[#FFD166]">{priceLabel("familia")}</b>
       </span>
       <span className="opacity-85">
         até {promoEndsLabel()} · termina em {d > 0 ? `${d}d ` : ""}{String(h).padStart(2, "0")}h{String(m).padStart(2, "0")}

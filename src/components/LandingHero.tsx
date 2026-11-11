@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from "motion/react";
+import { priceLabel } from "../lib/pricing";
 import HeroFlakes from "./HeroFlakes";
 import { Sparkles, ArrowRight, ShieldCheck, Timer, Volume2 } from "lucide-react";
 import ChristmasCountdown from "./ChristmasCountdown";
@@ -110,7 +111,7 @@ export default function LandingHero({
 
           {/* Guarantee Tag */}
           <p className="text-xs text-[#EDF2F4]/60 text-center lg:text-left">
-            🎁 Grátis para começar • Natal Completo a partir de R$ 14,90{promoActive() && <> <s className="opacity-60">R$ 29,90</s> na {PROMO.name}</>} • Seu filho escreveu? <button onClick={() => onScrollTo("correio")} className="underline text-[#FFD166] cursor-pointer">O Papai Noel responde</button>
+            🎁 Grátis para começar • Natal Completo a partir de {priceLabel("natal")}{promoActive() && <> <s className="opacity-60">{PROMO.from.natal}</s> na {PROMO.name}</>} • Seu filho escreveu? <button onClick={() => onScrollTo("correio")} className="underline text-[#FFD166] cursor-pointer">O Papai Noel responde</button>
           </p>
         </div>
 

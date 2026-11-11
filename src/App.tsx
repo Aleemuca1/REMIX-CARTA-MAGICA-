@@ -12,6 +12,7 @@ import MusicToggle from "./components/MusicToggle";
 import SantaGame from "./components/SantaGame";
 import PolarBearGame from "./components/PolarBearGame";
 import FamilySection from "./components/family/FamilySection";
+import ChristmasCardSection from "./components/cards/ChristmasCardSection";
 import MemoryGame from "./components/memory/MemoryGame";
 import NiceListQuiz from "./components/NiceListQuiz";
 import SantaTracker from "./components/SantaTracker";
@@ -28,6 +29,7 @@ import ExtrasHub, { isExtraId, openExtra } from "./components/ExtrasHub";
 import CorreioSection from "./components/correio/CorreioSection";
 import WhyUs from "./components/WhyUs";
 import PromoBar from "./components/PromoBar";
+import BlackFridayBanner from "./components/BlackFridayBanner";
 import CorreioFlow from "./components/correio/CorreioFlow";
 import OnTheWay from "./components/correio/OnTheWay";
 import { fetchLetter } from "./lib/correio";
@@ -77,7 +79,7 @@ export default function App() {
     if (/^[a-z-]{2,30}$/.test(id)) setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }), 700);
   }, []);
 
-  const pay = async (letter: Letter | null, plan: PaidChoice | "upgrade", code?: string) => {
+  const pay = async (letter: Letter | null, plan: PaidChoice | "upgrade" | "avulsa", code?: string) => {
     // a compra fica na conta do responsável (e o e-mail dele recebe tudo)
     if ((await parentForCheckout()) === "cancel") return;
     setPayMsg({ kind: "wait", text: "Abrindo o pagamento seguro do Asaas..." });
@@ -161,6 +163,9 @@ export default function App() {
           onViewSample={() => setIsSampleOpen(true)}
         />
 
+        {/* Black Friday (some sozinho em 01/12) */}
+        <BlackFridayBanner onPlans={() => handleScrollTo("precos")} onCorreio={() => setCorreioOpen(true)} />
+
         {/* Correio do Polo Norte: a criança escreve, o Papai Noel responde */}
         <CorreioSection onStart={() => setCorreioOpen(true)} />
 
@@ -186,6 +191,7 @@ export default function App() {
           <PolarBearGame onCreateLetter={() => handleStartWizard("free")} />
           <MemoryGame onUpgrade={() => setChooseFor("nova")} onCreateLetter={() => handleStartWizard("free")} />
           <AtelierSection onUpgrade={() => setChooseFor("nova")} />
+          <ChristmasCardSection onUpgrade={() => setChooseFor("nova")} />
           <FamilySection onUpgrade={() => setChooseFor("nova")} />
           <LightTree onCreateLetter={() => handleStartWizard("free")} />
           <WorldChristmas onCreateLetter={() => handleStartWizard("free")} />
@@ -259,6 +265,15 @@ export default function App() {
         {chooseFor && (
           <PlanChooser
             onClose={() => setChooseFor(null)}
+            onAvulsa={
+              chooseFor !== "nova" && chooseFor?.childText && chooseFor.plan === "free"
+                ? () => {
+                    const l = chooseFor as Letter;
+                    setChooseFor(null);
+                    void pay(l, "avulsa");
+                  }
+                : undefined
+            }
             onPick={(p) => {
               const l = chooseFor;
               setChooseFor(null);

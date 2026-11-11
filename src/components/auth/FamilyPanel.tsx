@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { priceLabel } from "../../lib/pricing";
 import { motion } from "motion/react";
 import { Check, Copy, Crown, Loader2, LogOut, Plus, X } from "lucide-react";
 import { closeParentArea, linkToAccount, loadPanel, logout, useAuth, type Panel } from "../../lib/auth";
@@ -10,6 +11,7 @@ import { loadLocal as localHouse } from "../../house/store";
 import { loadLocal as localTree } from "../../tree/store";
 import { PAID_FEATURES } from "../PlanChooser";
 import SongStudio from "../music/SongStudio";
+import { useFeatures } from "../../lib/features";
 
 type Tab = "cartas" | "musicas" | "casa" | "calendario" | "planos";
 
@@ -30,6 +32,7 @@ export default function FamilyPanel({
   const [tab, setTab] = useState<Tab>("cartas");
   const [copied, setCopied] = useState(false);
   const [songFor, setSongFor] = useState<string | null>(null);
+  const features = useFeatures();
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -83,7 +86,7 @@ export default function FamilyPanel({
 
   const tabs: [Tab, string][] = [
     ["cartas", "💌 Cartas"],
-    ["musicas", "🎵 Músicas"],
+    ...(features.music ? ([["musicas", "🎵 Músicas"]] as [Tab, string][]) : []),
     ["casa", "🎄 Árvore"],
     ["calendario", "📅 Calendário"],
     ["planos", "👑 Plano"],
@@ -162,10 +165,10 @@ export default function FamilyPanel({
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button onClick={() => onPay("natal")} className="rounded-full px-4 py-2.5 font-extrabold bg-gradient-to-r from-[#D90429] to-[#EF233C] border border-[#FFD166]/50 cursor-pointer">
-                    Carta Completa · R$ 14,90 (2 crianças, 10 cartas)
+                    Carta Completa · {priceLabel("natal")} (2 crianças, 10 cartas)
                   </button>
                   <button onClick={() => onPay("familia")} className="rounded-full px-4 py-2.5 font-bold bg-white/10 hover:bg-white/15 cursor-pointer">
-                    Pacote Família · R$ 25,90 (5 crianças, 23 cartas)
+                    Pacote Família · {priceLabel("familia")} (5 crianças, 23 cartas)
                   </button>
                 </div>
               </div>

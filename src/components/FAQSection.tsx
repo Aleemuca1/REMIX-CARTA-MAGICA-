@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { priceLabel } from "../lib/pricing";
+import { useFeatures } from "../lib/features";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import Reveal from "./Reveal";
@@ -10,7 +12,7 @@ const FAQS = [
   },
   {
     q: "A carta gratuita é realmente grátis?",
-    a: "Sim. Você gera e vê a carta sem pagar nada (até 3 cartas grátis por dia). O Natal Completo é opcional e tem pagamento único: R$ 14,90 para até 2 crianças (10 cartas completas) ou R$ 25,90 no Pacote Família, para até 5 crianças (23 cartas completas). Os dois liberam as cartas completas com 6 vozes, carta brilhante em 5 cores, PDF, imagem HD, certificado e as 24 portinhas do Calendário do Advento.",
+    a: `Sim. Você gera e vê a carta sem pagar nada (até 3 cartas grátis por dia). O Natal Completo é opcional e tem pagamento único: ${priceLabel("natal")} para até 2 crianças (10 cartas completas) ou ${priceLabel("familia")} no Pacote Família, para até 5 crianças (23 cartas completas). Os dois liberam as cartas completas com 6 vozes, carta brilhante em 5 cores, PDF, imagem HD, certificado e as 24 portinhas do Calendário do Advento.`,
   },
   {
     q: "Como funciona o Calendário do Advento?",
@@ -35,6 +37,8 @@ const FAQS = [
 ];
 
 export default function FAQSection() {
+  const feat = useFeatures();
+  const faqs = feat.music ? FAQS : FAQS.filter((f) => !/Música de Natal/.test(f.q));
   const [open, setOpen] = useState<number | null>(0);
   return (
     <section className="py-16 md:py-24 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto" id="duvidas">
@@ -47,7 +51,7 @@ export default function FAQSection() {
         </h2>
       </Reveal>
       <div className="space-y-3">
-        {FAQS.map((f, i) => {
+        {faqs.map((f, i) => {
           const isOpen = open === i;
           return (
             <Reveal key={i} delay={i * 0.08}>

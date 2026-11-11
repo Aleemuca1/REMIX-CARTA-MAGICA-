@@ -7,6 +7,7 @@ import { GoogleGenAI } from "@google/genai";
 import * as db from "./db.js";
 import { randomBytes } from "crypto";
 import * as asaas from "./asaas.js";
+import { planPrice } from "./src/lib/pricing.js";
 import { ADVENT_DAYS } from "./src/advent/days.js";
 import { voiceById, voiceForSender } from "./src/lib/voices.js";
 import * as mailer from "./mailer.js";
@@ -1393,8 +1394,9 @@ app.post("/api/checkout", async (req, res) => {
   try {
     const { letterId } = req.body || {};
     // Carta Completa (natal), Pacote Família (familia) ou troca de plano (upgrade). "pro" antigo vira "natal".
-    const plan: "natal" | "familia" | "upgrade" | null =
-      req.body?.plan === "upgrade" ? "upgrade" : req.body?.plan === "familia" ? "familia" : asaas.isPaidPlan(req.body?.plan) ? "natal" : null;
+    // "avulsa" = Resposta Mágica de UMA cartinha do Correio (fica gravada como plano "pro": 1 carta)
+    const plan: "natal" | "familia" | "upgrade" | "pro" | null =
+      req.body?.plan === "upgrade" ? "upgrade" : req.body?.plan === "avulsa" ? "pro" : req.body?.plan === "familia" ? "familia" : asaas.isPaidPlan(req.body?.plan) ? "natal" : null;
     if (!plan) {
       return res.status(400).json({ error: "Plano inválido." });
     }
@@ -1410,6 +1412,9 @@ app.post("/api/checkout", async (req, res) => {
     if (letterId && !letter) {
       return res.status(404).json({ error: "Carta não encontrada. Atualize a página e tente de novo." });
     }
+    if (plan === "pro" && (!letter || letter.plan !== "free")) {
+      return res.status(400).json({ error: letter ? "Esta cartinha já está liberada." : "A Resposta Mágica é para uma cartinha: abra a resposta e toque em liberar." });
+    }
     if (!asaas.asaasConfigured()) {
       return res.status(503).json({
         error: "O pagamento ainda não está disponível. Tente novamente em breve.",
@@ -1418,7 +1423,7 @@ app.post("/api/checkout", async (req, res) => {
     const parent = await currentParent(req);
     if (parent && letter && !letter.parentId) await db.updateLetter(letter.id, { parentId: parent.id }).catch(() => {});
     const orderId = `cm${randomBytes(9).toString("base64url")}`;
-    const price = asaas.PLAN_PRICES[plan];
+    const price = { value: planPrice(plan) };
     await db.insertOrder({
       orderId,
       letterId: letter?.id ?? null,
@@ -2308,17 +2313,23 @@ Responda SOMENTE um JSON: {"titulo":"...","secoes":[{"nome":"Intro","linhas":[]}
   return fallbackLyrics(o.name, o.achievements, o.gift);
 }
 
+/** Interruptor da Música de Natal: só aparece com MUSICA_ATIVA=sim na Vercel (e a chave da ElevenLabs). */
+const musicOn = () => eleven.elevenEnabled() && /^(sim|1|true)$/i.test(String(process.env.MUSICA_ATIVA || ""));
+app.get("/api/features", (_req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=60");
+  res.json({ music: musicOn() });
+});
 app.post("/api/music/status", async (req, res) => {
   try {
     if (tooMany(`musicst:${ipOf(req)}`, 60, 10 * 60 * 1000)) return res.status(429).json({ error: "Muitas tentativas." });
     const c = await songCodeFor(req.body);
     res.setHeader("Cache-Control", "no-store");
-    if (!c) return res.json({ enabled: eleven.elevenEnabled(), allowed: false });
+    if (!c) return res.json({ enabled: musicOn(), allowed: false });
     const limit = asaas.PLAN_CHILDREN[c.plan] ?? 1;
     const songs = await songsOf(c.code);
     const used = songs.filter((m) => m.status !== "error").length;
     res.json({
-      enabled: eleven.elevenEnabled(),
+      enabled: musicOn(),
       allowed: true,
       limit,
       used,
@@ -2332,7 +2343,7 @@ app.post("/api/music/status", async (req, res) => {
 
 app.post("/api/music", async (req, res) => {
   try {
-    if (!eleven.elevenEnabled()) return res.status(503).json({ error: "A Música de Natal está sendo preparada no Polo Norte. Volte em breve!" });
+    if (!musicOn()) return res.status(503).json({ error: "A Música de Natal está sendo preparada no Polo Norte. Volte em breve!" });
     if (tooMany(`music:${ipOf(req)}`, 6, 60 * 60 * 1000)) return res.status(429).json({ error: "Calma, os duendes estão cantando! Tente daqui a pouco." });
     const c = await songCodeFor(req.body);
     if (!c) return res.status(403).json({ error: "A Música de Natal faz parte dos planos pagos.", needPlan: true });

@@ -1,4 +1,6 @@
 import { Check, Sparkles, Crown } from "lucide-react";
+import { priceLabel } from "../lib/pricing";
+import { useFeatures } from "../lib/features";
 import { PlanType } from "../types";
 import Reveal from "./Reveal";
 import { PROMO, promoActive, promoEndsLabel } from "../lib/promo";
@@ -22,7 +24,6 @@ type Plan = {
 const PAID: { text: string; strong?: boolean }[] = [
   { text: "Cartas completas com o nome de cada criança", strong: true },
   { text: "6 vozes lendo a carta inteira: Papai Noel, Noel animado, Mamãe Noel, Duende, Contador de histórias e Anjinho", strong: true },
-  { text: "🎵 NOVO: Música de Natal cantada com o nome da criança (1 por criança)", strong: true },
   { text: "Carta brilhante em 5 cores, com moldura que brilha", strong: true },
   { text: "PDF para imprimir, imagem HD e vídeo com a voz" },
   { text: "Certificado de Bom Comportamento" },
@@ -52,7 +53,7 @@ const PLANS: Plan[] = [
     name: "Carta Completa",
     tag: "Mais escolhido · até 2 crianças",
     kids: "👧👦 até 2 crianças · 10 cartas completas",
-    price: "R$ 14,90",
+    get price() { return priceLabel("natal"); },
     note: "pagamento único",
     cta: "Quero para meus filhos",
     highlight: true,
@@ -63,7 +64,7 @@ const PLANS: Plan[] = [
     name: "Pacote Família",
     tag: "Até 5 crianças",
     kids: "👨‍👩‍👧‍👦 até 5 crianças · 23 cartas completas",
-    price: "R$ 25,90",
+    get price() { return priceLabel("familia"); },
     note: "pagamento único",
     cta: "Quero o Pacote Família",
     features: PAID,
@@ -71,6 +72,8 @@ const PLANS: Plan[] = [
 ];
 
 export default function PricingSection({ onSelectPlan }: PricingSectionProps) {
+  const feat = useFeatures();
+  const plans = PLANS.map((p) => (p.id === "free" || !feat.music ? p : { ...p, features: [{ text: "🎵 NOVO: Música de Natal cantada com o nome da criança (1 por criança)", strong: true }, ...p.features] }));
   return (
     <section className="py-16 md:py-24 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto" id="precos">
       <Reveal className="text-center max-w-2xl mx-auto mb-12">
@@ -82,7 +85,7 @@ export default function PricingSection({ onSelectPlan }: PricingSectionProps) {
       </Reveal>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-7 items-stretch max-w-6xl mx-auto">
-        {PLANS.map((p, i) => (
+        {plans.map((p, i) => (
           <Reveal key={p.id} delay={0.1 + i * 0.12} className={`h-full ${p.highlight ? "md:-mt-4 md:mb-4" : ""}`}>
             <div
               className={`h-full rounded-3xl p-7 sm:p-8 flex flex-col justify-between relative transition-all duration-300 hover:-translate-y-1.5 ${

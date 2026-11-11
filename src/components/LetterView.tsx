@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { priceLabel } from "../lib/pricing";
 import { prettyCity, prettyName } from "../lib/prettyText";
 import BackButton from "./BackButton";
 import { useBackClose } from "../lib/backClose";
@@ -15,6 +16,7 @@ import { musicBox } from "../lib/christmasMusic";
 import { VOICES, voiceById, type VoiceId } from "../lib/voices";
 import { LETTER_THEMES, letterTheme } from "../lib/letterThemes";
 import SongStudio from "./music/SongStudio";
+import { useFeatures } from "../lib/features";
 
 // [esquerda %, topo %, atraso s, tamanho]
 const SPARKLES: [number, number, number, number][] = [
@@ -82,6 +84,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
   const [upsell, setUpsell] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [songOpen, setSongOpen] = useState(false);
+  const features = useFeatures();
   const [voiceId, setVoiceId] = useState<VoiceId>("noel");
   const [readIdx, setReadIdx] = useState(-1);
   const paraRefs = useRef<(HTMLParagraphElement | null)[]>([]);
@@ -284,6 +287,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
               <WhatsIcon className="w-4 h-4" />
               WhatsApp
             </motion.a>
+            {features.music && (
             <motion.button
               onClick={() => setSongOpen(true)}
               whileHover={{ y: -2 }}
@@ -294,6 +298,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
               <span aria-hidden="true">🎵</span>
               Música de Natal{!isPro && <Lock className="w-3.5 h-3.5" />}
             </motion.button>
+            )}
             <ToolButton onClick={() => setShareOpen(true)} icon={<Share2 className="w-4 h-4 text-[#FFD166]" />} id="letter-share">
               Compartilhar e baixar
             </ToolButton>
@@ -392,7 +397,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                     onClick={() => onUpgrade?.()}
                     className="bg-gradient-to-r from-[var(--accent)] to-[var(--accent2)] text-white font-bold px-4 py-2 rounded-full text-xs sm:text-sm whitespace-nowrap btn-shine cursor-pointer"
                   >
-                    <span className="relative z-10">Liberar tudo · a partir de R$ 14,90</span>
+                    <span className="relative z-10">Liberar tudo · a partir de {priceLabel("natal")}</span>
                   </button>
                 </div>
               </motion.div>

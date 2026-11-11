@@ -5,6 +5,7 @@
 //   ASAAS_WEBHOOK_TOKEN  o mesmo "Token de autenticação" cadastrado no webhook do Asaas
 //   PUBLIC_SITE_URL      opcional: ex. https://cartamagica.com.br (senão usa o domínio da requisição)
 import { CHECKOUT_IMAGE_BASE64 } from "./checkoutImage.js";
+import { planPrice } from "./src/lib/pricing.js";
 
 export type PaidPlan = "pro" | "natal" | "familia";
 
@@ -12,14 +13,14 @@ export type PaidPlan = "pro" | "natal" | "familia";
 export type CheckoutPlan = PaidPlan | "upgrade";
 export const PLAN_PRICES: Record<CheckoutPlan, { value: number; name: string; description: string }> = {
   upgrade: {
-    value: 11,
+    value: 11, // o valor cobrado vem de planPrice() (pricing.ts)
     name: "Carta Mágica: vire Família",
     description: "Troca da Carta Completa pelo Pacote Família: até 5 crianças e 23 cartas completas no total (paga só a diferença)",
   },
   pro: {
-    value: 14.9,
-    name: "Magia Completa",
-    description: "Carta narrada pelo Papai Noel, PDF para imprimir, certificado e link para a família",
+    value: 4.9,
+    name: "Resposta Mágica (1 cartinha)",
+    description: "A resposta do Papai Noel para esta cartinha: lida inteira com a voz do Papai Noel, PDF para imprimir e link para a família",
   },
   natal: {
     value: 14.9,
@@ -64,7 +65,7 @@ export async function createCheckout(opts: {
   plan: CheckoutPlan;
   siteUrl: string;
 }): Promise<{ id: string; link: string }> {
-  const price = PLAN_PRICES[opts.plan];
+  const price = { ...PLAN_PRICES[opts.plan], value: planPrice(opts.plan) };
   const back = `${opts.siteUrl.replace(/\/+$/, "")}/?pedido=${encodeURIComponent(opts.orderId)}`;
   const body = {
     billingTypes: ["PIX", "CREDIT_CARD"],
