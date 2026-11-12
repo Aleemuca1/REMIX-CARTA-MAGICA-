@@ -62,7 +62,7 @@ export default function BlackFridayBanner({ onPlans, onCorreio }: { onPlans: () 
               ))}
               <button onClick={onCorreio} className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-white/25 px-4 py-2.5 text-left cursor-pointer hover:border-[#FFD166]/60" id="bf-avulsa">
                 <span className="text-xs sm:text-sm text-white/85 inline-flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-[#FFD166] shrink-0" /> Resposta Mágica de uma cartinha
+                  <Mail className="w-4 h-4 text-[#FFD166] shrink-0" /> Resposta Mágica · até 2 cartinhas
                 </span>
                 <span className="text-sm whitespace-nowrap">
                   <s className="text-white/45 text-xs">{brl(NORMAL.pro)}</s> <b className="text-[#FFD166]">{brl(AVULSA)}</b>

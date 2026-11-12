@@ -438,7 +438,7 @@ function generateFallbackLetter(data) {
   const openings = [
     `Hoje de manhã, quando os duendes entregaram a pilha de cartas, a sua estava brilhando tanto que a Mamãe Noel precisou colocar óculos escuros! Dei uma gargalhada tão grande que a minha barba balançou feito gelatina.`,
     `Você não vai acreditar: assim que vi o seu nome na pilha de cartas, o meu gorro saiu voando de alegria e foi parar no nariz de uma rena! Os duendes riram tanto que derrubaram uma caixa inteira de bolinhas de Natal.`,
-    `Aqui no Polo Norte a notícia correu rápido: os duendes fizeram uma festa com chocolate quente e dança na neve só para comemorar o ano incrível que você teve aí em ${city}!`,
+    `Aqui no Polo Norte a notícia correu rápido: os duendes fizeram uma festa com chocolate quente e dança na neve só para comemorar o ano incrível que você teve${city ? ` aí em ${city}` : ""}!`,
   ];
   const missions = [
     `até o dia 24, dê um abraço surpresa em alguém da sua casa e conte uma coisa que você admira nessa pessoa. Os duendes vão anotar tudo no Livro Dourado!`,
@@ -461,10 +461,10 @@ function generateFallbackLetter(data) {
             `P.S.: Uma das renas tentou ler a sua carta e acabou espirrando purpurina na oficina inteira. Agora está tudo brilhando!`,
           ]);
   const paras: string[] = [];
-  paras.push(`Ho Ho Ho! Olá, ${name}${sib}, meu ajudante favorito de ${city}!`);
+  paras.push(`Ho Ho Ho! Olá, ${name}${sib}, meu ajudante favorito${city ? ` de ${city}` : " do mundo inteiro"}!`);
   paras.push(pick(openings));
   paras.push(
-    `Abri o Grande Livro Dourado na sua página e li, com o coração cheio de orgulho, que neste ano, aos ${age} anos, ${achLine}! Isso é coisa de criança muito especial, ${name}. A Mamãe Noel e os duendes bateram palmas na hora.${isPro ? " Cada passo seu mostra o quanto você é corajoso(a), esforçado(a) e cheio(a) de luz." : ""}`,
+    `Abri o Grande Livro Dourado na sua página e li, com o coração cheio de orgulho, que neste ano${Number(age) > 0 ? `, aos ${age} anos` : ""}, ${achLine}! Isso é coisa de criança muito especial, ${name}. A Mamãe Noel e os duendes bateram palmas na hora.${isPro ? " Cada passo seu mostra o quanto você é corajoso(a), esforçado(a) e cheio(a) de luz." : ""}`,
   );
   paras.push(
     gift
@@ -506,7 +506,7 @@ app.get("/api/letters", requireAdmin, async (_req, res) => {
 // ======================= Correio do Polo Norte =======================
 // A criança escreve a cartinha (à mão, na folha timbrada, ou digitada). Os pais mandam a foto.
 // A foto é lida na hora pela IA e NUNCA é guardada: só o texto lido fica no banco.
-type ReadLetter = { text: string; wishes: ChildLetter["wishes"]; sensitive: boolean; why: string };
+type ReadLetter = { text: string; wishes: ChildLetter["wishes"]; sensitive: boolean; why: string; name?: string; age?: number; city?: string };
 const SENSITIVE_WORDS = /\b(morreu|faleceu|c[eé]u|separa|divorc|briga|bateu|apanh|hospital|doen[cç]a|c[aâ]ncer|remédio|tratamento|triste|chorar|medo|fome|sem casa|bebida|b[eê]bado|machuc)/i;
 function emptyWishes() {
   return { pedidos: [] as string[], perguntas: [] as string[], contou: [] as string[] };
@@ -521,7 +521,7 @@ async function readChildLetter(input: { imageBase64?: string; mime?: string; tex
   const instruction = `Você trabalha no Correio do Polo Norte e lê as cartinhas que as crianças escrevem para o Papai Noel.
 ${input.imageBase64 ? "Leia a cartinha manuscrita na imagem (pode ter erros de ortografia, letras invertidas e desenhos; interprete com carinho e NÃO corrija o que a criança quis dizer)." : "Leia a cartinha abaixo."}
 Responda SOMENTE um JSON com este formato exato:
-{"transcricao":"texto da cartinha, fiel ao que a criança escreveu, corrigindo só a ortografia para ficar legível","pedidos":["cada presente ou desejo pedido"],"perguntas":["cada pergunta que a criança fez ao Papai Noel"],"contou":["coisas que ela contou sobre ela: conquistas, família, bichinho, escola"],"sensivel":false,"motivo":""}
+{"transcricao":"texto da cartinha, fiel ao que a criança escreveu, corrigindo só a ortografia para ficar legível","nome":"primeiro nome da criança, se ela escreveu (senão vazio)","idade":0,"cidade":"cidade, se ela escreveu (senão vazio)","pedidos":["cada presente ou desejo pedido"],"perguntas":["cada pergunta que a criança fez ao Papai Noel"],"contou":["coisas que ela contou sobre ela: conquistas, família, bichinho, escola"],"sensivel":false,"motivo":""}
 Marque "sensivel": true (e explique em "motivo") se a cartinha falar de luto, morte, doença grave, separação dos pais, violência, fome, medo ou tristeza profunda. Se a imagem não for uma cartinha (ou não der para ler nada), devolva "transcricao":"" e listas vazias.${typed ? `\n\nCARTINHA:\n"""${typed}"""` : ""}`;
   if (ai) {
     for (const model of LETTER_MODELS) {
@@ -534,7 +534,8 @@ Marque "sensivel": true (e explique em "motivo") se a cartinha falar de luto, mo
         const text = sanitizeText(j.transcricao, 1500);
         const wishes = { pedidos: cleanList(j.pedidos), perguntas: cleanList(j.perguntas), contou: cleanList(j.contou, 8) };
         const sensitive = Boolean(j.sensivel) || SENSITIVE_WORDS.test(text);
-        return { text, wishes, sensitive, why: sanitizeText(j.motivo, 200) };
+        const idade = Math.round(Number(j.idade) || 0);
+        return { text, wishes, sensitive, why: sanitizeText(j.motivo, 200), name: sanitizeText(j.nome, 30), age: idade >= 1 && idade <= 14 ? idade : 0, city: sanitizeText(j.cidade, 60) };
       } catch (e: any) {
         console.warn(`Leitura da cartinha (${model}) falhou:`, e?.message || e);
       }
@@ -565,7 +566,7 @@ app.post("/api/correio", async (req, res) => {
   try {
     const { childName, age, city, parentalConsent, parentNotes = "", achievements = "", style = "mágico" } = req.body || {};
     if (parentalConsent !== true) return res.status(400).json({ error: "É preciso confirmar que você é o responsável pela criança e autoriza o uso dos dados." });
-    if (!childName || !age || !city) return res.status(400).json({ error: "Preencha o nome, a idade e a cidade da criança." });
+    // só o nome é obrigatório; idade e cidade o Polo Norte tenta ler na própria cartinha
     const image = typeof req.body?.imageBase64 === "string" ? req.body.imageBase64.replace(/^data:[^;]+;base64,/, "") : "";
     const mime = /^image\/(jpeg|png|webp|heic|heif)$/.test(String(req.body?.mime)) ? String(req.body.mime) : "image/jpeg";
     const typed = sanitizeText(req.body?.text, 1500);
@@ -581,23 +582,29 @@ app.post("/api/correio", async (req, res) => {
       return res.status(422).json({ error: "Não consegui ler a cartinha nessa foto. Tente com mais luz, a folha inteira aparecendo e sem sombra. Ou digite o texto dela." });
     }
     const childText = read.text || typed;
+    const nameFinal = String(childName || read.name || "").trim().slice(0, 30);
+    if (!nameFinal) return res.status(400).json({ error: "Escreva o nome da criança para o Papai Noel saber para quem responder." });
+    const ageNum = Number(age) >= 1 && Number(age) <= 14 ? Number(age) : read.age || 0;
+    const cityFinal = String(city || read.city || "").trim().slice(0, 60);
+    // conquistas: o que os pais escreveram ou o que a própria criança contou na cartinha (aparece também no certificado)
+    const achFinal = String(achievements || read.wishes.contou.slice(0, 3).join(", ")).slice(0, 200);
     // 2) o Papai Noel escreve a resposta
     const plan = covered ? covered.plan : "free";
     const isPro = plan !== "free";
     const extras = cleanExtras(req.body?.extras);
     const giftRequest = read.wishes.pedidos.slice(0, 3).join(", ");
     const composed = await composeLetter({
-      childName, age, city, achievements: String(achievements), giftRequest, parentNotes: String(parentNotes), style: String(style),
+      childName: nameFinal, age: ageNum, city: cityFinal, achievements: achFinal, giftRequest, parentNotes: String(parentNotes), style: String(style),
       extras, extrasText: extrasForPrompt(extras), toneDesc: TONES[String(style)] ?? TONES["mágico"], isPro,
       childLetter: { text: childText, wishes: read.wishes },
     });
     const theme = LETTER_THEME_IDS.includes(String(req.body?.theme)) ? String(req.body.theme) : "classico";
-    const token = `${String(childName).toLowerCase().replace(/[^a-z0-9]/g, "")}-${Date.now().toString(36)}`;
+    const token = `${nameFinal.toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "") || "carta"}-${Date.now().toString(36)}`;
     const previewKey = randomBytes(12).toString("base64url");
     const protocol = await db.nextProtocol().catch(() => undefined);
     const rec = {
       id: `cm-${Date.now()}`,
-      childName, age: Number(age), city, achievements: String(achievements), giftRequest, parentNotes: String(parentNotes), style: String(style), theme,
+      childName: nameFinal, age: ageNum, city: cityFinal, achievements: achFinal, giftRequest, parentNotes: String(parentNotes), style: String(style), theme,
       parentId: (await currentParent(req))?.id,
       plan: covered ? covered.plan : "free",
       accessCode: covered ? covered.code : undefined,
@@ -747,12 +754,12 @@ async function composeLetter(o: {
   const ai = getGeminiClient();
   if (ai) {
     try {
-      const systemInstruction = `Você é o verdadeiro Papai Noel escrevendo, de próprio punho, uma carta mágica, divertida e emocionante para uma criança brasileira de ${age} anos. A carta será lida em voz alta pelos pais ou pela voz do Papai Noel, então escreva para a CRIANÇA entender e se encantar: frases curtas, palavras simples, muita imaginação e humor carinhoso.
+      const systemInstruction = `Você é o verdadeiro Papai Noel escrevendo, de próprio punho, uma carta mágica, divertida e emocionante para uma criança brasileira${Number(age) > 0 ? ` de ${age} anos` : ""}. A carta será lida em voz alta pelos pais ou pela voz do Papai Noel, então escreva para a CRIANÇA entender e se encantar: frases curtas, palavras simples, muita imaginação e humor carinhoso.
 
 ESTRUTURA (cada parte em um parágrafo separado por uma linha em branco):
-1. SAUDAÇÃO: uma única linha animada e criativa com o nome, por exemplo "Ho Ho Ho! Olá, ${childName}, meu ajudante favorito de ${city}!". Varie: não repita sempre a mesma frase.
+1. SAUDAÇÃO: uma única linha animada e criativa com o nome, por exemplo "Ho Ho Ho! Olá, ${childName}, meu ajudante favorito${city ? ` de ${city}` : " do mundo inteiro"}!". Varie: não repita sempre a mesma frase.
 2. ABERTURA MÁGICA: conte uma cena engraçada ou surpreendente que acabou de acontecer COM O PRÓPRIO PAPAI NOEL no Polo Norte por causa da criança (ex.: deu uma gargalhada tão grande que a barba balançou; o gorro saiu voando de alegria ao ler o nome dela; os duendes fizeram uma festa). Seja inventivo e diferente a cada carta.
-3. CONQUISTAS (OBRIGATÓRIO): cite UMA POR UMA, de forma explícita e concreta, TODAS as conquistas que a família escreveu (ex.: se escreveram "aprendeu matemática, foi obediente e passou de ano", a carta precisa falar da matemática, da obediência e de ter passado de ano). Corrija a ortografia do que os pais digitaram, sem mudar o sentido. Lembre a idade e a cidade.
+3. CONQUISTAS (OBRIGATÓRIO): cite UMA POR UMA, de forma explícita e concreta, TODAS as conquistas que a família escreveu (ex.: se escreveram "aprendeu matemática, foi obediente e passou de ano", a carta precisa falar da matemática, da obediência e de ter passado de ano). Corrija a ortografia do que os pais digitaram, sem mudar o sentido. ${Number(age) > 0 || city ? "Lembre a idade e a cidade (só as que forem informadas)." : "A idade e a cidade não foram informadas: não invente."}
 4. PEDIDO DE NATAL: diga que o próprio Papai Noel anotou o pedido (${giftRequest || "uma surpresa especial"}) no Grande Livro Dourado, com carinho e sem prometer que o presente vai chegar.
 5. CARINHO DA FAMÍLIA: ${parentNotes ? `inclua com delicadeza o recado dos responsáveis: "${parentNotes}".` : "lembre que a família tem muito orgulho e amor por ela."}
 6. MISSÃO SECRETA: um parágrafo que começa exatamente com "🎯 Missão secreta de Natal:" e traz uma pequena missão gentil e divertida para a criança cumprir até o Natal (ex.: dar um abraço surpresa em alguém, ajudar a pôr a mesa, desenhar algo para o Papai Noel e deixar na janela). Uma frase ou duas.
@@ -771,8 +778,8 @@ REGRAS IMPORTANTES:
 - Idioma: português do Brasil, simples, mágico e afetuoso. Escreva somente a carta, sem títulos nem marcações.`;
       const userPrompt = `Escreva a carta de Natal personalizada com as informa\xE7\xF5es:
 - Crian\xE7a: ${childName}
-- Idade: ${age} anos
-- Cidade: ${city}
+- Idade: ${Number(age) > 0 ? `${age} anos` : "não informada (não invente)"}
+- Cidade: ${city || "não informada (não invente)"}
 - Conquistas e atitudes especiais (citar TODAS na carta): ${achievements || "Foi gentil e espalhou alegria"}
 - Pedido de presente na cartinha: ${giftRequest || "Um presente feito com amor"}
 - Palavras especiais dos pais/respons\xE1veis: ${parentNotes || "Nenhum detalhe extra"}

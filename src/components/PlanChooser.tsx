@@ -100,8 +100,8 @@ export default function PlanChooser({ onPick, onClose, onAvulsa }: { onPick: (p:
           >
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="font-bold text-sm">📮 Só esta cartinha: Resposta Mágica</p>
-                <p className="text-[11px] text-white/65 leading-snug">A resposta lida inteira com a voz do Papai Noel + PDF para imprimir</p>
+                <p className="font-bold text-sm">📮 Resposta Mágica · até 2 cartinhas</p>
+                <p className="text-[11px] text-white/65 leading-snug">A resposta lida com a voz do Papai Noel + PDF e certificado (esta e mais 1 cartinha)</p>
               </div>
               <div className="text-right shrink-0">
                 <p className="text-[11px] text-white/50 -mb-0.5">

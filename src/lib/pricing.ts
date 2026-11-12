@@ -11,11 +11,13 @@ export const PROMO = {
 export type PricedPlan = "natal" | "familia" | "pro";
 
 /** preço normal (dezembro em diante) */
-export const NORMAL: Record<PricedPlan, number> = { natal: 14.9, familia: 25.9, pro: 6.9 };
+export const NORMAL: Record<PricedPlan, number> = { natal: 14.9, familia: 25.9, pro: 9.9 };
 /** preço da Black Friday (novembro) */
 export const PROMO_PRICE: Record<"natal" | "familia", number> = { natal: 11.9, familia: 19.9 };
-/** Resposta Mágica avulsa (uma cartinha do Correio): de R$ 6,90 por R$ 4,90 */
-export const AVULSA = 4.9;
+/** Resposta Mágica avulsa (até 2 cartinhas do Correio): de R$ 9,90 por R$ 5,90. O Asaas não cobra menos de R$ 5,00. */
+export const AVULSA = 5.9;
+/** quantas cartinhas a Resposta Mágica cobre */
+export const AVULSA_CARTAS = 2;
 
 export const promoActive = (now = Date.now()) => now < Date.parse(PROMO.until);
 

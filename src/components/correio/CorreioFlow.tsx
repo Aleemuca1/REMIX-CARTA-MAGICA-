@@ -1,15 +1,14 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AVULSA, NORMAL, brl } from "../../lib/pricing";
 import { AnimatePresence, motion } from "motion/react";
 import confetti from "canvas-confetti";
-import { Camera, Check, Loader2, Mail, Printer, Sparkles, Type } from "lucide-react";
+import { Camera, Check, Eraser, Loader2, Mail, Mic, PenLine, Printer, Sparkles, Undo2 } from "lucide-react";
 import BackButton from "../BackButton";
 import ElfWorkshopLoader from "../ElfWorkshopLoader";
 import { useBackClose } from "../../lib/backClose";
 import { musicBox } from "../../lib/christmasMusic";
-import { prettyCity, prettyName } from "../../lib/prettyText";
+import { prettyName } from "../../lib/prettyText";
 import { getAccessCode, setChildName as rememberChild } from "../../advent/access";
-import { LETTER_THEMES } from "../../lib/letterThemes";
 import { approveLetter, sendChildLetter, shrinkImage, WHEN_OPTIONS, fmtDelivery, type CorreioResult, type When } from "../../lib/correio";
 import type { Letter } from "../../types";
 import { createPortal } from "react-dom";
@@ -17,17 +16,36 @@ import { createPortal } from "react-dom";
 type Step = "dados" | "cartinha" | "lendo" | "recebida" | "agendar" | "pronto";
 
 /** Fluxo do Correio do Polo Norte: dados → cartinha (foto ou texto) → carta recebida → prévia e agendamento. */
+/** Prévia do Certificado de Bom Comportamento com o nome da criança (o PDF vem na Resposta Mágica). */
+function CertThumb({ letter }: { letter: Letter }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    import("../../lib/certificate")
+      .then(({ renderGoodCertificate }) => renderGoodCertificate(letter))
+      .then((c) => alive && setSrc(c.toDataURL("image/jpeg", 0.7)))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [letter]);
+  if (!src) return null;
+  return (
+    <span className="block relative mb-3">
+      <img src={src} alt="Certificado de Bom Comportamento" className="w-full rounded-lg shadow-lg rotate-[-1.5deg]" />
+      <span className="absolute top-2 right-2 bg-[#D90429] text-white text-[10px] font-extrabold uppercase tracking-wider rounded-full px-2 py-0.5">🏅 incluso</span>
+    </span>
+  );
+}
+
 export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans, onBuyAvulsa }: { onClose: () => void; onOpenLetter: (l: Letter) => void; onSeePlans: () => void; /** Resposta Mágica avulsa (R$ 4,90) */ onBuyAvulsa?: (l: Letter) => void }) {
   useBackClose(true, onClose);
-  const [step, setStep] = useState<Step>("dados");
+  const [step, setStep] = useState<Step>("cartinha");
   const [childName, setName] = useState("");
-  const [age, setAge] = useState("");
-  const [city, setCity] = useState("");
-  const [achievements, setAch] = useState("");
-  const [parentNotes, setNotes] = useState("");
-  const [theme, setTheme] = useState("classico");
   const [consent, setConsent] = useState(false);
-  const [mode, setMode] = useState<"foto" | "texto">("foto");
+  const [mode, setMode] = useState<"foto" | "texto">("texto");
+  const [undo, setUndo] = useState("");
+  const paperRef = useRef<HTMLTextAreaElement | null>(null);
   const [photo, setPhoto] = useState<{ base64: string; mime: string; preview: string } | null>(null);
   const [typed, setTyped] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -56,28 +74,52 @@ export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans, onBuyAv
     }
   };
 
-  const submitDados = (e: FormEvent) => {
-    e.preventDefault();
-    if (!childName.trim() || !age || !city.trim() || !consent) return;
-    rememberChild(prettyName(childName));
-    setStep("cartinha");
+  // ditado: a criança fala e o texto aparece no papel (Chrome/Android/Edge; some quando o navegador não tem)
+  const SR = typeof window !== "undefined" ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition : null;
+  const canListen = !!SR;
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<any>(null);
+  const toggleListen = () => {
+    if (listening) {
+      recRef.current?.stop();
+      return;
+    }
+    try {
+      const rec = new SR();
+      rec.lang = "pt-BR";
+      rec.continuous = true;
+      rec.interimResults = false;
+      rec.onresult = (ev: any) => {
+        let add = "";
+        for (let i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal) add += ev.results[i][0].transcript;
+        if (add.trim()) setTyped((t) => (t ? `${t.trimEnd()} ${add.trim()}` : add.trim().replace(/^./, (c: string) => c.toUpperCase())).slice(0, 1500));
+      };
+      rec.onend = () => setListening(false);
+      rec.onerror = () => setListening(false);
+      recRef.current = rec;
+      rec.start();
+      setListening(true);
+    } catch {
+      setListening(false);
+    }
   };
+  useEffect(() => () => recRef.current?.stop?.(), []);
 
   const send = async () => {
     setErr(null);
     setLimit(false);
+    recRef.current?.stop?.();
+    if (!childName.trim()) return setErr("Escreva o nome da criança.");
+    if (!consent) return setErr("Marque a autorização do responsável para enviar.");
+    rememberChild(prettyName(childName));
     if (mode === "foto" && !photo) return setErr("Tire ou escolha a foto da cartinha.");
-    if (mode === "texto" && typed.trim().length < 10) return setErr("Digite o que a criança escreveu (pelo menos uma frase).");
+    if (mode === "texto" && typed.trim().length < 10) return setErr("Escreva a cartinha (pelo menos uma frase) ou toque em Falar a cartinha.");
     setStep("lendo");
     musicBox.sleighBells(1.6);
     try {
       const r = await sendChildLetter({
         childName: prettyName(childName),
-        age: Number(age),
-        city: prettyCity(city),
-        achievements,
-        parentNotes,
-        theme,
+        theme: "classico",
         parentalConsent: true,
         accessCode: getAccessCode() || undefined,
         ...(mode === "foto" ? { imageBase64: photo!.base64, mime: photo!.mime } : { text: typed.trim() }),
@@ -126,78 +168,95 @@ export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans, onBuyAv
           <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[#FFD166]">📮 Correio do Polo Norte</span>
         </div>
 
-        {step === "dados" && (
-          <form onSubmit={submitDados} className="space-y-4 text-xs sm:text-sm">
-            <h3 className="font-cinzel text-xl sm:text-2xl font-bold">Seu filho escreveu para o Papai Noel?</h3>
-            <p className="text-[#EDF2F4]/70">Mande a cartinha dele e o Papai Noel responde de verdade: citando o que ele escreveu, respondendo às perguntas e sem prometer presentes. Você vê a resposta antes de ela chegar.</p>
-            <div>
-              <label className="block font-semibold mb-1">Nome da criança *</label>
-              <input required maxLength={30} value={childName} onChange={(e) => setName(e.target.value)} onBlur={() => setName((n) => (n.trim() ? prettyName(n) : n))} placeholder="Ex: Sofia" className={inputCls} id="correio-nome" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-semibold mb-1">Idade *</label>
-                <input required type="number" min={1} max={14} value={age} onChange={(e) => setAge(e.target.value)} className={inputCls} id="correio-idade" />
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Cidade *</label>
-                <input required maxLength={60} value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ex: Curitiba" className={inputCls} id="correio-cidade" />
-              </div>
-            </div>
-            <div>
-              <label className="block font-semibold mb-1">Conquistas do ano (opcional)</label>
-              <input maxLength={200} value={achievements} onChange={(e) => setAch(e.target.value)} placeholder="Ex: aprendeu a ler e passou de ano" className={inputCls} />
-            </div>
-            <div>
-              <label className="block font-semibold mb-1">Recado dos pais (opcional)</label>
-              <input maxLength={160} value={parentNotes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex: Te amamos muito!" className={inputCls} />
-            </div>
-            <div>
-              <label className="block font-semibold mb-1.5">Cor da carta</label>
-              <div className="flex flex-wrap gap-2">
-                {LETTER_THEMES.map((t) => (
-                  <button key={t.id} type="button" onClick={() => setTheme(t.id)} className={`px-3 py-1.5 rounded-full border text-xs font-bold cursor-pointer ${theme === t.id ? "bg-white text-[#0B132B] border-white" : "border-white/25 text-white/85"}`}>
-                    {t.emoji} {t.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <label className="flex items-start gap-3 rounded-2xl bg-white/5 border border-white/15 p-3 cursor-pointer">
-              <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 w-4 h-4 accent-[#FFD166]" id="correio-consent" />
-              <span className="text-[11px] sm:text-xs text-white/85 leading-snug">
-                Sou pai, mãe ou responsável e autorizo o uso da cartinha só para criar a resposta. <b>A foto é lida na hora e não fica guardada.</b> Não aparecem sobrenome, escola nem endereço.
-              </span>
-            </label>
-            <button type="submit" disabled={!childName.trim() || !age || !city.trim() || !consent} className="w-full rounded-full py-3.5 font-extrabold bg-gradient-to-r from-[#D90429] to-[#EF233C] border border-[#FFD166]/50 disabled:opacity-50 cursor-pointer" id="correio-next">
-              Continuar →
-            </button>
-          </form>
-        )}
-
         {step === "cartinha" && (
           <div className="space-y-4 text-xs sm:text-sm">
-            <h3 className="font-cinzel text-xl sm:text-2xl font-bold">A cartinha de {first}</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setMode("foto")} className={`rounded-2xl p-3 border-2 text-left cursor-pointer ${mode === "foto" ? "border-[#FFD166] bg-[#FFD166]/10" : "border-white/15 bg-white/5"}`} id="correio-modo-foto">
+            <div>
+              <h3 className="font-cinzel text-xl sm:text-2xl font-bold leading-tight">Escreva para o Papai Noel</h3>
+              <p className="text-white/70 mt-1">Ele lê com carinho, responde cada pergunta e assina. Você vê a resposta antes de ela chegar.</p>
+            </div>
+
+            <label className="block">
+              <span className="block font-semibold mb-1">Nome da criança</span>
+              <input maxLength={30} value={childName} onChange={(e) => (setName(e.target.value), setErr(null))} onBlur={() => setName((n) => (n.trim() ? prettyName(n) : n))} placeholder="Ex: Pedro" className={inputCls} id="correio-nome" autoComplete="off" />
+            </label>
+
+            <div className="grid grid-cols-2 gap-2" role="tablist">
+              <button onClick={() => setMode("texto")} className={`rounded-2xl p-3 border-2 text-left cursor-pointer transition-colors ${mode === "texto" ? "border-[#FFD166] bg-[#FFD166]/10" : "border-white/15 bg-white/5 hover:bg-white/10"}`} id="correio-modo-texto" role="tab" aria-selected={mode === "texto"}>
+                <PenLine className="w-5 h-5 text-[#FFD166] mb-1" />
+                <b className="block">Escrever aqui</b>
+                <span className="text-white/65">Digitando ou falando</span>
+              </button>
+              <button onClick={() => setMode("foto")} className={`rounded-2xl p-3 border-2 text-left cursor-pointer transition-colors ${mode === "foto" ? "border-[#FFD166] bg-[#FFD166]/10" : "border-white/15 bg-white/5 hover:bg-white/10"}`} id="correio-modo-foto" role="tab" aria-selected={mode === "foto"}>
                 <Camera className="w-5 h-5 text-[#FFD166] mb-1" />
                 <b className="block">Foto da cartinha</b>
                 <span className="text-white/65">Escrita à mão, com desenhos</span>
               </button>
-              <button onClick={() => setMode("texto")} className={`rounded-2xl p-3 border-2 text-left cursor-pointer ${mode === "texto" ? "border-[#FFD166] bg-[#FFD166]/10" : "border-white/15 bg-white/5"}`} id="correio-modo-texto">
-                <Type className="w-5 h-5 text-[#FFD166] mb-1" />
-                <b className="block">Digitar</b>
-                <span className="text-white/65">A criança dita e você escreve</span>
-              </button>
             </div>
-            {mode === "foto" ? (
+
+            {mode === "texto" ? (
+              <div>
+                {/* papel de carta de verdade: pautado, margem vermelha e letra de mão */}
+                <div className="relative rounded-2xl overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.45)] bg-[#FFFBF0] text-[#22305A]" id="correio-papel">
+                  <div className="absolute inset-y-0 left-10 w-px bg-[#E5484D]/50" aria-hidden="true" />
+                  <div className="absolute top-2 right-3 text-[10px] font-cinzel font-bold tracking-widest text-[#B8111F]/70" aria-hidden="true">
+                    ✦ POLO NORTE ✦
+                  </div>
+                  <p className="font-ps text-2xl pl-12 pr-4 pt-6 leading-9">Querido Papai Noel,</p>
+                  <textarea
+                    ref={paperRef}
+                    value={typed}
+                    onChange={(e) => setTyped(e.target.value.slice(0, 1500))}
+                    rows={7}
+                    placeholder={`eu sou ${childName.trim() ? prettyName(childName.trim().split(/\s+/)[0]) : "o Pedro"}... Este ano eu aprendi a... Eu queria ganhar... As renas comem cenoura?`}
+                    className="block w-full bg-transparent pl-12 pr-4 pb-2 font-ps text-[22px] leading-9 text-[#22305A] placeholder:text-[#22305A]/35 resize-none focus:outline-none"
+                    style={{ backgroundImage: "repeating-linear-gradient(transparent 0 35px, rgba(34,48,90,0.16) 35px 36px)", backgroundAttachment: "local" }}
+                    id="correio-texto"
+                  />
+                  <p className="font-ps text-2xl text-right pr-5 pb-4 leading-9">
+                    Com carinho, <span className="text-[#B8111F]">{first || "____"}</span>
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                  {canListen && (
+                    <button onClick={toggleListen} className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 font-bold border cursor-pointer ${listening ? "bg-[#D90429] border-[#FF8FA3] animate-pulse" : "bg-white/10 border-white/15 hover:bg-white/15"}`} id="correio-falar">
+                      <Mic className="w-4 h-4" /> {listening ? "Ouvindo... toque para parar" : "Falar a cartinha"}
+                    </button>
+                  )}
+                  {typed && (
+                    <button
+                      onClick={() => {
+                        setUndo(typed);
+                        setTyped("");
+                        paperRef.current?.focus();
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 font-bold bg-white/10 border border-white/15 hover:bg-white/15 cursor-pointer"
+                      id="correio-apagar"
+                    >
+                      <Eraser className="w-4 h-4" /> Apagar e começar de novo
+                    </button>
+                  )}
+                  {!typed && undo && (
+                    <button onClick={() => (setTyped(undo), setUndo(""))} className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 font-bold bg-white/10 border border-white/15 hover:bg-white/15 cursor-pointer" id="correio-desfazer">
+                      <Undo2 className="w-4 h-4" /> Desfazer
+                    </button>
+                  )}
+                  <span className="ml-auto text-[11px] text-white/45">{typed.length}/1500</span>
+                </div>
+              </div>
+            ) : (
               <div>
                 <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void pickFile(e.target.files?.[0])} id="correio-foto" />
                 {photo ? (
                   <div className="relative rounded-2xl overflow-hidden border border-white/20">
                     <img src={photo.preview} alt="Cartinha" className="w-full max-h-72 object-contain bg-black/40" />
-                    <button onClick={() => fileRef.current?.click()} className="absolute bottom-2 right-2 rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold cursor-pointer">
-                      Trocar foto
-                    </button>
+                    <div className="absolute bottom-2 right-2 flex gap-2">
+                      <button onClick={() => setPhoto(null)} className="rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold cursor-pointer inline-flex items-center gap-1" id="correio-foto-remover">
+                        <Eraser className="w-3.5 h-3.5" /> Remover
+                      </button>
+                      <button onClick={() => fileRef.current?.click()} className="rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold cursor-pointer">
+                        Trocar foto
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <button onClick={() => fileRef.current?.click()} className="w-full rounded-2xl border-2 border-dashed border-[#FFD166]/60 bg-[#FFD166]/5 p-8 text-center cursor-pointer hover:bg-[#FFD166]/10" id="correio-foto-btn">
@@ -214,9 +273,15 @@ export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans, onBuyAv
                   grátis.
                 </p>
               </div>
-            ) : (
-              <textarea value={typed} onChange={(e) => setTyped(e.target.value.slice(0, 1500))} rows={7} placeholder={`Ex.: Querido Papai Noel, eu sou a ${first || "Sofia"}... Este ano eu aprendi a... Eu queria ganhar... As renas comem cenoura?`} className={inputCls + " resize-none"} id="correio-texto" />
             )}
+
+            <label className="flex items-start gap-3 rounded-2xl bg-white/5 border border-white/15 p-3 cursor-pointer">
+              <input type="checkbox" checked={consent} onChange={(e) => (setConsent(e.target.checked), setErr(null))} className="mt-0.5 w-4 h-4 accent-[#FFD166]" id="correio-consent" />
+              <span className="text-[11px] text-white/80 leading-snug">
+                Sou pai, mãe ou responsável e autorizo o uso da cartinha só para criar a resposta. A foto é lida na hora e não fica guardada.
+              </span>
+            </label>
+
             {err && (
               <div className="rounded-2xl border border-[#FF8FA3]/60 bg-[#D90429]/15 px-4 py-3 text-white" role="alert">
                 {err}{" "}
@@ -276,10 +341,12 @@ export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans, onBuyAv
             ) : null}
             {result.letter.plan === "free" && onBuyAvulsa && (
               <button onClick={() => onBuyAvulsa(result.letter)} className="w-full text-left rounded-2xl border-2 border-[#FFD166] bg-gradient-to-r from-[#2B0B10] to-[#1C2541] p-4 cursor-pointer hover:brightness-110" id="correio-comprar-avulsa">
+                <CertThumb letter={result.letter} />
                 <span className="flex items-center justify-between gap-3">
                   <span>
-                    <b className="block text-sm text-[#FFD166]">✨ Resposta Mágica completa</b>
-                    <span className="block text-xs text-white/75 leading-snug">O Papai Noel lê a resposta inteira com a voz dele + PDF para imprimir</span>
+                    <b className="block text-sm text-[#FFD166]">✨ Resposta Mágica · até 2 cartinhas</b>
+                    <span className="block text-xs text-white/80 leading-snug mt-0.5">🔊 O Papai Noel lê a resposta inteira com a voz dele</span>
+                    <span className="block text-xs text-white/80 leading-snug">📄 PDF para imprimir · 🏅 Certificado de Bom Comportamento</span>
                   </span>
                   <span className="text-right shrink-0">
                     <s className="block text-[11px] text-white/45">{brl(NORMAL.pro)}</s>
@@ -344,10 +411,12 @@ export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans, onBuyAv
             </div>
             {result.letter.plan === "free" && onBuyAvulsa && (
               <button onClick={() => onBuyAvulsa(result.letter)} className="w-full text-left rounded-2xl border-2 border-[#FFD166] bg-gradient-to-r from-[#2B0B10] to-[#1C2541] p-4 cursor-pointer hover:brightness-110" id="correio-comprar-avulsa">
+                <CertThumb letter={result.letter} />
                 <span className="flex items-center justify-between gap-3">
                   <span>
-                    <b className="block text-sm text-[#FFD166]">✨ Resposta Mágica completa</b>
-                    <span className="block text-xs text-white/75 leading-snug">O Papai Noel lê a resposta inteira com a voz dele + PDF para imprimir</span>
+                    <b className="block text-sm text-[#FFD166]">✨ Resposta Mágica · até 2 cartinhas</b>
+                    <span className="block text-xs text-white/80 leading-snug mt-0.5">🔊 O Papai Noel lê a resposta inteira com a voz dele</span>
+                    <span className="block text-xs text-white/80 leading-snug">📄 PDF para imprimir · 🏅 Certificado de Bom Comportamento</span>
                   </span>
                   <span className="text-right shrink-0">
                     <s className="block text-[11px] text-white/45">{brl(NORMAL.pro)}</s>
@@ -371,7 +440,7 @@ export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans, onBuyAv
         )}
       </motion.div>
 
-      {step === "lendo" && createPortal(<AnimatePresence><ElfWorkshopLoader key="elf" childName={first} achievement={achievements} /></AnimatePresence>, document.body)}
+      {step === "lendo" && createPortal(<AnimatePresence><ElfWorkshopLoader key="elf" childName={first} /></AnimatePresence>, document.body)}
     </motion.div>
   );
 }

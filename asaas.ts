@@ -18,9 +18,9 @@ export const PLAN_PRICES: Record<CheckoutPlan, { value: number; name: string; de
     description: "Troca da Carta Completa pelo Pacote Família: até 5 crianças e 23 cartas completas no total (paga só a diferença)",
   },
   pro: {
-    value: 4.9,
-    name: "Resposta Mágica (1 cartinha)",
-    description: "A resposta do Papai Noel para esta cartinha: lida inteira com a voz do Papai Noel, PDF para imprimir e link para a família",
+    value: 5.9,
+    name: "Carta Mágica: Resposta Mágica",
+    description: "Resposta do Papai Noel para até 2 cartinhas: lida inteira com a voz do Papai Noel, PDF para imprimir e certificado",
   },
   natal: {
     value: 14.9,
@@ -35,10 +35,10 @@ export const PLAN_PRICES: Record<CheckoutPlan, { value: number; name: string; de
 };
 
 /** quantas crianças cada plano cobre */
-export const PLAN_CHILDREN: Record<string, number> = { pro: 1, natal: 2, familia: 5 };
+export const PLAN_CHILDREN: Record<string, number> = { pro: 2, natal: 2, familia: 5 };
 /** cartas completas por criança (os pais costumam fazer mais de uma: refazer, véspera, recado especial) */
 export const LETTERS_PER_CHILD = 3;
-export const PLAN_LETTERS: Record<string, number> = { pro: 1, natal: 10, familia: 23 };
+export const PLAN_LETTERS: Record<string, number> = { pro: 2, natal: 10, familia: 23 };
 
 export const isPaidPlan = (p: unknown): p is PaidPlan => p === "pro" || p === "natal" || p === "familia";
 
@@ -79,7 +79,8 @@ export async function createCheckout(opts: {
     },
     items: [
       {
-        name: price.name.startsWith("Carta Mágica") ? price.name : `Carta Mágica — ${price.name}`,
+        // o Asaas aceita no máximo 30 caracteres no nome do item
+        name: (price.name.startsWith("Carta Mágica") ? price.name : `Carta Mágica — ${price.name}`).slice(0, 30),
         description: price.description,
         quantity: 1,
         value: price.value,

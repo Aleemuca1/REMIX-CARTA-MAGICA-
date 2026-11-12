@@ -29,7 +29,7 @@ export default function CorreioSection({ onStart }: { onStart: () => void }) {
               </li>
             </ul>
             <p className="mb-5 text-sm text-white/85">
-              Prévia da resposta em texto <b className="text-[#2DC653]">grátis</b> · Resposta Mágica com a voz do Papai Noel e PDF por{" "}
+              Prévia da resposta em texto <b className="text-[#2DC653]">grátis</b> · Resposta Mágica (até 2 cartinhas) com a voz do Papai Noel, PDF e certificado por{" "}
               <s className="text-white/50">{brl(NORMAL.pro)}</s> <b className="text-[#FFD166] text-base">{brl(AVULSA)}</b>
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { Letter } from "../types";
-import { grantFullAccess, saveAccessCode } from "../advent/access";
+import { getAccessCode, grantFullAccess, saveAccessCode } from "../advent/access";
 import { loginWithCode } from "./auth";
 
 type Msg = { kind: "wait" | "ok" | "error"; text: string } | null;
@@ -60,13 +60,14 @@ export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Lette
           if (r.ok) {
             const o = await r.json();
             if (o.status === "paid" && o.plan === "pro") {
-              // Resposta Mágica avulsa: libera só aquela cartinha
+              // Resposta Mágica: libera esta cartinha e guarda o código para a 2ª cartinha (sem trocar um código de plano que já exista)
               clean();
+              if (o.accessCode && !getAccessCode()) saveAccessCode(o.accessCode);
               if (o.letterToken) {
                 const lr = await fetch(`/api/letter/${encodeURIComponent(o.letterToken)}`);
                 if (lr.ok) openLetter(await lr.json());
               }
-              setMsg({ kind: "ok", text: "Pagamento confirmado! A Resposta Mágica está liberada: ouça a carta inteira com a voz do Papai Noel e baixe o PDF. 🎅" });
+              setMsg({ kind: "ok", text: "Pagamento confirmado! A Resposta Mágica está liberada: ouça a carta inteira com a voz do Papai Noel, baixe o PDF e o certificado. Você ainda pode mandar mais 1 cartinha pelo Correio, que ela já sai completa. 🎅" });
               return;
             }
             if (o.status === "paid") {
