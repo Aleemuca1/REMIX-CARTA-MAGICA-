@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
 import { Sparkles, Menu, X, UserRound } from "lucide-react";
 import { openParentArea, useAuth } from "../lib/auth";
+import { EXTRAS } from "./ExtrasHub";
+import { ChevronDown } from "lucide-react";
 
+/** Tudo o que o site tem (o menu do celular e o "Tudo para a família" do computador usam a mesma lista). */
+const FEATURES = [
+  { id: "criar", label: "🎅 Carta do Papai Noel", text: "Com o nome, a voz e o PDF" },
+  { id: "correio", label: "📮 Correio do Polo Norte", text: "Seu filho escreve, o Papai Noel responde" },
+  ...EXTRAS.map((e) => ({ id: e.id, label: `${e.emoji} ${e.title}`, text: e.text })),
+];
 const MENU = [
   { id: "como-funciona", label: "✨ Como funciona" },
-  { id: "correio", label: "📮 Correio do Polo Norte" },
+  ...FEATURES.map((f) => ({ id: f.id, label: f.label })),
   { id: "precos", label: "👑 Planos" },
-  { id: "extras", label: "🎁 Bônus para a família" },
-  { id: "calendario", label: "📅 Calendário do Advento" },
-  { id: "jogo", label: "🎮 Jogos de Natal" },
   { id: "duvidas", label: "❓ Dúvidas" },
 ];
 import ChristmasLights from "./ChristmasLights";
@@ -21,6 +26,21 @@ interface NavbarProps {
 export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [all, setAll] = useState(false);
+  const go = (id: string) => {
+    setAll(false);
+    setMenu(false);
+    if (id === "criar") onStartWizard("free");
+    else onScrollTo(id);
+  };
+  useEffect(() => {
+    if (!all) return;
+    const close = (e: MouseEvent) => !(e.target as HTMLElement).closest("#nav-all-wrap") && setAll(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setAll(false);
+    window.addEventListener("click", close);
+    window.addEventListener("keydown", esc);
+    return () => (window.removeEventListener("click", close), window.removeEventListener("keydown", esc));
+  }, [all]);
   const auth = useAuth();
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -67,12 +87,27 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
           >
             Como Funciona
           </button>
-          <button
-            onClick={() => onScrollTo("extras")}
-            className="text-xs sm:text-sm text-[#FFD166] hover:text-white font-semibold transition-colors cursor-pointer hidden md:inline-block"
-          >
-            🎁 Bônus para a família
-          </button>
+          <div className="relative hidden md:block" id="nav-all-wrap">
+            <button
+              onClick={() => setAll((v) => !v)}
+              className="text-xs sm:text-sm text-[#FFD166] hover:text-white font-semibold transition-colors cursor-pointer inline-flex items-center gap-1"
+              aria-expanded={all}
+              aria-haspopup="true"
+              id="nav-all"
+            >
+              🎁 Tudo para a família <ChevronDown className={`w-3.5 h-3.5 transition-transform ${all ? "rotate-180" : ""}`} />
+            </button>
+            {all && (
+              <div className="absolute right-0 lg:left-1/2 lg:-translate-x-1/2 top-full mt-3 w-[min(92vw,620px)] rounded-2xl border border-[#FFD166]/40 bg-[#0B132B]/98 backdrop-blur-md shadow-[0_20px_60px_rgba(0,0,0,0.6)] p-3 grid grid-cols-2 gap-1 z-50" role="menu" id="nav-all-menu">
+                {FEATURES.map((f) => (
+                  <button key={f.id} onClick={() => go(f.id)} className="text-left rounded-xl px-3 py-2.5 hover:bg-white/10 cursor-pointer" role="menuitem" id={`nav-all-${f.id}`}>
+                    <span className="block text-sm font-bold text-white">{f.label}</span>
+                    <span className="block text-[11px] text-white/55 leading-snug">{f.text}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             onClick={() => onScrollTo("duvidas")}
             className="text-xs sm:text-sm text-[#EDF2F4]/80 hover:text-white transition-colors cursor-pointer hidden md:inline-block"
@@ -127,10 +162,7 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
             {MENU.map((m) => (
               <button
                 key={m.id}
-                onClick={() => {
-                  setMenu(false);
-                  onScrollTo(m.id);
-                }}
+                onClick={() => go(m.id)}
                 className="text-left text-sm text-white/90 hover:text-white hover:bg-white/10 rounded-xl px-4 py-3 cursor-pointer"
               >
                 {m.label}

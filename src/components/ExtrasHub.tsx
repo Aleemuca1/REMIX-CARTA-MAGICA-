@@ -25,7 +25,15 @@ export default function ExtrasHub({ children }: { children: ReactNode }) {
 
   const go = (id?: string) => {
     setOpen(true);
-    if (id) setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }), 350);
+    if (id) {
+      // espera o baú abrir; confere de novo depois (as seções crescem enquanto carregam)
+      const to = () => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setTimeout(to, open ? 50 : 450);
+      setTimeout(() => {
+        const r = document.getElementById(id)?.getBoundingClientRect();
+        if (r && Math.abs(r.top) > 120) to();
+      }, open ? 900 : 1500);
+    }
   };
 
   useEffect(() => {
