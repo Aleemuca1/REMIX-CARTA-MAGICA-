@@ -642,6 +642,9 @@ app.post("/api/correio/aprovar", async (req, res) => {
     const me = await currentParent(req);
     const owner = (letter.previewKey && req.body?.previewKey === letter.previewKey) || (me && letter.parentId === me.id);
     if (!owner) return res.status(403).json({ error: "Só quem enviou a cartinha pode aprovar a resposta." });
+    if (!letter.plan || letter.plan === "free") {
+      return res.status(402).json({ error: "Libere a Resposta Mágica para entregar a carta do Papai Noel.", pay: true });
+    }
     if (letter.reviewStatus === "pending") {
       return res.status(409).json({ error: "Esta resposta está em revisão carinhosa pela nossa equipe. Avisaremos assim que for liberada.", review: true });
     }

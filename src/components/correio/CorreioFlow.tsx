@@ -9,7 +9,7 @@ import { useBackClose } from "../../lib/backClose";
 import { musicBox } from "../../lib/christmasMusic";
 import { prettyName } from "../../lib/prettyText";
 import { getAccessCode, setChildName as rememberChild } from "../../advent/access";
-import { approveLetter, sendChildLetter, shrinkImage, WHEN_OPTIONS, fmtDelivery, type CorreioResult, type When } from "../../lib/correio";
+import { approveLetter, previewKeyOf, sendChildLetter, shrinkImage, WHEN_OPTIONS, fmtDelivery, type CorreioResult, type When } from "../../lib/correio";
 import type { Letter } from "../../types";
 import { createPortal } from "react-dom";
 
@@ -38,10 +38,27 @@ function CertThumb({ letter }: { letter: Letter }) {
   );
 }
 
-export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans, onBuyAvulsa }: { onClose: () => void; onOpenLetter: (l: Letter) => void; onSeePlans: () => void; /** Resposta Mágica avulsa (R$ 4,90) */ onBuyAvulsa?: (l: Letter) => void }) {
+export default function CorreioFlow({
+  onClose,
+  onOpenLetter,
+  onSeePlans,
+  onBuyAvulsa,
+  resume,
+  quiet,
+}: {
+  onClose: () => void;
+  onOpenLetter: (l: Letter) => void;
+  onSeePlans: () => void;
+  /** Resposta Mágica (R$ 5,90, até 2 cartinhas) */
+  onBuyAvulsa?: (l: Letter) => void;
+  /** volta do pagamento: reabre no mesmo lugar, já liberada */
+  resume?: Letter | null;
+  /** reaberto depois de ouvir a carta: sem confete de novo */
+  quiet?: boolean;
+}) {
   useBackClose(true, onClose);
-  const [step, setStep] = useState<Step>("cartinha");
-  const [childName, setName] = useState("");
+  const [step, setStep] = useState<Step>(resume ? "recebida" : "cartinha");
+  const [childName, setName] = useState(resume?.childName ?? "");
   const [consent, setConsent] = useState(false);
   const [mode, setMode] = useState<"foto" | "texto">("texto");
   const [undo, setUndo] = useState("");
@@ -50,7 +67,27 @@ export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans, onBuyAv
   const [typed, setTyped] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [limit, setLimit] = useState(false);
-  const [result, setResult] = useState<CorreioResult | null>(null);
+  const [result, setResult] = useState<CorreioResult | null>(() =>
+    resume
+      ? {
+          token: resume.token,
+          previewKey: previewKeyOf(resume.token) ?? "",
+          protocol: resume.protocol,
+          childText: resume.childText ?? "",
+          wishes: resume.wishes ?? { pedidos: [], perguntas: [], contou: [] },
+          sensitive: resume.reviewStatus === "pending",
+          letter: resume,
+        }
+      : null,
+  );
+  const paid = !!result && result.letter.plan !== "free";
+  useEffect(() => {
+    if (resume && resume.plan !== "free" && !quiet) {
+      confetti({ particleCount: 160, spread: 100, origin: { y: 0.35 }, zIndex: 130, colors: ["#FFD166", "#EF233C", "#2DC653", "#FFFFFF"] });
+      [72, 76, 79, 84].forEach((n, i) => setTimeout(() => musicBox.chime(n, undefined, 0.16), i * 140));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [when, setWhen] = useState<When>("vespera");
   const [busy, setBusy] = useState(false);
   const [deliverAt, setDeliverAt] = useState<string | null>(null);
@@ -355,15 +392,33 @@ export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans, onBuyAv
                 </span>
               </button>
             )}
-            <div className="grid gap-2">
-              <button onClick={() => onOpenLetter(result.letter)} className="w-full rounded-full py-3.5 font-extrabold bg-[#FFD166] text-[#0B132B] inline-flex items-center justify-center gap-2 cursor-pointer" id="correio-ver-previa">
-                <Sparkles className="w-5 h-5" /> Ver a resposta do Papai Noel (prévia)
-              </button>
-              <button onClick={() => setStep("agendar")} disabled={result.sensitive} className="w-full rounded-full py-3.5 font-extrabold bg-gradient-to-r from-[#2DC653] to-[#1a9e3e] border border-[#FFD166]/50 inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50" id="correio-aprovar">
-                <Check className="w-5 h-5" /> Aprovar e escolher quando entregar
-              </button>
-            </div>
-            <p className="text-[11px] text-white/55">A resposta só aparece para {first} depois que você aprovar. Até lá, só você vê.</p>
+            {paid ? (
+              <>
+                <div className="rounded-2xl border border-[#2DC653]/50 bg-[#2DC653]/10 p-3 text-sm font-bold text-[#BFF5CF]" id="correio-pago">
+                  ✅ Resposta Mágica liberada! Agora é só ouvir, aprovar e entregar.
+                </div>
+                <div className="grid gap-2">
+                  <button onClick={() => onOpenLetter(result.letter)} className="w-full rounded-full py-3.5 font-extrabold bg-[#FFD166] text-[#0B132B] inline-flex items-center justify-center gap-2 cursor-pointer" id="correio-ver">
+                    <Sparkles className="w-5 h-5" /> Ouvir a resposta do Papai Noel
+                  </button>
+                  <button onClick={() => setStep("agendar")} disabled={result.sensitive} className="w-full rounded-full py-3.5 font-extrabold bg-gradient-to-r from-[#2DC653] to-[#1a9e3e] border border-[#FFD166]/50 inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50" id="correio-aprovar">
+                    <Check className="w-5 h-5" /> Aprovar e escolher quando entregar
+                  </button>
+                </div>
+                <p className="text-[11px] text-white/55">A resposta só aparece para {first} depois que você aprovar. Até lá, só você vê.</p>
+              </>
+            ) : (
+              <>
+                {onBuyAvulsa && (
+                  <button onClick={() => onBuyAvulsa(result.letter)} className="w-full rounded-full py-4 font-extrabold text-base bg-gradient-to-r from-[#D90429] to-[#EF233C] border-2 border-[#FFD166] inline-flex items-center justify-center gap-2 cursor-pointer btn-shine animate-soft-pulse" id="correio-pagar" data-celebrate>
+                    <Sparkles className="w-5 h-5 relative z-10" /> <span className="relative z-10">Receber a resposta do Papai Noel · {brl(AVULSA)}</span>
+                  </button>
+                )}
+                <p className="text-[11px] text-white/60">
+                  A resposta já está escrita, esperando no Polo Norte. Depois do pagamento você volta para cá para ouvir, aprovar, imprimir e mandar no WhatsApp.
+                </p>
+              </>
+            )}
           </div>
         )}
 
@@ -409,22 +464,6 @@ export default function CorreioFlow({ onClose, onOpenLetter, onSeePlans, onBuyAv
               <b>Link da carta</b> (mande para {first} na hora certa, ou para os avós):
               <div className="mt-1 break-all text-[#FFD166] select-all">{`${window.location.origin}/natal/${result.token}`}</div>
             </div>
-            {result.letter.plan === "free" && onBuyAvulsa && (
-              <button onClick={() => onBuyAvulsa(result.letter)} className="w-full text-left rounded-2xl border-2 border-[#FFD166] bg-gradient-to-r from-[#2B0B10] to-[#1C2541] p-4 cursor-pointer hover:brightness-110" id="correio-comprar-avulsa">
-                <CertThumb letter={result.letter} />
-                <span className="flex items-center justify-between gap-3">
-                  <span>
-                    <b className="block text-sm text-[#FFD166]">✨ Resposta Mágica · até 2 cartinhas</b>
-                    <span className="block text-xs text-white/80 leading-snug mt-0.5">🔊 O Papai Noel lê a resposta inteira com a voz dele</span>
-                    <span className="block text-xs text-white/80 leading-snug">📄 PDF para imprimir · 🏅 Certificado de Bom Comportamento</span>
-                  </span>
-                  <span className="text-right shrink-0">
-                    <s className="block text-[11px] text-white/45">{brl(NORMAL.pro)}</s>
-                    <b className="font-cinzel text-xl text-[#FFD166]">{brl(AVULSA)}</b>
-                  </span>
-                </span>
-              </button>
-            )}
             <div className="grid gap-2">
               <a href={`https://wa.me/?text=${encodeURIComponent(`🎅 Chegou uma carta do Papai Noel para ${first}! ${window.location.origin}/natal/${result.token}`)}`} target="_blank" rel="noreferrer" className="w-full rounded-full py-3 font-extrabold bg-[#25D366] text-[#0B132B]">
                 Mandar no WhatsApp

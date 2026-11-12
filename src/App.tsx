@@ -55,11 +55,14 @@ export default function App() {
   // carta que vai junto no pagamento; "nova" = pagar antes de criar a carta
   const [chooseFor, setChooseFor] = useState<Letter | "nova" | null>(null);
   const [correioOpen, setCorreioOpen] = useState(false);
+  const [correioResume, setCorreioResume] = useState<Letter | null>(null);
+  const [correioReturn, setCorreioReturn] = useState<Letter | null>(null);
+  const [correioQuiet, setCorreioQuiet] = useState(false);
   const [onTheWay, setOnTheWay] = useState<{ childName: string; deliverAt?: string; protocol?: number; message: string } | null>(null);
   const [payMsg, setPayMsg] = useState<{ kind: "wait" | "ok" | "error"; text: string } | null>(null);
 
   // volta do Asaas: confirma o pagamento e reabre a carta já liberada
-  usePaymentReturn(setPayMsg, setActiveLetter, () => handleStartWizard("free"));
+  usePaymentReturn(setPayMsg, setActiveLetter, () => handleStartWizard("free"), (l) => setCorreioResume(l));
 
   useEffect(() => {
     void loadMe();
@@ -118,6 +121,12 @@ export default function App() {
 
   const closeLetter = () => {
     setActiveLetter(null);
+    // veio do Correio já pago: volta para o mesmo lugar (aprovar, imprimir e compartilhar)
+    if (correioReturn) {
+      setCorreioQuiet(true);
+      setCorreioResume(correioReturn);
+      setCorreioReturn(null);
+    }
     if (window.location.pathname.startsWith("/natal/")) setTimeout(() => window.history.replaceState(null, "", "/"), 80);
   };
 
@@ -236,11 +245,20 @@ export default function App() {
       )}
 
       <AnimatePresence>
-        {correioOpen && (
+        {(correioOpen || correioResume) && (
           <CorreioFlow
-            onClose={() => setCorreioOpen(false)}
+            key={correioResume?.token ?? "novo"}
+            resume={correioResume}
+            quiet={correioQuiet}
+            onClose={() => {
+              setCorreioQuiet(false);
+              setCorreioOpen(false);
+              setCorreioResume(null);
+            }}
             onOpenLetter={(l) => {
               setCorreioOpen(false);
+              setCorreioResume(null);
+              if (l.plan !== "free") setCorreioReturn(l);
               setActiveLetter(l);
             }}
             onSeePlans={() => {
@@ -249,6 +267,7 @@ export default function App() {
             }}
             onBuyAvulsa={(l) => {
               setCorreioOpen(false);
+              setCorreioResume(null);
               void pay(l, "avulsa");
             }}
           />

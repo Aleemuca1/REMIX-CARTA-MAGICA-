@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import type { Letter } from "../types";
 import { getAccessCode, grantFullAccess, saveAccessCode } from "../advent/access";
 import { loginWithCode } from "./auth";
+import { fetchLetter } from "./correio";
 
 type Msg = { kind: "wait" | "ok" | "error"; text: string } | null;
 
@@ -30,7 +31,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * Quando o cliente volta do Asaas (?pedido=...&status=...), espera o webhook
  * confirmar o pagamento e reabre a carta já com o plano liberado.
  */
-export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Letter) => void, createLetter?: () => void) {
+export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Letter) => void, createLetter?: () => void, openCorreio?: (l: Letter) => void) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get("pedido");
@@ -64,8 +65,9 @@ export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Lette
               clean();
               if (o.accessCode && !getAccessCode()) saveAccessCode(o.accessCode);
               if (o.letterToken) {
-                const lr = await fetch(`/api/letter/${encodeURIComponent(o.letterToken)}`);
-                if (lr.ok) openLetter(await lr.json());
+                // a cartinha ainda não foi entregue: busca com a chave de quem enviou e volta para o Correio
+                const r = await fetchLetter(o.letterToken).catch(() => ({}) as { letter?: Letter });
+                if (r.letter) (openCorreio ?? openLetter)(r.letter);
               }
               setMsg({ kind: "ok", text: "Pagamento confirmado! A Resposta Mágica está liberada: ouça a carta inteira com a voz do Papai Noel, baixe o PDF e o certificado. Você ainda pode mandar mais 1 cartinha pelo Correio, que ela já sai completa. 🎅" });
               return;
