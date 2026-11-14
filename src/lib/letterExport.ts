@@ -230,7 +230,7 @@ function richLayout(ctx: CanvasRenderingContext2D, paras: string[], maxW: number
   for (; size >= min; size -= 1) {
     blocks = paras.map((raw, i) => {
       const kind = letterKind(raw, i, paras);
-      const text = kind === "mission" ? raw.replace(/^\s*🎯?\s*Miss[aã]o secreta de Natal:?\s*/i, "").replace(/^./, (c) => c.toUpperCase()) : raw;
+      const text = kind === "mission" ? raw.replace(/^\s*(?:🎯\s*)?Miss[aã]o secreta de Natal:?\s*/i, "").replace(/^./, (c) => c.toUpperCase()) : raw;
       const sz = kind === "greeting" ? size * 1.55 : kind === "farewell" ? size * 1.45 : kind === "ps" ? size * 1.3 : kind === "mission" ? size * 0.95 : size;
       const font = kind === "greeting" ? F.xmas(sz) : kind === "farewell" || kind === "ps" ? F.ps(sz) : F.letter(sz);
       const pad = kind === "mission" ? size * 1.1 : 0;

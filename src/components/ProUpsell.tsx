@@ -1,6 +1,7 @@
+import { SantaHat } from "./ui/Icons";
 import { motion } from "motion/react";
 import { priceLabel } from "../lib/pricing";
-import { Crown, Sparkles } from "lucide-react";
+import { Check, Crown, Sparkles } from "lucide-react";
 import { useBackClose } from "../lib/backClose";
 
 /** Convite para o Natal Completo, mostrado quando a pessoa toca em algo do plano pago. */
@@ -32,21 +33,21 @@ export default function ProUpsell({
         transition={{ type: "spring", stiffness: 260, damping: 24 }}
       >
         <motion.div
-          className="text-5xl mb-2"
+          className="mb-2 flex justify-center"
           animate={{ rotate: [-6, 6, -6], y: [0, -4, 0] }}
           transition={{ duration: 2.2, repeat: Infinity }}
           aria-hidden="true"
         >
-          🎅👑
+          <span className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-[#1C2541] to-[#0B132B] border-2 border-[#FFD166] grid place-items-center"><SantaHat size={42} /></span>
         </motion.div>
         <h4 className="font-cinzel text-xl sm:text-2xl font-bold text-white mb-2">{title}</h4>
         <p className="text-sm text-[#EDF2F4]/80 mb-4 leading-relaxed">{text}</p>
         <ul className="text-xs text-left text-[#EDF2F4]/80 space-y-1 bg-white/5 rounded-2xl p-3 mb-5 border border-white/10">
-          <li>✓ 2 crianças e 10 cartas ({priceLabel("natal")}) ou 5 crianças e 23 cartas ({priceLabel("familia")})</li>
-          <li>✓ 6 vozes lendo a carta inteira</li>
-          <li>✓ Carta brilhante em 5 cores, PDF, imagem HD e certificado</li>
-          <li>✓ 24 portinhas do Calendário do Advento</li>
-          <li>✓ Árvore ilimitada, Modo Ceia com voz e Ateliê completo</li>
+          <li className="flex gap-1.5"><Check className="w-3.5 h-3.5 text-[#2DC653] shrink-0 mt-0.5" /> 2 crianças e 10 cartas ({priceLabel("natal")}) ou 5 crianças e 23 cartas ({priceLabel("familia")})</li>
+          <li className="flex gap-1.5"><Check className="w-3.5 h-3.5 text-[#2DC653] shrink-0 mt-0.5" /> 6 vozes lendo a carta inteira</li>
+          <li className="flex gap-1.5"><Check className="w-3.5 h-3.5 text-[#2DC653] shrink-0 mt-0.5" /> Carta brilhante em 5 cores, PDF, imagem HD e certificado</li>
+          <li className="flex gap-1.5"><Check className="w-3.5 h-3.5 text-[#2DC653] shrink-0 mt-0.5" /> 24 portinhas do Calendário do Advento</li>
+          <li className="flex gap-1.5"><Check className="w-3.5 h-3.5 text-[#2DC653] shrink-0 mt-0.5" /> Árvore ilimitada, Modo Ceia com voz e Ateliê completo</li>
         </ul>
         {onUpgrade && (
           <button

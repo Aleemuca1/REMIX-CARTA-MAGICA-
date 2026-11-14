@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { Navigation } from "lucide-react";
+import { IconBadge } from "../ui/Icons";
+import { WHEN_ICON } from "../../lib/uiIcons";
 import { AVULSA, NORMAL, brl } from "../../lib/pricing";
 import { AnimatePresence, motion } from "motion/react";
 import confetti from "canvas-confetti";
-import { Camera, Check, Eraser, Loader2, Mail, Mic, PenLine, Printer, Sparkles, Undo2 } from "lucide-react";
+import { Camera, Check, Eraser, Loader2, Mail, Mic, PenLine, Printer, Sparkles, Undo2, Volume2, VolumeX } from "lucide-react";
+import { ElfHelper, JAR_GOALS, SantaWelcome, SealSend, SparkLayer, StarJar, StickerLayer, StickerTray, caretXY, findGifts, makeSparks, speakSanta, type ElfMsg, type PlacedSticker, type Spark } from "./Magic";
 import BackButton from "../BackButton";
 import ElfWorkshopLoader from "../ElfWorkshopLoader";
 import { useBackClose } from "../../lib/backClose";
@@ -33,7 +37,7 @@ function CertThumb({ letter }: { letter: Letter }) {
   return (
     <span className="block relative mb-3">
       <img src={src} alt="Certificado de Bom Comportamento" className="w-full rounded-lg shadow-lg rotate-[-1.5deg]" />
-      <span className="absolute top-2 right-2 bg-[#D90429] text-white text-[10px] font-extrabold uppercase tracking-wider rounded-full px-2 py-0.5">🏅 incluso</span>
+      <span className="absolute top-2 right-2 bg-[#D90429] text-white text-[10px] font-extrabold uppercase tracking-wider rounded-full px-2 py-0.5">incluso</span>
     </span>
   );
 }
@@ -93,6 +97,86 @@ export default function CorreioFlow({
   const [deliverAt, setDeliverAt] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
+  // ---- magia da cartinha (tudo só no aparelho) ----
+  const [sound, setSound] = useState(() => {
+    try {
+      return localStorage.getItem("cm-correio-som") !== "0";
+    } catch {
+      return true;
+    }
+  });
+  const toggleSound = () =>
+    setSound((v) => {
+      try {
+        localStorage.setItem("cm-correio-som", v ? "0" : "1");
+      } catch {
+        /* ok */
+      }
+      if (v) window.speechSynthesis?.cancel?.();
+      return !v;
+    });
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  const [sparks, setSparks] = useState<Spark[]>([]);
+  const [elf, setElf] = useState<ElfMsg | null>(null);
+  const elfTimer = useRef<number | undefined>(undefined);
+  const seenGifts = useRef(new Set<string>());
+  const goalsHit = useRef(0);
+  const [stickers, setStickers] = useState<PlacedSticker[]>([]);
+  const [welcome, setWelcome] = useState(!resume);
+  const [sealing, setSealing] = useState(false);
+  const say = (text: string, icon?: ElfMsg["icon"], ms = 3200) => {
+    setElf({ key: Date.now(), text, icon });
+    window.clearTimeout(elfTimer.current);
+    elfTimer.current = window.setTimeout(() => setElf(null), ms);
+  };
+  useEffect(() => () => window.clearTimeout(elfTimer.current), []);
+  // o Papai Noel dá boas-vindas ao abrir a tela da cartinha
+  useEffect(() => {
+    if (step === "cartinha" && welcome && sound) {
+      const t = setTimeout(() => speakSanta(`Ho ho ho! Estou ansioso para ler a sua cartinha${childName.trim() ? ", " + prettyName(childName.trim().split(/\s+/)[0]) : ""}!`), 400);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const onWrite = (value: string, ta: HTMLTextAreaElement) => {
+    const next = value.slice(0, 1500);
+    const prev = typed;
+    setTyped(next);
+    if (next.length <= prev.length) return;
+    // tinta mágica: faíscas onde a criança está escrevendo
+    try {
+      const { x, y } = caretXY(ta);
+      const fresh = makeSparks(x, y, next.length - prev.length > 3 ? 6 : 3);
+      setSparks((s) => [...s.slice(-30), ...fresh]);
+      window.setTimeout(() => setSparks((s) => s.filter((p) => !fresh.includes(p))), 950);
+    } catch {
+      /* ok */
+    }
+    const last = next.slice(-1);
+    if (sound && /[.!?]/.test(last)) musicBox.chime(last === "?" ? 88 : 84, undefined, 0.12);
+    if (!prev.trim()) say("Oba! O Papai Noel já está lendo...");
+    else if (last === "?") say("Boa pergunta! O Papai Noel vai responder.");
+    // duende reconhece presentes
+    const gifts = findGifts(next, seenGifts.current);
+    if (gifts.length) {
+      const g = gifts[gifts.length - 1];
+      say(`Anotei: ${g.word}!`, g.icon, 3600);
+      if (sound) [79, 84].forEach((n, i) => setTimeout(() => musicBox.chime(n, undefined, 0.12), i * 120));
+    }
+    // pote de pó mágico
+    const hit = JAR_GOALS.filter((g) => next.length >= g).length;
+    if (hit > goalsHit.current) {
+      goalsHit.current = hit;
+      say(["Uau, que cartinha caprichada!", "Mais uma estrela no pote!", "O pote encheu de magia!"][hit - 1] ?? "Que lindo!", undefined, 3400);
+      confetti({ particleCount: 40 + hit * 25, spread: 70, origin: { y: 0.55 }, zIndex: 130, colors: ["#FFD166", "#FFE9A8", "#EF233C", "#2DC653"] });
+      if (sound) [72, 76, 79, 84].forEach((n, i) => setTimeout(() => musicBox.chime(n, undefined, 0.14), i * 110));
+    }
+  };
+  const addSticker = (id: string) => {
+    setStickers((s) => [...s.slice(-11), { key: Date.now(), id, x: 8 + Math.random() * 74, y: 6 + Math.random() * 70, rot: Math.round((Math.random() - 0.5) * 30) }]);
+    if (sound) musicBox.chime(91, undefined, 0.1);
+  };
+
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {
@@ -141,6 +225,21 @@ export default function CorreioFlow({
     }
   };
   useEffect(() => () => recRef.current?.stop?.(), []);
+
+  const validate = () => {
+    setErr(null);
+    setLimit(false);
+    if (!childName.trim()) return setErr("Escreva o nome da criança."), false;
+    if (!consent) return setErr("Marque a autorização do responsável para enviar."), false;
+    if (mode === "foto" && !photo) return setErr("Tire ou escolha a foto da cartinha."), false;
+    if (mode === "texto" && typed.trim().length < 10) return setErr("Escreva a cartinha (pelo menos uma frase) ou toque em Falar a cartinha."), false;
+    return true;
+  };
+  const startSend = () => {
+    if (!validate()) return;
+    recRef.current?.stop?.();
+    setSealing(true);
+  };
 
   const send = async () => {
     setErr(null);
@@ -202,7 +301,7 @@ export default function CorreioFlow({
       >
         <div className="flex justify-between items-center mb-3">
           <BackButton onClick={onClose} />
-          <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[#FFD166]">📮 Correio do Polo Norte</span>
+          <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[#FFD166]">Correio do Polo Norte</span>
         </div>
 
         {step === "cartinha" && (
@@ -211,6 +310,7 @@ export default function CorreioFlow({
               <h3 className="font-cinzel text-xl sm:text-2xl font-bold leading-tight">Escreva para o Papai Noel</h3>
               <p className="text-white/70 mt-1">Ele lê com carinho, responde cada pergunta e assina. Você vê a resposta antes de ela chegar.</p>
             </div>
+            <AnimatePresence>{welcome && <SantaWelcome name={first} onDone={() => setWelcome(false)} />}</AnimatePresence>
 
             <label className="block">
               <span className="block font-semibold mb-1">Nome da criança</span>
@@ -233,7 +333,8 @@ export default function CorreioFlow({
             {mode === "texto" ? (
               <div>
                 {/* papel de carta de verdade: pautado, margem vermelha e letra de mão */}
-                <div className="relative rounded-2xl overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.45)] bg-[#FFFBF0] text-[#22305A]" id="correio-papel">
+                <div className="relative">
+                <div ref={sheetRef} className="relative rounded-2xl overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.45)] bg-[#FFFBF0] text-[#22305A]" id="correio-papel">
                   <div className="absolute inset-y-0 left-10 w-px bg-[#E5484D]/50" aria-hidden="true" />
                   <div className="absolute top-2 right-3 text-[10px] font-cinzel font-bold tracking-widest text-[#B8111F]/70" aria-hidden="true">
                     ✦ POLO NORTE ✦
@@ -242,16 +343,29 @@ export default function CorreioFlow({
                   <textarea
                     ref={paperRef}
                     value={typed}
-                    onChange={(e) => setTyped(e.target.value.slice(0, 1500))}
+                    onChange={(e) => onWrite(e.target.value, e.target)}
                     rows={7}
                     placeholder={`eu sou ${childName.trim() ? prettyName(childName.trim().split(/\s+/)[0]) : "o Pedro"}... Este ano eu aprendi a... Eu queria ganhar... As renas comem cenoura?`}
                     className="block w-full bg-transparent pl-12 pr-4 pb-2 font-ps text-[22px] leading-9 text-[#22305A] placeholder:text-[#22305A]/35 resize-none focus:outline-none"
                     style={{ backgroundImage: "repeating-linear-gradient(transparent 0 35px, rgba(34,48,90,0.16) 35px 36px)", backgroundAttachment: "local" }}
                     id="correio-texto"
                   />
-                  <p className="font-ps text-2xl text-right pr-5 pb-4 leading-9">
+                  <p className="font-ps text-2xl text-right pr-20 pb-4 leading-9">
                     Com carinho, <span className="text-[#B8111F]">{first || "____"}</span>
                   </p>
+                  <StickerLayer items={stickers} bounds={sheetRef} onRemove={(k) => setStickers((s) => s.filter((x) => x.key !== k))} />
+                  <SparkLayer sparks={sparks} />
+                </div>
+                <ElfHelper msg={elf} />
+                </div>
+                <div className="mt-3 flex items-center gap-3">
+                  <StarJar chars={typed.trim().length} />
+                  <div className="min-w-0 flex-1">
+                    <StickerTray onAdd={addSticker} />
+                  </div>
+                  <button type="button" onClick={toggleSound} className="shrink-0 grid place-items-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/15 cursor-pointer" aria-label={sound ? "Tirar o som" : "Ligar o som"} id="correio-som">
+                    {sound ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                  </button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-2.5">
                   {canListen && (
@@ -329,7 +443,7 @@ export default function CorreioFlow({
                 )}
               </div>
             )}
-            <button onClick={() => void send()} className="w-full rounded-full py-3.5 font-extrabold bg-gradient-to-r from-[#D90429] to-[#EF233C] border border-[#FFD166]/50 inline-flex items-center justify-center gap-2 cursor-pointer" id="correio-enviar" data-celebrate>
+            <button onClick={startSend} className="w-full rounded-full py-3.5 font-extrabold bg-gradient-to-r from-[#D90429] to-[#EF233C] border border-[#FFD166]/50 inline-flex items-center justify-center gap-2 cursor-pointer" id="correio-enviar" data-celebrate>
               <Mail className="w-5 h-5" /> Enviar para o Polo Norte
             </button>
           </div>
@@ -353,10 +467,10 @@ export default function CorreioFlow({
               </p>
             )}
             <div className="rounded-2xl bg-white/5 border border-white/10 p-4 text-left text-xs sm:text-sm">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#FFD166] mb-1">👨‍👩‍👧 Só para os pais: o que o Papai Noel entendeu</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#FFD166] mb-1">Só para os pais: o que o Papai Noel entendeu</p>
               {result.wishes.pedidos.length > 0 && (
                 <p>
-                  <b>🎁 Pediu:</b> {result.wishes.pedidos.join(", ")}
+                  <b>Pediu:</b> {result.wishes.pedidos.join(", ")}
                 </p>
               )}
               {result.wishes.perguntas.length > 0 && (
@@ -366,14 +480,14 @@ export default function CorreioFlow({
               )}
               {result.wishes.contou.length > 0 && (
                 <p>
-                  <b>💬 Contou:</b> {result.wishes.contou.join(", ")}
+                  <b>Contou:</b> {result.wishes.contou.join(", ")}
                 </p>
               )}
               {!result.wishes.pedidos.length && !result.wishes.perguntas.length && <p className="text-white/70">“{result.childText.slice(0, 160)}{result.childText.length > 160 ? "…" : ""}”</p>}
             </div>
             {result.sensitive ? (
               <div className="rounded-2xl border border-[#FFD166]/60 bg-[#FFD166]/10 p-4 text-left text-xs sm:text-sm">
-                <b>💛 Esta cartinha merece um cuidado especial.</b> A resposta do Papai Noel vai passar por uma revisão carinhosa da nossa equipe antes de ser liberada. Você pode ver a prévia agora; avisamos quando estiver pronta para entregar.
+                <b>Esta cartinha merece um cuidado especial.</b> A resposta do Papai Noel vai passar por uma revisão carinhosa da nossa equipe antes de ser liberada. Você pode ver a prévia agora; avisamos quando estiver pronta para entregar.
               </div>
             ) : null}
             {result.letter.plan === "free" && onBuyAvulsa && (
@@ -381,9 +495,9 @@ export default function CorreioFlow({
                 <CertThumb letter={result.letter} />
                 <span className="flex items-center justify-between gap-3">
                   <span>
-                    <b className="block text-sm text-[#FFD166]">✨ Resposta Mágica · até 2 cartinhas</b>
-                    <span className="block text-xs text-white/80 leading-snug mt-0.5">🔊 O Papai Noel lê a resposta inteira com a voz dele</span>
-                    <span className="block text-xs text-white/80 leading-snug">📄 PDF para imprimir · 🏅 Certificado de Bom Comportamento</span>
+                    <b className="block text-sm text-[#FFD166]">Resposta Mágica · até 2 cartinhas</b>
+                    <span className="block text-xs text-white/80 leading-snug mt-0.5">O Papai Noel lê a resposta inteira com a voz dele</span>
+                    <span className="block text-xs text-white/80 leading-snug">PDF para imprimir · Certificado de Bom Comportamento</span>
                   </span>
                   <span className="text-right shrink-0">
                     <s className="block text-[11px] text-white/45">{brl(NORMAL.pro)}</s>
@@ -395,7 +509,7 @@ export default function CorreioFlow({
             {paid ? (
               <>
                 <div className="rounded-2xl border border-[#2DC653]/50 bg-[#2DC653]/10 p-3 text-sm font-bold text-[#BFF5CF]" id="correio-pago">
-                  ✅ Resposta Mágica liberada! Agora é só ouvir, aprovar e entregar.
+                  Resposta Mágica liberada! Agora é só ouvir, aprovar e entregar.
                 </div>
                 <div className="grid gap-2">
                   <button onClick={() => onOpenLetter(result.letter)} className="w-full rounded-full py-3.5 font-extrabold bg-[#FFD166] text-[#0B132B] inline-flex items-center justify-center gap-2 cursor-pointer" id="correio-ver">
@@ -428,7 +542,10 @@ export default function CorreioFlow({
             <div className="grid gap-2">
               {WHEN_OPTIONS.map((w) => (
                 <button key={w.id} onClick={() => setWhen(w.id)} className={`flex items-center gap-3 rounded-2xl p-3 border-2 text-left cursor-pointer ${when === w.id ? "border-[#FFD166] bg-[#FFD166]/10" : "border-white/15 bg-white/5"}`} id={`correio-when-${w.id}`}>
-                  <span className="text-2xl">{w.emoji}</span>
+                  {(() => {
+                    const WI = WHEN_ICON[w.id];
+                    return <IconBadge icon={WI} size="md" tone={when === w.id ? "gold" : "glass"} />;
+                  })()}
                   <span className="flex-1">
                     <b className="block text-sm">{w.title}</b>
                     <span className="text-xs text-white/65">{w.text}</span>
@@ -449,7 +566,7 @@ export default function CorreioFlow({
 
         {step === "pronto" && result && (
           <div className="text-center space-y-4">
-            <div className="text-6xl">🛷✨</div>
+            <div className="flex justify-center"><IconBadge icon={Navigation} size="xl" round /></div>
             <h3 className="font-cinzel text-xl sm:text-2xl font-bold">{deliverAt ? "Entrega agendada!" : "Entregue!"}</h3>
             <p className="text-sm text-white/80">
               {deliverAt ? (
@@ -479,6 +596,22 @@ export default function CorreioFlow({
         )}
       </motion.div>
 
+      {createPortal(
+        <AnimatePresence>
+          {sealing && (
+            <SealSend
+              key="selo"
+              initial={(first || "").charAt(0).toUpperCase()}
+              onCancel={() => setSealing(false)}
+              onSealed={() => {
+                setSealing(false);
+                void send();
+              }}
+            />
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
       {step === "lendo" && createPortal(<AnimatePresence><ElfWorkshopLoader key="elf" childName={first} /></AnimatePresence>, document.body)}
     </motion.div>
   );

@@ -2,19 +2,19 @@ import { useEffect, useState } from "react";
 import { Sparkles, Menu, X, UserRound } from "lucide-react";
 import { openParentArea, useAuth } from "../lib/auth";
 import { EXTRAS } from "./ExtrasHub";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, CircleHelp, Crown, Gift, Mail, Mailbox, type LucideIcon } from "lucide-react";
+import { IconBadge, SantaHat } from "./ui/Icons";
 
 /** Tudo o que o site tem (o menu do celular e o "Tudo para a família" do computador usam a mesma lista). */
-const FEATURES = [
-  { id: "criar", label: "🎅 Carta do Papai Noel", text: "Com o nome, a voz e o PDF" },
-  { id: "correio", label: "📮 Correio do Polo Norte", text: "Seu filho escreve, o Papai Noel responde" },
-  ...EXTRAS.map((e) => ({ id: e.id, label: `${e.emoji} ${e.title}`, text: e.text })),
-];
-const MENU = [
-  { id: "como-funciona", label: "✨ Como funciona" },
-  ...FEATURES.map((f) => ({ id: f.id, label: f.label })),
-  { id: "precos", label: "👑 Planos" },
-  { id: "duvidas", label: "❓ Dúvidas" },
+const FEATURES: { id: string; label: string; text: string; icon: LucideIcon }[] = [
+  { id: "criar", label: "Carta do Papai Noel", text: "Com o nome, a voz e o PDF", icon: Mail },
+  { id: "correio", label: "Correio do Polo Norte", text: "Seu filho escreve, o Papai Noel responde", icon: Mailbox },
+  ...EXTRAS.map((e) => ({ id: e.id, label: e.title, text: e.text, icon: e.icon })),
+];const MENU: { id: string; label: string; icon: LucideIcon }[] = [
+  { id: "como-funciona", label: "Como funciona", icon: Sparkles },
+  ...FEATURES.map((f) => ({ id: f.id, label: f.label, icon: f.icon })),
+  { id: "precos", label: "Planos", icon: Crown },
+  { id: "duvidas", label: "Dúvidas", icon: CircleHelp },
 ];
 import ChristmasLights from "./ChristmasLights";
 
@@ -65,8 +65,8 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
           className="flex items-center gap-2.5 cursor-pointer group"
           id="navbar-brand"
         >
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#D90429] to-[#EF233C] flex items-center justify-center text-xl shadow-md border border-[#FFD166]/40 group-hover:scale-110 group-hover:rotate-12 transition-transform">
-            🎅
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1C2541] to-[#0B132B] flex items-center justify-center shadow-md border border-[#FFD166]/60 group-hover:scale-110 group-hover:rotate-12 transition-transform">
+            <SantaHat size={28} />
           </div>
           <div className="flex flex-col">
             <span className="font-cinzel text-lg sm:text-xl font-bold text-white tracking-wide leading-tight">
@@ -95,14 +95,17 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
               aria-haspopup="true"
               id="nav-all"
             >
-              🎁 Tudo para a família <ChevronDown className={`w-3.5 h-3.5 transition-transform ${all ? "rotate-180" : ""}`} />
+              <Gift className="w-4 h-4" /> Tudo para a família <ChevronDown className={`w-3.5 h-3.5 transition-transform ${all ? "rotate-180" : ""}`} />
             </button>
             {all && (
               <div className="absolute right-0 lg:left-1/2 lg:-translate-x-1/2 top-full mt-3 w-[min(92vw,620px)] rounded-2xl border border-[#FFD166]/40 bg-[#0B132B]/98 backdrop-blur-md shadow-[0_20px_60px_rgba(0,0,0,0.6)] p-3 grid grid-cols-2 gap-1 z-50" role="menu" id="nav-all-menu">
                 {FEATURES.map((f) => (
-                  <button key={f.id} onClick={() => go(f.id)} className="text-left rounded-xl px-3 py-2.5 hover:bg-white/10 cursor-pointer" role="menuitem" id={`nav-all-${f.id}`}>
-                    <span className="block text-sm font-bold text-white">{f.label}</span>
-                    <span className="block text-[11px] text-white/55 leading-snug">{f.text}</span>
+                  <button key={f.id} onClick={() => go(f.id)} className="text-left rounded-xl px-3 py-2.5 hover:bg-white/10 cursor-pointer flex items-center gap-3" role="menuitem" id={`nav-all-${f.id}`}>
+                    <IconBadge icon={f.icon} size="sm" tone="navy" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-bold text-white">{f.label}</span>
+                      <span className="block text-[11px] text-white/55 leading-snug">{f.text}</span>
+                    </span>
                   </button>
                 ))}
               </div>
@@ -163,8 +166,9 @@ export default function Navbar({ onStartWizard, onScrollTo }: NavbarProps) {
               <button
                 key={m.id}
                 onClick={() => go(m.id)}
-                className="text-left text-sm text-white/90 hover:text-white hover:bg-white/10 rounded-xl px-4 py-3 cursor-pointer"
+                className="text-left text-sm text-white/90 hover:text-white hover:bg-white/10 rounded-xl px-4 py-3 cursor-pointer flex items-center gap-3"
               >
+                <IconBadge icon={m.icon} size="xs" tone="navy" />
                 {m.label}
               </button>
             ))}

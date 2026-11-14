@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { IconBadge } from "../ui/Icons";
+import { UsersRound } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Loader2, Mail, ShieldCheck, X } from "lucide-react";
 import { closeParentArea, codeLogin, finishLogin, sendCode, useAuth, verifyCode, type LoginReason } from "../../lib/auth";
@@ -45,7 +47,7 @@ export default function AuthHost({
 let gatePassed = false;
 
 const TITLES: Record<LoginReason, { title: string; sub: string }> = {
-  salvar: { title: "Guardar a carta", sub: "Entre como responsável para guardar a carta e receber o link no seu e-mail." },
+  salvar: { title: "Falta só um passo", sub: "A carta está quase pronta! Confirme o e-mail do responsável para guardar a carta da família e receber o link. Leva 30 segundos." },
   pagar: { title: "Antes de pagar", sub: "Entre como responsável. Assim a compra fica na sua conta e você recebe tudo por e-mail." },
   area: { title: "Painel da Família", sub: "Acompanhe as cartas de cada criança, quantas ainda faltam, a casinha e a árvore da família." },
 };
@@ -340,7 +342,7 @@ function ParentGate({ onPass }: { onPass: () => void }) {
   };
   return (
     <div className="text-center">
-      <div className="text-4xl mb-2">👨‍👩‍👧</div>
+      <div className="mb-3 flex justify-center"><IconBadge icon={UsersRound} size="xl" round /></div>
       <h2 className="font-cinzel text-xl font-bold mb-1">Chame um adulto</h2>
       <p className="text-sm text-white/75 mb-4">Esta parte é para o pai, a mãe ou o responsável. Responda para continuar:</p>
       <p className="text-3xl font-extrabold text-[#FFD166] mb-3" id="gate-question">

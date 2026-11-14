@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { Letter } from "../types";
 import { getAccessCode, grantFullAccess, saveAccessCode } from "../advent/access";
+import { rememberPlan } from "../cards/limits";
 import { loginWithCode } from "./auth";
 import { fetchLetter } from "./correio";
 
@@ -69,11 +70,12 @@ export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Lette
                 const r = await fetchLetter(o.letterToken).catch(() => ({}) as { letter?: Letter });
                 if (r.letter) (openCorreio ?? openLetter)(r.letter);
               }
-              setMsg({ kind: "ok", text: "Pagamento confirmado! A Resposta Mágica está liberada: ouça a carta inteira com a voz do Papai Noel, baixe o PDF e o certificado. Você ainda pode mandar mais 1 cartinha pelo Correio, que ela já sai completa. 🎅" });
+              setMsg({ kind: "ok", text: "Pagamento confirmado! A Resposta Mágica está liberada: ouça a carta inteira com a voz do Papai Noel, baixe o PDF e o certificado. Você ainda pode mandar mais 1 cartinha pelo Correio, que ela já sai completa." });
               return;
             }
             if (o.status === "paid") {
               grantFullAccess();
+              rememberPlan(o.plan === "upgrade" ? "familia" : o.plan);
               if (o.accessCode) {
                 saveAccessCode(o.accessCode);
                 // já entra na Área dos Pais com o código da compra (sem senha)
@@ -81,7 +83,7 @@ export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Lette
               }
               if (o.plan === "upgrade") {
                 clean();
-                setMsg({ kind: "ok", text: "Pronto! Agora vocês têm o Pacote Família: até 5 crianças e 23 cartas completas. 🎄 Veja tudo no Painel da Família." });
+                setMsg({ kind: "ok", text: "Pronto! Agora vocês têm o Pacote Família: até 5 crianças e 23 cartas completas. Veja tudo no Painel da Família." });
                 return;
               }
               if (o.letterToken) {
@@ -95,11 +97,11 @@ export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Lette
               setMsg({
                 kind: "ok",
                 text:
-                  "Pagamento confirmado! As 6 vozes, o PDF, o certificado e o Calendário do Advento estão liberados. 🎄" +
+                  "Pagamento confirmado! As 6 vozes, o PDF, o certificado e o Calendário do Advento estão liberados." +
                   (o.plan === "familia"
-                    ? " Agora é só criar as cartas: até 5 crianças e 23 cartas completas no total. Acompanhe tudo no Painel da Família (botão Área dos pais)."
+                    ? " Agora é só criar as cartas: até 5 crianças, 23 cartas completas e cartões de Natal à vontade. Acompanhe tudo no Painel da Família (botão Área dos pais)."
                     : o.plan === "natal"
-                      ? " Agora é só criar as cartas: até 2 crianças e 10 cartas completas no total. Acompanhe tudo no Painel da Família (botão Área dos pais)."
+                      ? " Agora é só criar as cartas: até 2 crianças, 10 cartas completas e 5 cartões de Natal. Acompanhe tudo no Painel da Família (botão Área dos pais)."
                       : "") +
                   (o.accessCode
                     ? ` Seu código mágico para abrir em outro aparelho: ${o.accessCode} (guarde, ele também aparece no Calendário).`

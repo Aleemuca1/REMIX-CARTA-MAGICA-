@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Camera, Download, Film, Plus, Share2, Trash2, Bell, ShieldCheck } from "lucide-react";
+import { Camera, Download, Film, Plus, Share2, Trash2, Bell, ShieldCheck, Lock } from "lucide-react";
 import Reveal from "../Reveal";
 import BackButton from "../BackButton";
 import ProUpsell from "../ProUpsell";
@@ -23,7 +23,7 @@ export default function FamilySection({ onUpgrade }: { onUpgrade?: () => void })
           <div className="absolute -right-16 -bottom-16 w-72 h-72 rounded-full bg-[#F72585]/10 blur-3xl pointer-events-none" />
           <div className="relative z-10 text-center md:text-left">
             <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#0B132B] bg-[#FFD166] rounded-full px-3 py-1 mb-3">
-              📸 Novo · com fotos da família
+              Novo · com fotos da família
             </span>
             <h2 className="font-cinzel text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">A Família no Trenó do Papai Noel</h2>
             <p className="text-sm sm:text-base text-[#EDF2F4]/80 mb-5 leading-relaxed">
@@ -32,9 +32,9 @@ export default function FamilySection({ onUpgrade }: { onUpgrade?: () => void })
               Entrega Relâmpago.
             </p>
             <ul className="text-xs sm:text-sm text-[#EDF2F4]/70 space-y-1.5 mb-4 inline-block text-left">
-              <li>🎅 Rostinhos com gorro de Papai Noel e nome</li>
-              <li>🔔 Sininhos, neve caindo e presentes de paraquedas</li>
-              <li>📲 Baixe a foto mágica ou um vídeo para o WhatsApp</li>
+              <li>Rostinhos com gorro de Papai Noel e nome</li>
+              <li>Sininhos, neve caindo e presentes de paraquedas</li>
+              <li>Baixe a foto mágica ou um vídeo para o WhatsApp</li>
             </ul>
             <p className="text-[11px] text-[#2DC653] mb-6 inline-flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5" /> As fotos ficam só no seu aparelho. Não enviamos para nenhum servidor.
@@ -84,7 +84,7 @@ function PreviewScene() {
   const ref = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
     const scene = new SleighScene(ref.current!);
-    scene.title = "Sua família aqui! 🎄";
+    scene.title = "Sua família aqui!";
     const make = (emoji: string, bg: string) => {
       const c = document.createElement("canvas");
       c.width = c.height = 128;
@@ -191,10 +191,10 @@ function FamilyModal({ onClose, onUpgrade }: { onClose: () => void; onUpgrade?: 
             {(["fotos", "passeio"] as const).map((s) => (
               <button
                 key={s}
-                onClick={() => (s === "passeio" && !fam.members.length ? say("Adicione pelo menos uma foto 📸") : setStep(s))}
+                onClick={() => (s === "passeio" && !fam.members.length ? say("Adicione pelo menos uma foto") : setStep(s))}
                 className={`px-3 sm:px-4 py-1.5 rounded-full cursor-pointer ${step === s ? "bg-[#FFD166] text-[#0B132B]" : "text-white/80"}`}
               >
-                {s === "fotos" ? "1. Fotos" : "2. Passeio 🛷"}
+                {s === "fotos" ? "1. Fotos" : "2. Passeio"}
               </button>
             ))}
           </div>
@@ -202,14 +202,14 @@ function FamilyModal({ onClose, onUpgrade }: { onClose: () => void; onUpgrade?: 
 
         {step === "fotos" ? (
           <div>
-            <h3 className="font-cinzel text-xl sm:text-2xl font-bold text-white text-center mb-1">Quem vai no trenó? 🛷</h3>
+            <h3 className="font-cinzel text-xl sm:text-2xl font-bold text-white text-center mb-1">Quem vai no trenó?</h3>
             <p className="text-center text-sm text-white/70 mb-4">
               Adicione até {limit} pessoas. A primeira é a criança! {!full && `No Natal Completo cabem até ${MAX_MEMBERS} (vovós e titios também).`}
             </p>
             <input
               value={fam.title}
               onChange={(e) => update({ ...fam, title: e.target.value.slice(0, 40) })}
-              placeholder="Título: Família da Sofia no trenó 🎅"
+              placeholder="Título: Família da Sofia no trenó"
               className="w-full max-w-md mx-auto block mb-5 bg-white/10 border border-white/20 rounded-full px-4 py-2.5 text-white text-sm text-center placeholder:text-white/40 focus:outline-none focus:border-[#FFD166]"
               id="family-title"
             />
@@ -238,7 +238,7 @@ function FamilyModal({ onClose, onUpgrade }: { onClose: () => void; onUpgrade?: 
                   id="family-add"
                 >
                   <span className="w-14 h-14 rounded-full bg-[#FFD166]/15 flex items-center justify-center">
-                    {fam.members.length >= limit ? <span className="text-xl">🔒</span> : <Plus className="w-7 h-7 text-[#FFD166]" />}
+                    {fam.members.length >= limit ? <Lock className="w-6 h-6 text-[#FFD166]" /> : <Plus className="w-7 h-7 text-[#FFD166]" />}
                   </span>
                   <span className="text-xs font-bold">{fam.members.length === 0 ? "Foto da criança" : "Adicionar foto"}</span>
                 </button>
@@ -250,7 +250,7 @@ function FamilyModal({ onClose, onUpgrade }: { onClose: () => void; onUpgrade?: 
             </p>
             <label className="mt-3 flex items-center justify-center gap-2 text-xs text-white/75 cursor-pointer">
               <input type="checkbox" checked={fam.inGame} onChange={(e) => update({ ...fam, inGame: e.target.checked })} className="accent-[#FFD166]" />
-              Levar a família no trenó do jogo Entrega Relâmpago 🎮
+              Levar a família no trenó do jogo Entrega Relâmpago
             </label>
             <div className="text-center mt-5">
               <button
@@ -258,7 +258,7 @@ function FamilyModal({ onClose, onUpgrade }: { onClose: () => void; onUpgrade?: 
                 className="bg-gradient-to-r from-[#D90429] to-[#EF233C] text-white font-extrabold px-8 py-3.5 rounded-full border border-[#FFD166]/50 btn-shine cursor-pointer"
                 id="family-go"
               >
-                <span className="relative z-10">{fam.members.length ? "Ver o passeio no trenó 🛷" : "Adicionar a primeira foto 📸"}</span>
+                <span className="relative z-10">{fam.members.length ? "Ver o passeio no trenó" : "Adicionar a primeira foto"}</span>
               </button>
             </div>
           </div>
@@ -271,7 +271,7 @@ function FamilyModal({ onClose, onUpgrade }: { onClose: () => void; onUpgrade?: 
           {upsell && (
             <ProUpsell
               key="u"
-              title="Cabe mais gente no trenó! 🛷"
+              title="Cabe mais gente no trenó!"
               text={`No plano grátis vão ${FREE_MEMBERS} pessoas. Com o Natal Completo cabem até ${MAX_MEMBERS}: vovós, titios e padrinhos também!`}
               onClose={() => setUpsell(false)}
               onUpgrade={onUpgrade}
@@ -304,7 +304,7 @@ function Ride({ fam, say }: { fam: FamilyState; say: (m: string) => void }) {
   useEffect(() => {
     const scene = new SleighScene(ref.current!);
     sceneRef.current = scene;
-    scene.title = fam.title.trim() || (fam.members[0]?.name ? `Família de ${fam.members[0].name} no trenó 🎅` : "");
+    scene.title = fam.title.trim() || (fam.members[0]?.name ? `Família de ${fam.members[0].name} no trenó` : "");
     scene.names = fam.members.map((m) => m.name);
     scene.onBells = () => musicBox.sleighBells(1.2, 0.1);
     loadFaceImages(fam.members).then((imgs) => (scene.faces = imgs));
@@ -337,7 +337,7 @@ function Ride({ fam, say }: { fam: FamilyState; say: (m: string) => void }) {
     a.download = name;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    say("Arquivo salvo! Agora é só mandar no WhatsApp 📲");
+    say("Arquivo salvo! Agora é só mandar no WhatsApp");
   };
 
   const photo = async () => {
@@ -345,7 +345,7 @@ function Ride({ fam, say }: { fam: FamilyState; say: (m: string) => void }) {
     if (!s) return;
     musicBox.chime(88, undefined, 0.12);
     const blob = await s.snapshot();
-    await shareOrDownload(blob, `${fileBase()}.png`, "Olha a nossa família no trenó do Papai Noel! 🎅🛷");
+    await shareOrDownload(blob, `${fileBase()}.png`, "Olha a nossa família no trenó do Papai Noel!");
   };
 
   const video = async () => {
@@ -359,9 +359,9 @@ function Ride({ fam, say }: { fam: FamilyState; say: (m: string) => void }) {
     const bells = [300, 2500, 5200, 7600].map((ms) => setTimeout(() => s.tap(), ms));
     try {
       const { blob, ext } = await s.record(secs, audio);
-      await shareOrDownload(blob, `${fileBase()}.${ext}`, "Nossa família voando no trenó do Papai Noel! 🎅🛷✨");
+      await shareOrDownload(blob, `${fileBase()}.${ext}`, "Nossa família voando no trenó do Papai Noel!");
     } catch {
-      say("Este navegador não grava vídeo. Use a foto mágica 📸");
+      say("Este navegador não grava vídeo. Use a foto mágica");
     } finally {
       clearInterval(tick);
       bells.forEach(clearTimeout);
@@ -387,7 +387,7 @@ function Ride({ fam, say }: { fam: FamilyState; say: (m: string) => void }) {
           </div>
         )}
       </div>
-      <p className="text-center text-xs text-white/60 mt-2">👆 Toque na tela para tocar os sininhos e jogar presentes!</p>
+      <p className="text-center text-xs text-white/60 mt-2">Toque na tela para tocar os sininhos e jogar presentes!</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4 max-w-2xl mx-auto">
         <button onClick={() => sceneRef.current?.tap()} className="rounded-full py-3 text-sm font-bold bg-white/10 text-white border border-white/15 inline-flex items-center justify-center gap-1.5 cursor-pointer">
           <Bell className="w-4 h-4 text-[#FFD166]" /> Sininhos

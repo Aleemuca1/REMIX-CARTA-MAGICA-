@@ -1,4 +1,6 @@
 import { motion } from "motion/react";
+import { SantaHat } from "./ui/Icons";
+import { Mailbox, Users } from "lucide-react";
 import { useFeatures } from "../lib/features";
 import { Check, Crown, X } from "lucide-react";
 import { useBackClose } from "../lib/backClose";
@@ -24,6 +26,7 @@ export const PAID_FEATURES = [
   "6 vozes lendo a carta inteira (Papai Noel, Noel animado, Mamãe Noel, Duende, Contador de histórias e Anjinho)",
   "Carta brilhante em 5 cores, com moldura que brilha",
   "PDF para imprimir, imagem HD e vídeo com a voz",
+  "Cartão de Natal com a foto da família: 5 cartões (Carta Completa) ou à vontade (Pacote Família)",
   "Certificado de Bom Comportamento",
   "24 surpresas no Calendário do Advento",
 ];
@@ -31,7 +34,7 @@ export const PAID_FEATURES = [
 /** Escolha do plano antes de pagar: Carta Completa (até 2 crianças) ou Pacote Família (até 5). */
 export default function PlanChooser({ onPick, onClose, onAvulsa }: { onPick: (p: PaidChoice) => void; onClose: () => void; /** cartinha do Correio: oferece liberar só ela */ onAvulsa?: () => void }) {
   const feat = useFeatures();
-  const paidList = feat.music ? ["🎵 Música de Natal cantada com o nome da criança (uma por criança)", ...PAID_FEATURES] : PAID_FEATURES;
+  const paidList = feat.music ? ["Música de Natal cantada com o nome da criança (uma por criança)", ...PAID_FEATURES] : PAID_FEATURES;
   useBackClose(true, onClose);
   return (
     <motion.div
@@ -55,10 +58,10 @@ export default function PlanChooser({ onPick, onClose, onAvulsa }: { onPick: (p:
           <X className="w-5 h-5" />
         </button>
         <div className="text-center">
-          <div className="text-4xl mb-1" aria-hidden="true">
-            🎅👑
+          <div className="mb-1 flex justify-center" aria-hidden="true">
+            <span className="w-16 h-16 rounded-full bg-gradient-to-br from-[#1C2541] to-[#0B132B] border-2 border-[#FFD166] grid place-items-center"><SantaHat size={42} /></span>
           </div>
-          <h3 className="font-cinzel text-xl sm:text-2xl font-bold">{promoActive() ? `🖤 ${PROMO.name}: escolha o seu Natal Completo` : "Escolha o seu Natal Completo"}</h3>
+          <h3 className="font-cinzel text-xl sm:text-2xl font-bold">{promoActive() ? `${PROMO.name}: escolha o seu Natal Completo` : "Escolha o seu Natal Completo"}</h3>
           <p className="text-sm text-white/70 mt-1">Pagamento único, no Pix ou cartão. Cada criança ganha a sua carta com o próprio nome.</p>
         </div>
 
@@ -80,7 +83,9 @@ export default function PlanChooser({ onPick, onClose, onAvulsa }: { onPick: (p:
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="font-cinzel font-bold text-lg leading-tight">{p.name}</p>
-                  <p className="text-sm text-[#FFD166] font-bold">👧👦 {p.kids}</p>
+                  <p className="text-sm text-[#FFD166] font-bold inline-flex items-center gap-1.5">
+                    <Users className="w-4 h-4" /> {p.kids}
+                  </p>
                 </div>
                 <div className="text-right shrink-0">
                   {promoActive() && <p className="text-xs text-white/50 -mb-1"><s>{PROMO.from[p.id]}</s> <span className="text-[#FFD166] font-bold">-{PROMO.off[p.id]}</span></p>}
@@ -100,7 +105,9 @@ export default function PlanChooser({ onPick, onClose, onAvulsa }: { onPick: (p:
           >
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="font-bold text-sm">📮 Resposta Mágica · até 2 cartinhas</p>
+                <p className="font-bold text-sm inline-flex items-center gap-1.5">
+                  <Mailbox className="w-4 h-4 text-[#FFD166]" /> Resposta Mágica · até 2 cartinhas
+                </p>
                 <p className="text-[11px] text-white/65 leading-snug">A resposta lida com a voz do Papai Noel + PDF e certificado (esta e mais 1 cartinha)</p>
               </div>
               <div className="text-right shrink-0">

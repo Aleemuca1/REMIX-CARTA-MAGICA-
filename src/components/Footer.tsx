@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from "motion/react";
+import { SantaHat } from "./ui/Icons";
 
 /** Rodapé com trenó passando e guirlanda. */
 export default function Footer({ onScrollTo }: { onScrollTo: (id: string) => void }) {
@@ -8,9 +9,7 @@ export default function Footer({ onScrollTo }: { onScrollTo: (id: string) => voi
       {/* guirlanda */}
       <div className="absolute top-0 inset-x-0 h-6 flex justify-around" aria-hidden="true">
         {Array.from({ length: 24 }, (_, i) => (
-          <span key={i} className="text-lg -mt-2" style={{ transform: `rotate(${i % 2 ? 20 : -20}deg)` }}>
-            {i % 4 === 0 ? "🔴" : i % 4 === 2 ? "🟡" : "🌿"}
-          </span>
+          <span key={i} className="block w-3 h-3 -mt-1 rounded-full" style={{ background: i % 4 === 0 ? "radial-gradient(circle at 35% 35%,#FF6B7A,#B80E25)" : i % 4 === 2 ? "radial-gradient(circle at 35% 35%,#FFE9A8,#D4A537)" : "radial-gradient(circle at 35% 35%,#6EE7A0,#1F7A47)", boxShadow: "0 0 10px rgba(255,209,102,0.35)" }} />
         ))}
       </div>
       {!reduce && (
@@ -20,7 +19,7 @@ export default function Footer({ onScrollTo }: { onScrollTo: (id: string) => voi
           transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
           aria-hidden="true"
         >
-          🦌🦌🛷
+          <SantaHat size={34} />
         </motion.div>
       )}
       <div className="relative max-w-6xl mx-auto px-4 space-y-3 mt-6">
@@ -47,7 +46,7 @@ export default function Footer({ onScrollTo }: { onScrollTo: (id: string) => voi
           <a href="/cookies" className="hover:text-[#FFD166] underline-offset-2 hover:underline">Política de Cookies</a>
         </nav>
         <p className="text-[11px] text-[#EDF2F4]/40 pt-3">
-          Feito com ❤️ e muito chocolate quente • © {new Date().getFullYear()} Carta Mágica
+          Feito com carinho e muito chocolate quente • © {new Date().getFullYear()} Carta Mágica
         </p>
       </div>
     </footer>

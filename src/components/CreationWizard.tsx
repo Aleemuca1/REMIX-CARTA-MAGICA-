@@ -1,4 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { parentForLetter, useAuth } from "../lib/auth";
+import { loadProfile, type FamilyChild } from "../lib/family";
+import { SantaHat } from "./ui/Icons";
+import { Heart, Laugh, Compass } from "lucide-react";
 import { priceLabel } from "../lib/pricing";
 import { LETTER_THEMES } from "../lib/letterThemes";
 import { getAccessCode } from "../advent/access";
@@ -66,6 +70,26 @@ export default function CreationWizard({
       .then((d) => setCredit(d && d.remaining > 0 ? { code, remaining: d.remaining, limit: d.limit, children: d.children ?? 1 } : null))
       .catch(() => setCredit(null));
   }, [isOpen]);
+  // crianças do perfil da família: um toque preenche nome e idade
+  const auth = useAuth();
+  const [kids, setKids] = useState<FamilyChild[]>([]);
+  useEffect(() => {
+    if (!isOpen || !auth.parent) return;
+    loadProfile().then((r) => setKids(r.profile?.children ?? []));
+    try {
+      const pre = sessionStorage.getItem("cm-prefill-child");
+      if (pre) {
+        sessionStorage.removeItem("cm-prefill-child");
+        const c = JSON.parse(pre) as FamilyChild;
+        if (c?.name) {
+          setChildName(c.name);
+          if (c.age) setAge(c.age);
+        }
+      }
+    } catch {
+      /* sem sessionStorage */
+    }
+  }, [isOpen, auth.parent]);
   const [more, setMore] = useState(false);
   const [extras, setExtras] = useState({ siblings: "", pet: "", friend: "", food: "", favorite: "", encourage: "" });
   const setX = (k: keyof typeof extras, v: string) => setExtras((x) => ({ ...x, [k]: v.slice(0, k === "encourage" ? 90 : 60) }));
@@ -99,6 +123,12 @@ export default function CreationWizard({
     // carta grátis: até 3 por dia neste aparelho
     if (!credit && freeToday() >= FREE_PER_DAY) {
       setLimitMsg(`Você já criou ${FREE_PER_DAY} cartas grátis hoje neste aparelho. Volte amanhã ou libere o Natal Completo: 10 cartas completas por ${priceLabel("natal")} ou 23 no Pacote Família.`);
+      return;
+    }
+
+    // login no fim: o responsável confirma o e-mail para a carta ficar guardada na conta da família
+    if ((await parentForLetter()) === "cancel") {
+      setLimitMsg("Para ver a carta, confirme o e-mail do responsável. Assim ela fica guardada no Painel da Família.");
       return;
     }
 
@@ -162,7 +192,7 @@ O próprio Papai Noel já separou com carinho a sua cartinha sobre ${giftRequest
 Continue sendo essa criança tão luminosa, respeitando quem cuida de você com tanto amor.
 
 Com todo o carinho do velhinho do Polo Norte,
-Papai Noel 🎅`,
+Papai Noel`,
         };
         onGenerated(mockLetter);
       }
@@ -214,7 +244,7 @@ Papai Noel 🎅`,
             animate={{ rotate: [0, -12, 10, -6, 0] }}
             transition={{ duration: 1.2, repeat: Infinity, repeatDelay: 2.5 }}
           >
-            🎅
+            <SantaHat size={26} />
           </motion.span>
           <span className="text-xs font-bold text-[#FFD166] uppercase tracking-wider">
             Oficina Oficial do Polo Norte
@@ -230,7 +260,7 @@ Papai Noel 🎅`,
 
         {credit && (
           <div className="mb-4 rounded-2xl border border-[#FFD166]/60 bg-[#FFD166]/10 px-4 py-3 text-[#FFE9A8] text-xs sm:text-sm" id="wizard-credit">
-            👑 <b>Incluída no seu Natal Completo:</b> você ainda pode criar {credit.remaining}{" "}
+            <b>Incluída no seu Natal Completo:</b> você ainda pode criar {credit.remaining}{" "}
             {credit.remaining === 1 ? "carta completa" : "cartas completas"} (plano para até {credit.children}{" "}
             {credit.children === 1 ? "criança" : "crianças"}, {credit.limit} cartas no total). Esta já sai com as 6 vozes, PDF e certificado!
           </div>
@@ -239,6 +269,24 @@ Papai Noel 🎅`,
         <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
           <div>
             <label className="block text-white font-semibold mb-1">Nome da criança *</label>
+            {kids.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2" id="wizard-kids">
+                {kids.map((k) => (
+                  <button
+                    type="button"
+                    key={k.name}
+                    onClick={() => {
+                      setChildName(k.name);
+                      if (k.age) setAge(k.age);
+                    }}
+                    className={`rounded-full px-3 py-1 text-xs font-bold border cursor-pointer ${childName === k.name ? "bg-[#FFD166] text-[#0B132B] border-[#FFD166]" : "bg-white/5 text-white border-white/20 hover:border-[#FFD166]/60"}`}
+                  >
+                    {k.name}
+                    {k.age ? <span className="opacity-70 font-semibold"> · {k.age}</span> : null}
+                  </button>
+                ))}
+              </div>
+            )}
             <input
               type="text"
               required
@@ -315,11 +363,9 @@ Papai Noel 🎅`,
                   id={`theme-${t.id}`}
                 >
                   <span
-                    className="w-6 h-6 rounded-full border-2 border-white/80 flex items-center justify-center text-[11px] shadow"
+                    className="w-6 h-6 rounded-full border-2 border-white/80 shadow"
                     style={{ background: `linear-gradient(135deg, ${t.envelope[0]}, ${t.envelope[1]})` }}
-                  >
-                    {t.emoji}
-                  </span>
+                  />
                   {t.name}
                 </button>
               ))}
@@ -331,23 +377,26 @@ Papai Noel 🎅`,
             <label className="block text-white font-semibold mb-1.5">Jeito da carta</label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5" role="radiogroup" aria-label="Jeito da carta">
               {[
-                ["mágico", "✨", "Mágica"],
-                ["emocionante", "💖", "Emocionante"],
-                ["engraçado", "😂", "Engraçada"],
-                ["aventura", "🗺️", "Aventura"],
-              ].map(([id, e, l]) => (
+                ["mágico", Sparkles, "Mágica"],
+                ["emocionante", Heart, "Emocionante"],
+                ["engraçado", Laugh, "Engraçada"],
+                ["aventura", Compass, "Aventura"],
+              ].map(([id, E, l]) => (
                 <button
                   type="button"
-                  key={id}
-                  onClick={() => setStyle(id)}
+                  key={id as string}
+                  onClick={() => setStyle(id as string)}
                   aria-pressed={style === id}
                   className={`rounded-xl py-2 px-2 text-xs font-bold border cursor-pointer transition-colors ${
                     style === id ? "bg-[#FFD166] text-[#0B132B] border-[#FFD166]" : "bg-[#1C2541] text-white/85 border-white/15 hover:border-[#FFD166]/60"
                   }`}
-                  id={`tone-${id}`}
+                  id={`tone-${id as string}`}
                 >
-                  <span className="mr-1">{e}</span>
-                  {l}
+                  {(() => {
+                    const I = E as typeof Heart;
+                    return <I className="inline w-3.5 h-3.5 mr-1 -mt-0.5" aria-hidden="true" />;
+                  })()}
+                  {l as string}
                 </button>
               ))}
             </div>
@@ -362,7 +411,7 @@ Papai Noel 🎅`,
               id="wizard-more-btn"
             >
               <span>
-                <span className="block text-[#FFD166] font-bold">✨ Deixe a carta ainda mais especial</span>
+                <span className="block text-[#FFD166] font-bold">Deixe a carta ainda mais especial</span>
                 <span className="block text-[11px] text-white/60">Opcional: bichinho, melhor amigo, irmãos... o Papai Noel cita tudo pelo nome!</span>
               </span>
               <span className={`text-[#FFD166] transition-transform ${more ? "rotate-180" : ""}`}>▾</span>
@@ -373,12 +422,12 @@ Papai Noel 🎅`,
                   <div className="grid sm:grid-cols-2 gap-2.5 px-3.5 pb-3.5">
                     {(
                       [
-                        ["siblings", "👧🧒 Irmãos (carta para todos)", "Ex: Ben e Pedro"],
-                        ["pet", "🐶 Bichinho de estimação", "Ex: Thor, o cachorro"],
-                        ["friend", "🤝 Melhor amigo(a)", "Ex: Miguel"],
-                        ["food", "🍕 Comida favorita", "Ex: brigadeiro"],
-                        ["favorite", "🎨 Desenho ou brincadeira favorita", "Ex: dinossauros, futebol"],
-                        ["encourage", "🌱 Algo para incentivar com carinho", "Ex: dormir no próprio quarto"],
+                        ["siblings", "Irmãos (carta para todos)", "Ex: Ben e Pedro"],
+                        ["pet", "Bichinho de estimação", "Ex: Thor, o cachorro"],
+                        ["friend", "Melhor amigo(a)", "Ex: Miguel"],
+                        ["food", "Comida favorita", "Ex: brigadeiro"],
+                        ["favorite", "Desenho ou brincadeira favorita", "Ex: dinossauros, futebol"],
+                        ["encourage", "Algo para incentivar com carinho", "Ex: dormir no próprio quarto"],
                       ] as [keyof typeof extras, string, string][]
                     ).map(([k, label, ph]) => (
                       <div key={k} className={k === "encourage" ? "sm:col-span-2" : ""}>

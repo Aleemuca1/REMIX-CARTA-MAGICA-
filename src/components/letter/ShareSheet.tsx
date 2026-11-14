@@ -50,7 +50,7 @@ export default function ShareSheet({
   const blobs = useRef<{ story?: Blob; post?: Blob }>({});
   const url = letterUrl(letter);
   const base = `Carta-do-Papai-Noel-${safeName(letter.childName)}`;
-  const msg = `🎅✨ Olha que lindo! O Papai Noel escreveu uma carta para ${letter.childName}! Abra e ouça a voz dele: ${url}`;
+  const msg = `Olha que lindo! O Papai Noel escreveu uma carta para ${letter.childName}! Abra e ouça a voz dele: ${url}`;
   const canRecord = !!videoMime();
 
   const say = (t: string) => {
@@ -115,27 +115,27 @@ export default function ShareSheet({
     run(k, false, async () => {
       const b = await getImage(k);
       const r = await shareOrDownload(b, `${base}-${k === "story" ? "stories" : "post"}.jpg`, msg, "Carta do Papai Noel");
-      if (r === "downloaded") say("Imagem salva! Agora é só postar no WhatsApp, Instagram ou Facebook. 📲");
+      if (r === "downloaded") say("Imagem salva! Agora é só postar no WhatsApp, Instagram ou Facebook.");
     });
 
   const items: { k: Kind; emoji: string; title: string; sub: string; pro: boolean; act: () => void; hide?: boolean }[] = [
-    { k: "story", emoji: "📱", title: "Status / Stories", sub: "Imagem 9:16", pro: false, act: () => sendImage("story") },
-    { k: "post", emoji: "🟥", title: "Post do feed", sub: "Imagem 1:1", pro: false, act: () => sendImage("post") },
+    { k: "story", emoji: "", title: "Status / Stories", sub: "Imagem 9:16", pro: false, act: () => sendImage("story") },
+    { k: "post", emoji: "", title: "Post do feed", sub: "Imagem 1:1", pro: false, act: () => sendImage("post") },
     {
       k: "pdf",
-      emoji: "📄",
+      emoji: "",
       title: "PDF para imprimir",
       sub: "A4 com QR da voz",
       pro: true,
       act: () =>
         run("pdf", true, async () => {
           downloadBlob(await letterPdf(letter), `${base}.pdf`);
-          say("PDF baixado! Imprima e entregue com um envelope. 🎄");
+          say("PDF baixado! Imprima e entregue com um envelope.");
         }),
     },
     {
       k: "cert",
-      emoji: "🏅",
+      emoji: "",
       title: "Certificado de Bom Comportamento",
       sub: "Diploma A4 para imprimir",
       pro: true,
@@ -143,24 +143,24 @@ export default function ShareSheet({
         run("cert", true, async () => {
           const { goodCertificatePdf } = await import("../../lib/certificate");
           downloadBlob(await goodCertificatePdf(letter), `Certificado-${base}.pdf`);
-          say("Certificado baixado! Imprima e entregue junto com a carta. 🏅");
+          say("Certificado baixado! Imprima e entregue junto com a carta.");
         }),
     },
     {
       k: "png",
-      emoji: "🖼️",
+      emoji: "",
       title: "Imagem HD",
       sub: "PNG da carta inteira",
       pro: true,
       act: () =>
         run("png", true, async () => {
           downloadBlob(await canvasToBlob(await renderLetterPage(letter), "image/png"), `${base}.png`);
-          say("Imagem HD baixada! ✨");
+          say("Imagem HD baixada!");
         }),
     },
     {
       k: "jpg",
-      emoji: "📸",
+      emoji: "",
       title: "Foto (JPG)",
       sub: "Leve, ótima p/ WhatsApp",
       pro: true,
@@ -168,12 +168,12 @@ export default function ShareSheet({
         run("jpg", true, async () => {
           const b = await canvasToBlob(await renderLetterPage(letter), "image/jpeg", 0.88);
           const r = await shareOrDownload(b, `${base}.jpg`, msg, "Carta do Papai Noel");
-          if (r === "downloaded") say("Foto da carta baixada! 📸");
+          if (r === "downloaded") say("Foto da carta baixada!");
         }),
     },
     {
       k: "video",
-      emoji: "🎬",
+      emoji: "",
       title: "Vídeo com a voz",
       sub: canRecord ? "Reels, Status, TikTok" : "Indisponível neste navegador",
       pro: true,
@@ -187,12 +187,12 @@ export default function ShareSheet({
           const a = await getAudio();
           const { blob, ext } = await recordLetterVideo(letter, a, setProgress);
           const r = await shareOrDownload(blob, `${base}.${ext}`, msg, "Carta do Papai Noel");
-          if (r === "downloaded") say(a ? "Vídeo baixado com a voz do Papai Noel! 🎬" : "Vídeo baixado! 🎬");
+          if (r === "downloaded") say(a ? "Vídeo baixado com a voz do Papai Noel!" : "Vídeo baixado!");
         }),
     },
     {
       k: "audio",
-      emoji: "🎧",
+      emoji: "",
       title: "Áudio da voz",
       sub: `Lida por ${voice.label}`,
       pro: true,
@@ -204,12 +204,12 @@ export default function ShareSheet({
             return;
           }
           const r = await shareOrDownload(a, `${base}-voz.${a.type === "audio/mpeg" ? "mp3" : "wav"}`, msg, "Voz do Papai Noel");
-          if (r === "downloaded") say("Áudio baixado! Mande no WhatsApp para os avós. 🎧");
+          if (r === "downloaded") say("Áudio baixado! Mande no WhatsApp para os avós.");
         }),
     },
     {
       k: "txt",
-      emoji: "📝",
+      emoji: "",
       title: "Texto da carta",
       sub: "Arquivo .txt",
       pro: true,
@@ -217,7 +217,7 @@ export default function ShareSheet({
         run("txt", true, async () => {
           const body = `CARTA DO PAPAI NOEL PARA ${letter.childName.toUpperCase()}\n${letter.date || ""}\n\n${letterParagraphs(letter).join("\n\n")}\n\nCom carinho,\nPapai Noel\n\nOuça a voz: ${url}\n`;
           downloadBlob(new Blob([body], { type: "text/plain;charset=utf-8" }), `${base}.txt`);
-          say("Texto baixado! 📝");
+          say("Texto baixado!");
         }),
     },
   ];
@@ -245,7 +245,7 @@ export default function ShareSheet({
       >
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
-            <h3 className="font-cinzel text-lg sm:text-xl font-bold">Compartilhe a magia ✨</h3>
+            <h3 className="font-cinzel text-lg sm:text-xl font-bold">Compartilhe a magia</h3>
             <p className="text-xs text-white/65">Envie para a família, poste nas redes ou baixe no formato que quiser.</p>
           </div>
           <button onClick={onClose} disabled={!!busy} className="p-2 rounded-full bg-white/10 hover:bg-white/20 cursor-pointer disabled:opacity-40" aria-label="Fechar">
@@ -310,13 +310,13 @@ export default function ShareSheet({
               <SocialBtn label="Telegram" href={telegramUrl(url, msg.replace(` ${url}`, ""))} bg="bg-[#229ED9]">
                 ✈
               </SocialBtn>
-              <SocialBtn label="X" href={xUrl(url, `O Papai Noel escreveu para ${letter.childName}! 🎅`)} bg="bg-black">
+              <SocialBtn label="X" href={xUrl(url, `O Papai Noel escreveu para ${letter.childName}!`)} bg="bg-black">
                 𝕏
               </SocialBtn>
             </div>
             <div className="flex gap-2 mt-2">
               <button
-                onClick={async () => say((await copyText(url)) ? "Link copiado! Cole onde quiser. 🔗" : url)}
+                onClick={async () => say((await copyText(url)) ? "Link copiado! Cole onde quiser." : url)}
                 className="flex-1 rounded-full py-2.5 text-xs font-bold bg-white/10 hover:bg-white/20 inline-flex items-center justify-center gap-1.5 cursor-pointer"
                 id="share-copy"
               >
@@ -372,7 +372,7 @@ export default function ShareSheet({
             </div>
             {!isPro && (
               <p className="text-[11px] text-white/60 mt-2">
-                🔒 PDF, imagem HD, vídeo e áudio com a voz fazem parte do{" "}
+                PDF, imagem HD, vídeo e áudio com a voz fazem parte do{" "}
                 <button onClick={() => setLocked("pdf")} className="text-[#FFD166] font-bold underline cursor-pointer">
                   Natal Completo
                 </button>
@@ -380,7 +380,7 @@ export default function ShareSheet({
               </p>
             )}
             {busy === "video" && (
-              <p className="text-[11px] text-[#FFD166] mt-2">🎬 Gravando o vídeo no tempo da leitura... deixe esta tela aberta.</p>
+              <p className="text-[11px] text-[#FFD166] mt-2">Gravando o vídeo no tempo da leitura... deixe esta tela aberta.</p>
             )}
           </div>
         </div>

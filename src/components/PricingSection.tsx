@@ -1,8 +1,10 @@
 import { Check, Sparkles, Crown } from "lucide-react";
+import { Users } from "lucide-react";
 import { priceLabel } from "../lib/pricing";
 import { useFeatures } from "../lib/features";
 import { PlanType } from "../types";
 import Reveal from "./Reveal";
+import { CARD_ART, CardFan } from "./cards/CardPlanStrip";
 import { PROMO, promoActive, promoEndsLabel } from "../lib/promo";
 
 interface PricingSectionProps {
@@ -43,6 +45,7 @@ const PLANS: Plan[] = [
       { text: "Até 3 cartas por dia com o nome da criança" },
       { text: "Envelope mágico e carta brilhante em 5 cores" },
       { text: "Prévia da voz do Papai Noel" },
+      { text: "1 Cartão de Natal com a foto da família" },
       { text: "Jogos, Árvore de Luz e Lista do Bom Comportamento" },
       { text: "Ateliê de Natal com desenhos para colorir" },
       { text: "1ª portinha do Calendário do Advento" },
@@ -52,28 +55,28 @@ const PLANS: Plan[] = [
     id: "natal",
     name: "Carta Completa",
     tag: "Mais escolhido · até 2 crianças",
-    kids: "👧👦 até 2 crianças · 10 cartas completas",
+    kids: "Até 2 crianças · 10 cartas completas",
     get price() { return priceLabel("natal"); },
     note: "pagamento único",
     cta: "Quero para meus filhos",
     highlight: true,
-    features: PAID,
+    features: [{ text: "Até 5 Cartões de Natal com a foto da família, sem marca d'água", strong: true }, ...PAID],
   },
   {
     id: "familia",
     name: "Pacote Família",
     tag: "Até 5 crianças",
-    kids: "👨‍👩‍👧‍👦 até 5 crianças · 23 cartas completas",
+    kids: "Até 5 crianças · 23 cartas completas",
     get price() { return priceLabel("familia"); },
     note: "pagamento único",
     cta: "Quero o Pacote Família",
-    features: PAID,
+    features: [{ text: "Cartões de Natal à vontade: todos os 9 modelos", strong: true }, ...PAID],
   },
 ];
 
 export default function PricingSection({ onSelectPlan }: PricingSectionProps) {
   const feat = useFeatures();
-  const plans = PLANS.map((p) => (p.id === "free" || !feat.music ? p : { ...p, features: [{ text: "🎵 NOVO: Música de Natal cantada com o nome da criança (1 por criança)", strong: true }, ...p.features] }));
+  const plans = PLANS.map((p) => (p.id === "free" || !feat.music ? p : { ...p, features: [{ text: "NOVO: Música de Natal cantada com o nome da criança (1 por criança)", strong: true }, ...p.features] }));
   return (
     <section className="py-16 md:py-24 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto" id="precos">
       <Reveal className="text-center max-w-2xl mx-auto mb-12">
@@ -109,18 +112,23 @@ export default function PricingSection({ onSelectPlan }: PricingSectionProps) {
                     </span>
                   )}
                 </div>
-                {p.kids && <p className="text-sm font-bold text-[#FFE9A8] -mt-2 mb-2">{p.kids}</p>}
+                {p.kids && (
+                  <p className="text-sm font-bold text-[#FFE9A8] -mt-2 mb-2 inline-flex items-center gap-1.5">
+                    <Users className="w-4 h-4" /> {p.kids}
+                  </p>
+                )}
                 <div className="mb-6">
                   {promoActive() && PROMO.from[p.id] && (
                     <div className="flex items-center gap-2 mb-1">
                       <s className="text-sm text-[#EDF2F4]/55">{PROMO.from[p.id]}</s>
-                      <span className="text-[10px] font-extrabold uppercase tracking-wider bg-[#FFD166] text-[#0B132B] rounded-full px-2 py-0.5">🖤 {PROMO.name} · -{PROMO.off[p.id]}</span>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider bg-[#FFD166] text-[#0B132B] rounded-full px-2 py-0.5">{PROMO.name} · -{PROMO.off[p.id]}</span>
                     </div>
                   )}
                   <span className={`text-3xl sm:text-4xl font-extrabold font-cinzel ${p.id === "free" ? "text-white" : "text-[#FFD166]"}`}>{p.price}</span>
                   <span className="text-xs text-[#EDF2F4]/60 ml-2">{p.note}</span>
                   {promoActive() && PROMO.from[p.id] && <span className="block text-[11px] text-[#FFD166]/80 mt-1">Promoção válida até {promoEndsLabel()}</span>}
                 </div>
+                <CardFan art={p.id === "free" ? CARD_ART.slice(0, 1) : p.id === "natal" ? CARD_ART.slice(0, 5) : CARD_ART} className="mb-6 !h-20 sm:!h-24" />
                 <ul className="space-y-3 text-xs sm:text-sm text-[#EDF2F4]/85 mb-8">
                   {p.features.map((f) => (
                     <li key={f.text} className="flex items-start gap-2.5">

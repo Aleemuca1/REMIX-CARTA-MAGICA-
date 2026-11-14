@@ -23,11 +23,11 @@ export default function ElfWorkshopLoader({ childName, achievement }: { childNam
   const name = childName.trim() || "você";
   const steps = useMemo(
     () => [
-      `📖 Procurando ${name} no Livro Dourado…`,
+      `Procurando ${name} no Livro Dourado…`,
       achievement?.trim() ? `✍️ Escrevendo sobre “${achievement.trim().slice(0, 42)}${achievement.trim().length > 42 ? "…" : ""}”` : `✍️ Escrevendo as conquistas de ${name}…`,
-      "🦌 As renas estão iluminando o pergaminho…",
-      "🎅 O Papai Noel está lendo e sorrindo…",
-      "🔴 Carimbando o selo de cera…",
+      "As renas estão iluminando o pergaminho…",
+      "O Papai Noel está lendo e sorrindo…",
+      "Carimbando o selo de cera…",
     ],
     [name, achievement],
   );
@@ -119,7 +119,7 @@ export default function ElfWorkshopLoader({ childName, achievement }: { childNam
       </AnimatePresence>
 
       <div className="relative z-10 w-full max-w-md text-center">
-        <p className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.25em] font-extrabold text-[#0B132B] bg-[#FFD166] rounded-full px-3 py-1 mb-2">✨ Oficina do Polo Norte</p>
+        <p className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.25em] font-extrabold text-[#0B132B] bg-[#FFD166] rounded-full px-3 py-1 mb-2">Oficina do Polo Norte</p>
         <h3 className="font-cinzel text-xl sm:text-2xl font-bold text-white leading-snug">
           O duende <span className="text-[#7CE38B]">Pipoca</span> está escrevendo
           <br />a carta de <span className="foil-text" style={{ ["--ink" as string]: "#FFD166" }}>{name}</span>!
@@ -375,7 +375,7 @@ export default function ElfWorkshopLoader({ childName, achievement }: { childNam
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              {slow ? "✨ O Papai Noel está caprichando… só mais um pouquinho!" : steps[step]}
+              {slow ? "O Papai Noel está caprichando… só mais um pouquinho!" : steps[step]}
             </motion.p>
           </AnimatePresence>
         </div>
@@ -387,10 +387,10 @@ export default function ElfWorkshopLoader({ childName, achievement }: { childNam
         </div>
 
         <p className="mt-4 text-xs text-[#FFE9A8]">
-          👆 Toque no duende ou pegue os presentes que caem para ajudar!{" "}
+          Toque no duende ou pegue os presentes que caem para ajudar!{" "}
           {caught > 0 && (
             <b className="text-white" id="elf-caught">
-              🎁 {caught} {caught === 1 ? "presente" : "presentes"}
+              {caught} {caught === 1 ? "presente" : "presentes"}
             </b>
           )}
         </p>

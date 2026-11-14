@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { Gift, Mailbox, Star, TreePine } from "lucide-react";
 import { AVULSA, NORMAL, brl } from "../../lib/pricing";
 import { Camera, Mail, Printer, Sparkles } from "lucide-react";
 import Reveal from "../Reveal";
@@ -11,7 +12,7 @@ export default function CorreioSection({ onStart }: { onStart: () => void }) {
         <div className="relative overflow-hidden rounded-3xl border-2 border-[#FFD166]/60 bg-gradient-to-br from-[#2B0B10] via-[#1C2541] to-[#0B132B] p-6 sm:p-10 grid md:grid-cols-2 gap-8 items-center shadow-2xl">
           <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-[#D90429]/20 blur-3xl pointer-events-none" />
           <div className="relative z-10 text-center md:text-left">
-            <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#0B132B] bg-[#FFD166] rounded-full px-3 py-1 mb-3">📮 Novo · Correio do Polo Norte</span>
+            <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#0B132B] bg-[#FFD166] rounded-full px-3 py-1 mb-3"><Mailbox className="w-3.5 h-3.5" /> Novo · Correio do Polo Norte</span>
             <h2 className="font-cinzel text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">Seu filho escreveu para o Papai Noel? Ele responde.</h2>
             <p className="text-sm sm:text-base text-[#EDF2F4]/80 mb-5 leading-relaxed">
               Tire uma foto da cartinha. O Papai Noel lê a letra dele (até com os errinhos), responde cada pergunta, comenta os pedidos sem prometer nada e assina. Você vê a
@@ -53,8 +54,10 @@ export default function CorreioSection({ onStart }: { onStart: () => void }) {
                 <br />
                 Um abraço, Miguel
               </p>
-              <div className="mt-3 flex gap-2 text-2xl" aria-hidden="true">
-                🎄🦌⭐
+              <div className="mt-3 flex gap-2 text-[#9B021A]" aria-hidden="true">
+                <TreePine className="w-6 h-6 text-[#1F7A47]" />
+                <Star className="w-6 h-6 text-[#D4A537]" fill="currentColor" />
+                <Gift className="w-6 h-6" />
               </div>
               <motion.div initial={{ scale: 2, opacity: 0, rotate: -30 }} whileInView={{ scale: 1, opacity: 1, rotate: -14 }} viewport={{ once: true }} transition={{ type: "spring", stiffness: 220, damping: 12, delay: 0.5 }} className="absolute -right-5 -bottom-5 w-24 h-24 rounded-full border-4 border-double border-[#D90429] bg-[#FCF9F2] grid place-items-center text-[#D90429] text-center font-cinzel text-[8px] font-extrabold tracking-widest leading-tight shadow-lg">
                 CORREIO DO

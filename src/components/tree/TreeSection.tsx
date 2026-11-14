@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { TreePine } from "lucide-react";
+import { Download, Heart, Sparkles, TreePine, UsersRound } from "lucide-react";
 import Reveal from "../Reveal";
 import TreeSvg from "./TreeSvg";
 import TreeEditor from "./TreeEditor";
@@ -50,7 +50,7 @@ export default function TreeSection({ onUpgrade }: { onUpgrade?: () => void }) {
           <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-[#2DC653]/10 blur-3xl pointer-events-none" />
           <div className="relative z-10 text-center md:text-left order-2 md:order-1">
             <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#0B132B] bg-[#2DC653] rounded-full px-3 py-1 mb-3">
-              🎄 Novo · para toda a família
+              <TreePine className="w-3.5 h-3.5" /> Novo · para toda a família
             </span>
             <h2 className="font-cinzel text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">Árvore de Natal da Família</h2>
             <p className="text-sm sm:text-base text-[#EDF2F4]/80 mb-5 leading-relaxed">
@@ -58,10 +58,10 @@ export default function TreeSection({ onUpgrade }: { onUpgrade?: () => void }) {
               desejo para o ano novo. Mande o link e os avós penduram enfeites de onde estiverem!
             </p>
             <ul className="text-xs sm:text-sm text-[#EDF2F4]/70 space-y-1.5 mb-6 inline-block text-left">
-              <li>💌 Enfeites com frases prontas ou do seu jeito</li>
-              <li>👵 Avós e tios participam pelo link do WhatsApp</li>
-              <li>✨ Modo Ceia: as frases aparecem na tela na noite de Natal</li>
-              <li>📲 Baixe a árvore com todas as frases para guardar</li>
+              <li className="flex gap-2"><Heart className="w-4 h-4 text-[#2DC653] shrink-0" /> Enfeites com frases prontas ou do seu jeito</li>
+              <li className="flex gap-2"><UsersRound className="w-4 h-4 text-[#2DC653] shrink-0" /> Avós e tios participam pelo link do WhatsApp</li>
+              <li className="flex gap-2"><Sparkles className="w-4 h-4 text-[#2DC653] shrink-0" /> Modo Ceia: as frases aparecem na tela na noite de Natal</li>
+              <li className="flex gap-2"><Download className="w-4 h-4 text-[#2DC653] shrink-0" /> Baixe a árvore com todas as frases para guardar</li>
             </ul>
             <div>
               <button

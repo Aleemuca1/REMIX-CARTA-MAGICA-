@@ -79,6 +79,13 @@ export async function parentForCheckout(): Promise<"ok" | "cancel"> {
   return (await requireParent("pagar")) ? "ok" : "cancel";
 }
 
+/** Antes de mostrar a carta pronta: pede só o e-mail do responsável (código de 6 números) para guardar a carta da família. */
+export async function parentForLetter(): Promise<"ok" | "cancel"> {
+  await loadMe();
+  if (!state.email || state.parent) return "ok";
+  return (await requireParent("salvar")) ? "ok" : "cancel";
+}
+
 export async function openParentArea() {
   const p = await requireParent("area");
   if (p) set({ areaOpen: true });

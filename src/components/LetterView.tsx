@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SantaHat } from "./ui/Icons";
+import { Music2, MapPin, Bell, Target } from "lucide-react";
+import { voiceIcon } from "../lib/uiIcons";
 import { priceLabel } from "../lib/pricing";
 import { prettyCity, prettyName } from "../lib/prettyText";
 import BackButton from "./BackButton";
@@ -103,7 +106,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
       const r = await saveLetterToAccount(letter.id);
       setSaved(true);
       musicBox.chime(88, undefined, 0.1);
-      showToast(r.emailed ? `Carta guardada! Enviamos o link para ${parent.email} 💌` : "Carta guardada em Minhas cartas! 💌");
+      showToast(r.emailed ? `Carta guardada! Enviamos o link para ${parent.email}` : "Carta guardada em Minhas cartas!");
     } catch (e: any) {
       showToast(e?.message || "Não foi possível guardar agora.");
     }
@@ -185,7 +188,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
     const v = voiceById(id);
     if (v.pro && !isPro) {
       setUpsell(true);
-      showToast(`A voz ${v.emoji} ${v.label} faz parte do Natal Completo`);
+      showToast(`A voz ${v.label} faz parte do Natal Completo`);
       return;
     }
     if (speaking !== "idle") {
@@ -261,7 +264,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
               ) : speaking === "loading" ? (
                 <>
                   <Sparkles className="w-4 h-4 text-[#FFD166] animate-spin" />
-                  <span>🔔 Os sininhos do trenó estão chegando...</span>
+                  <span className="inline-flex items-center gap-1.5"><Bell className="w-4 h-4 text-[#FFD166]" /> Os sininhos do trenó estão chegando...</span>
                 </>
               ) : (
                 <>
@@ -295,7 +298,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
               id="letter-song"
               className="rounded-full text-xs sm:text-sm font-bold flex items-center gap-1.5 px-3.5 py-2 shadow-md cursor-pointer bg-gradient-to-r from-[#FFD166] to-[#F4A261] text-[#0B132B]"
             >
-              <span aria-hidden="true">🎵</span>
+              <Music2 className="w-4 h-4" aria-hidden="true" />
               Música de Natal{!isPro && <Lock className="w-3.5 h-3.5" />}
             </motion.button>
             )}
@@ -338,7 +341,10 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                     aria-pressed={active}
                     title={locked ? "Disponível no Natal Completo" : v.label}
                   >
-                    <span>{v.emoji}</span>
+                    {(() => {
+                      const VI = voiceIcon(v.id);
+                      return <VI className="w-3.5 h-3.5" />;
+                    })()}
                     {v.label}
                     {locked && <Lock className="w-3 h-3" />}
                   </motion.button>
@@ -349,7 +355,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
 
           {/* cor da carta */}
           <div className="mt-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink)] mb-1.5">🎨 Cor da carta</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink)] mb-1.5">Cor da carta</p>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Cor da carta">
               {LETTER_THEMES.map((t) => {
                 const active = themeId === t.id;
@@ -367,7 +373,6 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                     style={{ background: `linear-gradient(135deg, ${t.envelope[0]}, ${t.envelope[1]})` }}
                     id={`letter-theme-${t.id}`}
                   >
-                    {t.emoji}
                     {active && (
                       <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#1C2541] text-white flex items-center justify-center">
                         <Check className="w-2.5 h-2.5" />
@@ -388,7 +393,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                 className="overflow-hidden"
               >
                 <div className="mt-3 rounded-2xl bg-gradient-to-r from-[#1C2541] to-[#0B132B] text-white p-4 flex flex-col sm:flex-row items-center gap-3 border border-[#FFD166]/60">
-                  <span className="text-3xl">🎅</span>
+                  <SantaHat size={40} />
                   <p className="text-xs sm:text-sm flex-1 text-center sm:text-left">
                     <strong className="text-[#FFD166]">Gostou da voz?</strong> No Natal Completo o Papai Noel lê a carta
                     inteira, você baixa em PDF, imagem HD e vídeo com a voz, e ganha 24 dias de surpresas no Calendário do Advento.
@@ -467,7 +472,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
             </span>
             {letter.city && (
               <span className="mt-0.5 flex items-start gap-1 text-xs font-semibold text-[#1C2541]/75 break-words">
-                <span aria-hidden="true">📍</span>
+                <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#D90429]" aria-hidden="true" />
                 <span className="min-w-0">{prettyCity(letter.city)}</span>
               </span>
             )}
@@ -502,7 +507,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
               >
                 {kind === "mission" && (
                   <span className="block font-cinzel text-[11px] sm:text-xs font-extrabold tracking-[0.2em] text-[var(--ink)] mb-1 not-italic">
-                    🎯 MISSÃO SECRETA DE NATAL
+                    <Target className="inline w-4 h-4 mr-1 -mt-0.5" aria-hidden="true" />MISSÃO SECRETA DE NATAL
                   </span>
                 )}
                 {reading && (
@@ -514,7 +519,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                       transition={{ duration: 0.9, repeat: Infinity }}
                       data-no-pdf
                     >
-                      🔔
+                      <Bell className="w-4 h-4 text-[#B8860B]" />
                     </motion.span>
                     {[0, 1, 2].map((k) => (
                       <motion.span
@@ -531,7 +536,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
                     ))}
                   </>
                 )}
-                {withName(kind === "mission" ? p.replace(/^\s*🎯?\s*Miss[aã]o secreta de Natal:?\s*/i, "").replace(/^./, (c) => c.toUpperCase()) : p, letter.childName)}
+                {withName(kind === "mission" ? p.replace(/^\s*(?:🎯\s*)?Miss[aã]o secreta de Natal:?\s*/i, "").replace(/^./, (c) => c.toUpperCase()) : p, letter.childName)}
               </motion.p>
               </div>
             );
@@ -592,7 +597,10 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
               transition={{ duration: 1.1, repeat: Infinity }}
               aria-hidden="true"
             >
-              {voiceById(isPro ? voiceId : "noel").emoji}
+              {(() => {
+                const VI = voiceIcon(isPro ? voiceId : "noel");
+                return <VI className="w-5 h-5 text-white" />;
+              })()}
             </motion.span>
             <div className="text-xs sm:text-sm leading-tight">
               <p className="font-bold">{voiceById(isPro ? voiceId : "noel").label} está lendo...</p>
@@ -603,7 +611,7 @@ export default function LetterView({ letter, onClose, onUpgrade }: LetterViewPro
               </span>
             </div>
             <motion.span aria-hidden="true" animate={{ rotate: [-20, 20, -20] }} transition={{ duration: 0.6, repeat: Infinity }}>
-              🔔
+              <Bell className="w-4 h-4 text-[#FFD166]" />
             </motion.span>
             <button
               onClick={handleListen}

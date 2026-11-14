@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Star } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { musicBox } from "../lib/christmasMusic";
 import { DEFAULT_THEME, type LetterTheme } from "../lib/letterThemes";
@@ -67,7 +68,7 @@ export default function EnvelopeIntro({ childName, city, date, onDone, theme = D
         {/* selo postal */}
         <div className="absolute bottom-2.5 right-2.5 w-11 h-14 sm:w-14 sm:h-[4.5rem] bg-[#FFF6D8] rounded-[3px] p-1 shadow rotate-3" style={{ outline: "2px dashed #FFF6D8", outlineOffset: 1 }}>
           <div className="w-full h-full rounded-sm bg-gradient-to-b from-[#1C3D6E] to-[#0B132B] flex flex-col items-center justify-center text-base sm:text-xl leading-none">
-            🦌
+            <Star className="w-4 h-4 sm:w-5 sm:h-5 text-[#FFD166] fill-[#FFD166]" />
             <span className="text-[6px] sm:text-[7px] text-[#FFD166] font-bold mt-0.5">POLO NORTE</span>
           </div>
         </div>
@@ -148,7 +149,7 @@ export default function EnvelopeIntro({ childName, city, date, onDone, theme = D
             exit={{ opacity: 0 }}
             transition={{ y: { duration: 1.2, repeat: Infinity }, opacity: { delay: 0.6 } }}
           >
-            👆 Toque no selo para abrir a carta
+            Toque no selo para abrir a carta
           </motion.p>
         )}
       </AnimatePresence>

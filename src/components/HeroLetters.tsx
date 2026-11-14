@@ -10,7 +10,7 @@ const SAMPLES = [
     age: 6,
     city: "Belo Horizonte",
     theme: "rosa",
-    tag: "🎀 Rosa Encantado",
+    tag: "Rosa Encantado",
     hello: "Ho Ho Ho! Olá, Sofia!",
     body:
       "Quando os duendes leram que você aprendeu a ler sozinha, a Mamãe Noel deu um pulinho de alegria e derrubou o chocolate quente na minha barba!",
@@ -80,7 +80,7 @@ export default function HeroLetters({ onListen, onCreate }: { onListen: () => vo
       >
         <div className="absolute inset-0 rounded-[20px]" style={{ background: TB.tint }} />
         <span className="absolute top-3 right-4 font-xmas text-xl font-bold" style={{ color: TB.ink }}>
-          {back.name} ✨
+          {back.name}
         </span>
       </motion.div>
 
@@ -126,7 +126,7 @@ export default function HeroLetters({ onListen, onCreate }: { onListen: () => vo
               <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: T.ink }}>Para</span>
               <span className="font-ps text-xl leading-none font-bold" style={{ color: T.ink }}>{s.name}</span>
               <span className="text-[10px] font-bold text-[#1C2541]/60">
-                {s.age} anos · 📍 {s.city}
+                {s.age} anos · {s.city}
               </span>
             </div>
 
@@ -156,7 +156,7 @@ export default function HeroLetters({ onListen, onCreate }: { onListen: () => vo
               style={{ borderColor: T.ink + "66" }}
             >
               <span className="block font-cinzel text-[9px] font-extrabold tracking-[0.18em]" style={{ color: T.ink }}>
-                🎯 MISSÃO SECRETA DE NATAL
+                MISSÃO SECRETA DE NATAL
               </span>
               <span className="font-letter text-[13px] sm:text-sm leading-snug">{s.mission}</span>
             </motion.div>
@@ -206,12 +206,12 @@ export default function HeroLetters({ onListen, onCreate }: { onListen: () => vo
               className={`cursor-pointer rounded-full px-3 py-1 text-[11px] font-bold border transition-all ${on ? "scale-105 shadow-lg" : "opacity-70 hover:opacity-100"}`}
               style={on ? { background: th.frame, color: th.ink, borderColor: th.frame } : { background: "rgba(6,11,25,0.8)", color: "#EDF2F4", borderColor: "rgba(255,255,255,0.15)" }}
             >
-              {x.name === "Pedro" ? "💌 Carta do Pedro" : "💌 Carta da Sofia"}
+              {x.name === "Pedro" ? "Carta do Pedro" : "Carta da Sofia"}
             </button>
           );
         })}
       </div>
-      <p className="text-center mt-2 text-[11px] text-[#EDF2F4]/60">✨ Cada criança ganha a sua: com o nome, as conquistas e a cor preferida</p>
+      <p className="text-center mt-2 text-[11px] text-[#EDF2F4]/60">Cada criança ganha a sua: com o nome, as conquistas e a cor preferida</p>
     </div>
   );
 }

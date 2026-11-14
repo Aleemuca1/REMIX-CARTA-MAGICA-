@@ -5,12 +5,12 @@ import { musicBox } from "../lib/christmasMusic";
 
 /** Papai Noel que aparece no canto da tela, acena e dá dicas. Clique nele! */
 const TIPS: { text: string; target?: string }[] = [
-  { text: "Ho ho ho! Já fez a cartinha do seu filho? ✉️", target: "hero-section" },
-  { text: "Psiu... teste o jogo do trenó! 🛷", target: "jogo" },
-  { text: "Que tal pintar um desenho no Ateliê? 🎨", target: "atelie" },
-  { text: "Sacuda o globo de neve! ❄️", target: "globo" },
-  { text: "Os duendes estão de olho nas boas ações! 👀" },
-  { text: "Já abriu a portinha de hoje do calendário? 📅", target: "calendario" },
+  { text: "Ho ho ho! Já fez a cartinha do seu filho?", target: "hero-section" },
+  { text: "Psiu... teste o jogo do trenó!", target: "jogo" },
+  { text: "Que tal pintar um desenho no Ateliê?", target: "atelie" },
+  { text: "Sacuda o globo de neve!", target: "globo" },
+  { text: "Os duendes estão de olho nas boas ações!" },
+  { text: "Já abriu a portinha de hoje do calendário?", target: "calendario" },
 ];
 
 export default function SantaPeek() {
@@ -70,7 +70,7 @@ export default function SantaPeek() {
             transition={{ delay: 0.45, type: "spring", stiffness: 260, damping: 16 }}
             style={{ originX: 1, originY: 1 }}
           >
-            {hits > 0 && tip % 2 ? "Ho ho ho! Você me achou! 🎉" : TIPS[tip].text}
+            {hits > 0 && tip % 2 ? "Ho ho ho! Você me achou!" : TIPS[tip].text}
           </motion.div>
           <motion.button
             onClick={click}

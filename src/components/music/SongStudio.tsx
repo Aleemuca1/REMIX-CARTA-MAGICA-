@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { SantaHat } from "../ui/Icons";
+import { SONG_ICON } from "../../lib/uiIcons";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Download, Music2, Pause, Play, Sparkles, X } from "lucide-react";
@@ -7,11 +9,11 @@ import { createSong, musicStatus, type Song, type MusicStatus, SONG_STYLES } fro
 import { prettyName } from "../../lib/prettyText";
 
 const STEPS = [
-  "🎼 O Papai Noel está escrevendo a letra com o nome...",
-  "🔔 Os duendes estão afinando os sininhos do trenó...",
-  "🎹 A orquestra do Polo Norte está ensaiando...",
-  "🎤 O coral das renas está gravando...",
-  "✨ Colocando o brilho mágico no final...",
+  "O Papai Noel está escrevendo a letra com o nome...",
+  "Os duendes estão afinando os sininhos do trenó...",
+  "A orquestra do Polo Norte está ensaiando...",
+  "O coral das renas está gravando...",
+  "Colocando o brilho mágico no final...",
 ];
 
 type Props = { token?: string; code?: string; childName: string; onClose: () => void; onUpgrade?: () => void };
@@ -111,7 +113,7 @@ export default function SongStudio({ token, code, childName, onClose, onUpgrade 
         </button>
         {/* cabeçalho com notas flutuando */}
         <div className="relative px-6 pt-7 pb-5 text-center overflow-hidden">
-          {["♪", "♫", "♬", "♪", "♫"].map((n, i) => (
+          {["", "", "", "", ""].map((n, i) => (
             <motion.span
               key={i}
               aria-hidden="true"
@@ -132,21 +134,21 @@ export default function SongStudio({ token, code, childName, onClose, onUpgrade 
         </div>
 
         <div className="px-5 pb-6">
-          {!st && <p className="text-center text-white/70 py-6">Abrindo o estúdio... 🎶</p>}
+          {!st && <p className="text-center text-white/70 py-6">Abrindo o estúdio...</p>}
 
           {st && !st.allowed && (
             <div className="text-center py-3">
               <p className="text-white/85 text-sm">A Música de Natal faz parte dos planos pagos: <b className="text-[#FFD166]">uma música para cada criança</b>.</p>
               {onUpgrade && (
                 <button onClick={onUpgrade} className="mt-4 rounded-full px-6 py-3 font-extrabold bg-[#FFD166] text-[#0B132B] cursor-pointer" id="song-upgrade">
-                  Ver planos 🎁
+                  Ver planos
                 </button>
               )}
             </div>
           )}
 
           {st && st.allowed && !st.enabled && !song && (
-            <p className="text-center text-white/80 text-sm py-4">Os duendes estão terminando de montar o estúdio. A Música de Natal chega em breve! 🎄</p>
+            <p className="text-center text-white/80 text-sm py-4">Os duendes estão terminando de montar o estúdio. A Música de Natal chega em breve!</p>
           )}
 
           {st?.allowed && song && (
@@ -185,7 +187,7 @@ export default function SongStudio({ token, code, childName, onClose, onUpgrade 
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-white/50 text-center mt-3">Baixe a música para tocar na ceia e mandar para a família. 🎄</p>
+              <p className="text-[11px] text-white/50 text-center mt-3">Baixe a música para tocar na ceia e mandar para a família.</p>
             </div>
           )}
 
@@ -200,9 +202,10 @@ export default function SongStudio({ token, code, childName, onClose, onUpgrade 
                     id={`song-style-${s.id}`}
                     className={`rounded-2xl p-3 text-left border cursor-pointer transition-colors ${style === s.id ? "bg-[#FFD166] text-[#0B132B] border-[#FFD166]" : "bg-white/5 border-white/15 hover:border-[#FFD166]/60"}`}
                   >
-                    <span className="text-2xl" aria-hidden="true">
-                      {s.emoji}
-                    </span>
+                    {(() => {
+                      const SI = SONG_ICON[s.id] ?? Music2;
+                      return <SI className="w-6 h-6" aria-hidden="true" />;
+                    })()}
                     <p className="font-bold text-sm mt-1">{s.label}</p>
                     <p className={`text-[11px] ${style === s.id ? "text-[#0B132B]/70" : "text-white/55"}`}>{s.desc}</p>
                   </button>
@@ -222,7 +225,7 @@ export default function SongStudio({ token, code, childName, onClose, onUpgrade 
                   <span className="relative z-10">Criar a música de {first}</span>
                 </motion.button>
               ) : (
-                <p className="mt-3 text-center text-sm text-[#FFD166]">Seu plano já usou todas as músicas. 🎶</p>
+                <p className="mt-3 text-center text-sm text-[#FFD166]">Seu plano já usou todas as músicas.</p>
               )}
               {err && <p className="mt-3 text-center text-sm text-[#FF8FA3]">{err}</p>}
             </div>
@@ -233,7 +236,7 @@ export default function SongStudio({ token, code, childName, onClose, onUpgrade 
               <div className="relative mx-auto w-28 h-28">
                 <motion.div className="absolute inset-0 rounded-full border-4 border-dashed border-[#FFD166]/70" animate={{ rotate: 360 }} transition={{ duration: 6, repeat: Infinity, ease: "linear" }} />
                 <motion.span className="absolute inset-0 grid place-items-center text-5xl" animate={{ scale: [1, 1.12, 1] }} transition={{ duration: 1.2, repeat: Infinity }}>
-                  🎅
+                  <SantaHat size={60} />
                 </motion.span>
               </div>
               <AnimatePresence mode="wait">
@@ -241,7 +244,7 @@ export default function SongStudio({ token, code, childName, onClose, onUpgrade 
                   {STEPS[step]}
                 </motion.p>
               </AnimatePresence>
-              <p className="text-xs text-white/55 mt-2">Leva de 1 a 3 minutos. Não feche esta tela. 🎶</p>
+              <p className="text-xs text-white/55 mt-2">Leva de 1 a 3 minutos. Não feche esta tela.</p>
             </div>
           )}
         </div>

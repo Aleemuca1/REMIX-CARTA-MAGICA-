@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { IconBadge } from "../ui/Icons";
+import { Mailbox, Navigation } from "lucide-react";
 import { motion } from "motion/react";
 import BackButton from "../BackButton";
 import { useBackClose } from "../../lib/backClose";
@@ -26,10 +28,10 @@ export default function OnTheWay({ childName, deliverAt, protocol, message, onCl
         <div className="absolute left-0 top-0">
           <BackButton onClick={onClose} />
         </div>
-        <motion.div animate={{ x: [-30, 30, -30], y: [0, -10, 0] }} transition={{ duration: 6, repeat: Infinity }} className="text-7xl mt-10 mb-4" aria-hidden="true">
-          🦌🦌🛷
+        <motion.div animate={{ x: [-30, 30, -30], y: [0, -10, 0] }} transition={{ duration: 6, repeat: Infinity }} className="mt-12 mb-4 flex justify-center" aria-hidden="true">
+          <IconBadge icon={Navigation} size="xl" tone="red" round />
         </motion.div>
-        <p className="text-xs font-bold uppercase tracking-widest text-[#FFD166]">📮 Correio do Polo Norte</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-[#FFD166] inline-flex items-center gap-1.5"><Mailbox className="w-4 h-4" /> Correio do Polo Norte</p>
         <h1 className="font-cinzel text-2xl sm:text-3xl font-bold mt-2">{message}</h1>
         <p className="text-white/75 mt-2 text-sm">
           {first}, o Papai Noel já escreveu a sua carta{protocol ? ` (é a nº ${protocol.toLocaleString("pt-BR")} do Polo Norte)` : ""}. O trenó está trazendo!
@@ -51,10 +53,10 @@ export default function OnTheWay({ childName, deliverAt, protocol, message, onCl
         )}
         {target > 0 && !far && left === 0 && (
           <button onClick={() => window.location.reload()} className="mt-6 rounded-full px-6 py-3 font-extrabold bg-[#FFD166] text-[#0B132B] cursor-pointer">
-            Chegou! Abrir a carta 🎁
+            Chegou! Abrir a carta
           </button>
         )}
-        <p className="mt-6 text-xs text-white/50">Enquanto isso, que tal deixar biscoitos e um copo de leite na janela? 🍪🥛</p>
+        <p className="mt-6 text-xs text-white/50">Enquanto isso, que tal deixar biscoitos e um copo de leite na janela?</p>
       </div>
     </motion.div>
   );

@@ -87,7 +87,7 @@ export default function MusicToggle() {
                 </button>
               </>
             ) : (
-              <span className="pr-1.5">🎵 Ligue a música de Natal</span>
+              <span className="pr-1.5">Ligue a música de Natal</span>
             )}
           </motion.div>
         )}

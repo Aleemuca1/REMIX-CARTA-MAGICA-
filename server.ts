@@ -266,6 +266,130 @@ app.post("/api/me/link", async (req, res) => {
   }
 });
 
+// ---------- Perfil da família (Painel dos Pais) ----------
+const AVATARS = ["estrela", "arvore", "gorro", "rena", "sino", "presente", "boneco", "casa"];
+const cleanLine = (v: unknown, max: number) => String(v ?? "").replace(/[\u0000-\u001F<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+const slugify = (v: unknown) =>
+  String(v ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+const RESERVED_SLUGS = new Set(["admin", "api", "natal", "arvore", "casa", "familia", "papai-noel", "carta-magica", "suporte"]);
+function profileOut(pr: db.FamilyProfile | null) {
+  if (!pr) return null;
+  return { familyName: pr.familyName || "", bio: pr.bio || "", avatar: pr.avatar || "estrela", children: pr.children, slug: pr.slug || "", isPublic: pr.isPublic };
+}
+
+app.get("/api/me/profile", async (req, res) => {
+  const p = await currentParent(req);
+  if (!p) return res.status(401).json({ error: "Entre na Área dos Pais." });
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    res.json({ ready: true, profile: profileOut(await db.getProfile(p.id)) });
+  } catch (err: any) {
+    console.error("me/profile:", err?.message || err);
+    res.json({ ready: false, profile: null });
+  }
+});
+
+app.put("/api/me/profile", async (req, res) => {
+  const p = await currentParent(req);
+  if (!p) return res.status(401).json({ error: "Entre na Área dos Pais." });
+  const b = req.body || {};
+  const familyName = cleanLine(b.familyName, 60);
+  const bio = cleanLine(b.bio, 280);
+  const avatar = AVATARS.includes(b.avatar) ? b.avatar : "estrela";
+  const children: db.FamilyChild[] = (Array.isArray(b.children) ? b.children : [])
+    .slice(0, 6)
+    .map((c: any) => {
+      const age = Number(c?.age);
+      return { name: cleanLine(c?.name, 40), ...(age >= 0 && age <= 17 ? { age: Math.round(age) } : {}) };
+    })
+    .filter((c: db.FamilyChild) => c.name);
+  const isPublic = Boolean(b.isPublic);
+  let slug = slugify(b.slug || (familyName ? `familia-${familyName.replace(/^fam[ií]lia\s+/i, "")}` : ""));
+  if (isPublic && slug.length < 3) return res.status(400).json({ error: "Escolha um endereço com pelo menos 3 letras para a página da família." });
+  if (slug && RESERVED_SLUGS.has(slug)) return res.status(400).json({ error: "Esse endereço é reservado. Escolha outro." });
+  try {
+    const saved = await db.saveProfile({ parentId: p.id, familyName, bio, avatar, children, slug: slug || undefined, isPublic });
+    if (saved === "slug-taken") return res.status(409).json({ error: "Esse endereço já é de outra família. Tente outro, por exemplo com a cidade." });
+    res.json({ ok: true, profile: profileOut(saved) });
+  } catch (err: any) {
+    console.error("me/profile PUT:", err?.message || err);
+    res.status(503).json({ error: "O perfil da família ainda está sendo preparado. Tente de novo em alguns minutos." });
+  }
+});
+
+// Página pública da família (só se o responsável ligou "página pública")
+app.get("/api/familia/:slug", async (req, res) => {
+  const slug = slugify(req.params.slug);
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Robots-Tag", "noindex");
+  try {
+    const pr = slug ? await db.profileBySlug(slug) : null;
+    if (!pr || !pr.isPublic) return res.status(404).json({ error: "Página não encontrada." });
+    const [letters, trees] = await Promise.all([db.lettersOfParent(pr.parentId, 30), db.treesOfParent(pr.parentId)]);
+    const now = Date.now();
+    res.json({
+      profile: { familyName: pr.familyName || "Nossa família", bio: pr.bio || "", avatar: pr.avatar || "estrela", children: pr.children.map((c) => ({ name: c.name.split(" ")[0], age: c.age })) },
+      letters: letters
+        .filter((l) => !l.deliverAt || new Date(l.deliverAt).getTime() <= now)
+        .filter((l) => l.reviewStatus !== "pending")
+        .map((l) => ({ token: l.token, childName: String(l.childName || "").split(" ")[0], date: l.date, theme: l.theme })),
+      trees: trees.filter((t) => !t.token.startsWith("casa")).map((t) => ({ token: t.token, title: t.title })),
+      houses: trees.filter((t) => t.token.startsWith("casa")).map((t) => ({ token: t.token, title: t.title })),
+    });
+  } catch (err: any) {
+    console.error("familia/:slug:", err?.message || err);
+    res.status(404).json({ error: "Página não encontrada." });
+  }
+});
+
+// Lembretes por e-mail (Vercel Cron, 1x por dia). Protegido pelo CRON_SECRET.
+app.get("/api/cron/lembretes", async (req, res) => {
+  const secret = process.env.CRON_SECRET;
+  const auth = String(req.headers.authorization || "");
+  if (!secret || auth !== `Bearer ${secret}`) return res.status(401).json({ error: "unauthorized" });
+  if (!mailer.emailConfigured()) return res.json({ ok: true, skipped: "email" });
+  const site = process.env.SITE_URL || "https://www.cartamagicanatal.com.br";
+  const out = { amanha: 0, vespera: 0 };
+  try {
+    // 1) entrega agendada nas próximas 24–48 h
+    const now = Date.now();
+    const rows = await db.lettersToRemind(new Date(now + 12 * 3600e3), new Date(now + 36 * 3600e3));
+    const byMail = new Map<string, db.ReminderRow[]>();
+    rows.forEach((r) => byMail.set(r.email, [...(byMail.get(r.email) || []), r]));
+    for (const [to, list] of byMail) {
+      const ok = await mailer.sendReminder({ to, kind: "amanha", siteUrl: site, children: list.map((r) => ({ name: String(r.childName || "").split(" ")[0], url: `${site}/natal/${r.token}` })) });
+      if (ok) {
+        await db.markReminded(list.map((r) => r.id));
+        out.amanha++;
+      }
+    }
+    // 2) dia 24 de dezembro (horário de Brasília)
+    const br = new Date(now - 3 * 3600e3);
+    if (br.getUTCMonth() === 11 && br.getUTCDate() === 24) {
+      const eve = await db.lettersForEve();
+      const m = new Map<string, db.ReminderRow[]>();
+      eve.forEach((r) => m.set(r.email, [...(m.get(r.email) || []), r]));
+      for (const [to, list] of m) {
+        const ok = await mailer.sendReminder({ to, kind: "vespera", siteUrl: site, children: list.map((r) => ({ name: String(r.childName || "").split(" ")[0], url: `${site}/natal/${r.token}` })) });
+        if (ok) {
+          await db.markReminded(list.map((r) => r.id), "eve_reminder_at");
+          out.vespera++;
+        }
+      }
+    }
+    res.json({ ok: true, ...out });
+  } catch (err: any) {
+    console.error("cron/lembretes:", err?.message || err);
+    res.status(500).json({ error: "falhou" });
+  }
+});
+
 // Salvar a carta na conta do responsável e mandar o link por e-mail
 app.post("/api/me/letters/save", async (req, res) => {
   const p = await currentParent(req);
@@ -476,7 +600,7 @@ function generateFallbackLetter(data) {
       ? `E a sua família me mandou um recadinho especial para você: “${parentNotes}”. Guarde isso no coração, porque o amor da família é a magia mais forte que existe.`
       : `A sua família tem muito orgulho de você e um amor do tamanho do céu estrelado. Esse é o presente mais bonito de todos.`,
   );
-  paras.push(`🎯 Missão secreta de Natal: ${pick(missions)}`);
+  paras.push(`Missão secreta de Natal: ${pick(missions)}`);
   paras.push(pick(farewells));
   paras.push(ps);
   return paras.join("\n\n");
@@ -765,14 +889,14 @@ ESTRUTURA (cada parte em um parágrafo separado por uma linha em branco):
 3. CONQUISTAS (OBRIGATÓRIO): cite UMA POR UMA, de forma explícita e concreta, TODAS as conquistas que a família escreveu (ex.: se escreveram "aprendeu matemática, foi obediente e passou de ano", a carta precisa falar da matemática, da obediência e de ter passado de ano). Corrija a ortografia do que os pais digitaram, sem mudar o sentido. ${Number(age) > 0 || city ? "Lembre a idade e a cidade (só as que forem informadas)." : "A idade e a cidade não foram informadas: não invente."}
 4. PEDIDO DE NATAL: diga que o próprio Papai Noel anotou o pedido (${giftRequest || "uma surpresa especial"}) no Grande Livro Dourado, com carinho e sem prometer que o presente vai chegar.
 5. CARINHO DA FAMÍLIA: ${parentNotes ? `inclua com delicadeza o recado dos responsáveis: "${parentNotes}".` : "lembre que a família tem muito orgulho e amor por ela."}
-6. MISSÃO SECRETA: um parágrafo que começa exatamente com "🎯 Missão secreta de Natal:" e traz uma pequena missão gentil e divertida para a criança cumprir até o Natal (ex.: dar um abraço surpresa em alguém, ajudar a pôr a mesa, desenhar algo para o Papai Noel e deixar na janela). Uma frase ou duas.
+6. MISSÃO SECRETA: um parágrafo que começa exatamente com "Missão secreta de Natal:" e traz uma pequena missão gentil e divertida para a criança cumprir até o Natal (ex.: dar um abraço surpresa em alguém, ajudar a pôr a mesa, desenhar algo para o Papai Noel e deixar na janela). Uma frase ou duas.
 7. DESPEDIDA: uma frase final criativa e carinhosa que use o nome da criança e uma imagem divertida do Polo Norte (ex.: "Até a noite de Natal, ${childName}! Vou passar pertinho da sua casa e mandar um tchauzinho lá do trenó."). NÃO escreva assinatura nem "Papai Noel" no final: a assinatura já aparece desenhada na carta.
 8. P.S.: depois da despedida, um parágrafo que começa com "P.S.:" curtinho e engraçado, envolvendo o Papai Noel, a Mamãe Noel ou os duendes e, se houver, um detalhe pessoal da criança (bichinho, comida, amigo ou brincadeira favorita).
 ${childLetter ? `\nA CARTINHA QUE A CRIANÇA ESCREVEU (ela mesma escreveu para o Papai Noel; esta carta é a RESPOSTA):\n"""${childLetter.text.slice(0, 1500)}"""\n- Pedidos que ela fez: ${childLetter.wishes.pedidos.join("; ") || "nenhum"}\n- Perguntas que ela fez: ${childLetter.wishes.perguntas.join("; ") || "nenhuma"}\n- O que ela contou: ${childLetter.wishes.contou.join("; ") || "nada em especial"}\nREGRAS DA RESPOSTA: comece dizendo que a carta dela CHEGOU no Polo Norte (fale de algo específico que ela escreveu ou desenhou); RESPONDA CADA PERGUNTA dela com carinho e imaginação (isso é o que mais encanta); cite os pedidos dizendo que anotou no Grande Livro Dourado, sem prometer; se ela pediu algo para outra pessoa, elogie o coração generoso; nunca corrija a letra ou a ortografia dela, só elogie o capricho.\n` : ""}${extrasText ? `\nDETALHES PESSOAIS (use TODOS, de forma natural e espalhada pela carta — é isso que faz a família se emocionar):\n${extrasText}\n` : ""}
 REGRAS IMPORTANTES:
 - O protagonista é sempre o Papai Noel. Fale de "as renas", "os duendes" e "a Mamãe Noel" de forma genérica: NUNCA cite personagens de filmes, desenhos ou marcas (por exemplo, não use o nome "Rudolph").
 - NUNCA use chantagem ("se não obedecer não ganha presente") nem prometa presentes. O Papai Noel é pura bondade e aconchego.
-- Use no máximo 3 emojis na carta toda, além do 🎯 da missão.
+- NÃO use emojis em nenhuma parte da carta (ela é impressa e lida em voz alta).
 - Use o nome da criança pelo menos 3 vezes ao longo da carta.
 - Tudo o que a família escreveu (conquistas, pedido e recado) TEM que aparecer na carta. Antes de terminar, confira se nada ficou de fora.
 - Escreva com ortografia e acentuação perfeitas: esta carta será impressa e guardada pela criança para sempre.
@@ -928,7 +1052,7 @@ const ttsCache = new Map<string, string>();
 /** Deixa a carta gostosa de ouvir: sem emojis, com transições faladas e a despedida do Papai Noel. */
 function speechText(content: string, voiceId: string) {
   let t = String(content || "")
-    .replace(/🎯\s*Miss[aã]o secreta de Natal:?/gi, "E agora... uma missão secreta de Natal, só para você:")
+    .replace(/(?:🎯\s*)?Miss[aã]o secreta de Natal:?/gi, "E agora... uma missão secreta de Natal, só para você:")
     .replace(/^\s*P\.?\s?S\.?:?/gim, "Ah... e antes que eu me esqueça:")
     .replace(/\((a|o|as|os)\)/g, "")
     .replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "")

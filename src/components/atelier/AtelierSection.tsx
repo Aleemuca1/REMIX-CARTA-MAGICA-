@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import BackButton from "../BackButton";
 import { useBackClose } from "../../lib/backClose";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Palette } from "lucide-react";
+import { Brush, Palette, Smartphone, Sparkles, X } from "lucide-react";
 import Reveal from "../Reveal";
 import AtelierEditor from "./AtelierEditor";
 import { DESIGNS, designDataUrl } from "../../atelier/designs";
@@ -21,7 +21,7 @@ export default function AtelierSection({ onUpgrade }: { onUpgrade?: () => void }
           <div className="absolute -left-16 -bottom-16 w-72 h-72 rounded-full bg-[#FF8FA3]/10 blur-3xl pointer-events-none" />
           <div className="relative z-10 text-center md:text-left">
             <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#0B132B] bg-[#FF8FA3] rounded-full px-3 py-1 mb-3">
-              🎨 Grátis para colorir
+              <Palette className="w-3.5 h-3.5" /> Grátis para colorir
             </span>
             <h2 className="font-cinzel text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">Ateliê de Natal</h2>
             <p className="text-sm sm:text-base text-[#EDF2F4]/80 mb-5 leading-relaxed">
@@ -29,9 +29,9 @@ export default function AtelierSection({ onUpgrade }: { onUpgrade?: () => void }
               enfeite com adesivos. No final, baixe com uma moldura especial e mande para a família.
             </p>
             <ul className="text-xs sm:text-sm text-[#EDF2F4]/70 space-y-1.5 mb-6 inline-block text-left">
-              <li>🖍️ {DESIGNS.length} desenhos para colorir (Papai Noel, trenó, bichinhos...) + desenho livre</li>
-              <li>✨ Pincel de brilho, adesivos e borracha</li>
-              <li>📲 Baixe ou compartilhe no WhatsApp</li>
+              <li className="flex gap-2"><Brush className="w-4 h-4 text-[#FF8FA3] shrink-0" /> {DESIGNS.length} desenhos para colorir (Papai Noel, trenó, bichinhos...) + desenho livre</li>
+              <li className="flex gap-2"><Sparkles className="w-4 h-4 text-[#FF8FA3] shrink-0" /> Pincel de brilho, adesivos e borracha</li>
+              <li className="flex gap-2"><Smartphone className="w-4 h-4 text-[#FF8FA3] shrink-0" /> Baixe ou compartilhe no WhatsApp</li>
             </ul>
             <div>
               <button
@@ -125,7 +125,7 @@ export function AtelierModal({
         transition={{ type: "spring", stiffness: 220, damping: 22 }}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-cinzel text-xl sm:text-2xl font-bold text-white">🎨 {title}</h3>
+          <h3 className="font-cinzel text-xl sm:text-2xl font-bold text-white inline-flex items-center gap-2"><Palette className="w-6 h-6 text-[#FF8FA3]" /> {title}</h3>
           <BackButton onClick={onClose} />
         </div>
         <AtelierEditor
@@ -140,7 +140,7 @@ export function AtelierModal({
         <AnimatePresence>
           {locked && (
             <ProUpsell
-              title="Exclusivo do Natal Completo ✨"
+              title="Exclusivo do Natal Completo"
               text={`${locked} faz parte do Natal Completo, junto com mais desenhos, adesivos especiais e a moldura com o nome da criança.`}
               onClose={() => setLocked(null)}
               onUpgrade={

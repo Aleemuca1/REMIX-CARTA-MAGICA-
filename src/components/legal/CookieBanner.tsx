@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Cookie } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 const KEY = "carta-magica-cookies";
@@ -37,7 +38,7 @@ export default function CookieBanner() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 40, opacity: 0 }}
         >
-          <p className="font-bold text-[#FFD166] mb-1">🍪 Biscoitinhos do Polo Norte</p>
+          <p className="font-bold text-[#FFD166] mb-1 inline-flex items-center gap-1.5"><Cookie className="w-4 h-4" /> Biscoitinhos do Polo Norte</p>
           <p className="text-xs sm:text-sm text-white/80 leading-relaxed mb-3">
             Guardamos no seu navegador só o necessário para o site funcionar (progresso do calendário e recorde do jogo). Não usamos cookies de
             publicidade.{" "}

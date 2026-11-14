@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Tag } from "lucide-react";
 import { PROMO, promoActive, promoEndsLabel } from "../lib/promo";
 import { priceLabel } from "../lib/pricing";
 
@@ -19,7 +20,7 @@ export default function PromoBar({ onClick }: { onClick: () => void }) {
       className="w-full bg-gradient-to-r from-[#0B0B0F] via-[#2B0B10] to-[#0B0B0F] text-white text-[12px] sm:text-sm font-bold py-2 px-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 cursor-pointer border-b border-[#FFD166]/40"
       id="promo-bar"
     >
-      <span className="bg-[#FFD166] text-[#0B132B] rounded-full px-2.5 py-0.5 text-[11px] uppercase tracking-widest">🖤 {PROMO.name}</span>
+      <span className="bg-[#FFD166] text-[#0B132B] rounded-full px-2.5 py-0.5 text-[11px] uppercase tracking-widest inline-flex items-center gap-1"><Tag className="w-3 h-3" />{PROMO.name}</span>
       <span>
         Carta Completa <s className="opacity-70">{PROMO.from.natal}</s> por <b className="text-[#FFD166]">{priceLabel("natal")}</b> · Família <s className="opacity-70">{PROMO.from.familia}</s> por <b className="text-[#FFD166]">{priceLabel("familia")}</b>
       </span>

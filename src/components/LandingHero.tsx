@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from "motion/react";
+import { PlayCircle } from "lucide-react";
 import { priceLabel } from "../lib/pricing";
 import HeroFlakes from "./HeroFlakes";
 import { Sparkles, ArrowRight, ShieldCheck, Timer, Volume2 } from "lucide-react";
@@ -105,13 +106,14 @@ export default function LandingHero({
               className="w-full sm:w-auto bg-[#0B132B]/85 hover:bg-[#1C2541] border border-white/20 text-[#EDF2F4] font-semibold px-6 py-4 rounded-full text-base transition-all flex items-center justify-center gap-2 cursor-pointer"
               id="hero-cta-how"
             >
-              <span>🎅 Ver como funciona</span>
+              <PlayCircle className="w-5 h-5 text-[#FFD166]" />
+              <span>Ver como funciona</span>
             </button>
           </motion.div>
 
           {/* Guarantee Tag */}
           <p className="text-xs text-[#EDF2F4]/60 text-center lg:text-left">
-            🎁 Grátis para começar • Natal Completo a partir de {priceLabel("natal")}{promoActive() && <> <s className="opacity-60">{PROMO.from.natal}</s> na {PROMO.name}</>} • Seu filho escreveu? <button onClick={() => onScrollTo("correio")} className="underline text-[#FFD166] cursor-pointer">O Papai Noel responde</button>
+            Grátis para começar • Natal Completo a partir de {priceLabel("natal")}{promoActive() && <> <s className="opacity-60">{PROMO.from.natal}</s> na {PROMO.name}</>} • Seu filho escreveu? <button onClick={() => onScrollTo("correio")} className="underline text-[#FFD166] cursor-pointer">O Papai Noel responde</button>
           </p>
         </div>
 

@@ -8,7 +8,7 @@ import { gameLink, renderScoreCard, type ScoreCardInput } from "../lib/scoreCard
 export default function GameShareButtons({ card, getSnapshot }: { card: Omit<ScoreCardInput, "snapshot">; getSnapshot: () => HTMLCanvasElement | null }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const text = `🎮 ${card.player ? `${card.player} fez` : "Fiz"} ${card.score} pontos no ${card.game} (${card.title} ${card.emoji})! Consegue me vencer? Jogue grátis: ${gameLink(card.anchor)}`;
+  const text = `${card.player ? `${card.player} fez` : "Fiz"} ${card.score} pontos no ${card.game} (${card.title} ${card.emoji})! Consegue me vencer? Jogue grátis: ${gameLink(card.anchor)}`;
 
   const shareCard = async () => {
     if (busy) return;
@@ -27,7 +27,7 @@ export default function GameShareButtons({ card, getSnapshot }: { card: Omit<Sco
       const b = await canvasToBlob(c, "image/jpeg", 0.9);
       const r = await shareOrDownload(b, `Recorde-${safeName(card.game)}-${card.score}.jpg`, text, card.game);
       if (r === "downloaded") {
-        setNote("Imagem salva! Poste no Status ou nos Stories. 📲");
+        setNote("Imagem salva! Poste no Status ou nos Stories.");
         setTimeout(() => setNote(null), 3500);
       }
     } finally {

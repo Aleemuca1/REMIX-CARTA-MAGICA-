@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Lock } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronLeft, ChevronRight, Pause, Play, Volume2 } from "lucide-react";
 import BackButton from "../BackButton";
@@ -101,7 +102,7 @@ export default function CeiaMode({
       ))}
 
       <p className="font-cinzel text-[#FFD166] text-sm sm:text-lg tracking-widest uppercase mb-6 relative">
-        ✨ {title || "Nossa Árvore de Natal"} ✨
+        {title || "Nossa Árvore de Natal"}
       </p>
 
       <AnimatePresence mode="wait">
@@ -129,7 +130,7 @@ export default function CeiaMode({
           {auto ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
         </RoundBtn>
         <RoundBtn onClick={speak} label={full ? "Papai Noel lê a frase" : "Voz do Papai Noel (Natal Completo)"}>
-          {talking ? <span className="text-lg">🔊</span> : full ? <Volume2 className="w-5 h-5" /> : <span className="text-base">🔒</span>}
+          {talking ? <Volume2 className="w-5 h-5 animate-pulse" /> : full ? <Volume2 className="w-5 h-5" /> : <Lock className="w-4 h-4" />}
         </RoundBtn>
         <RoundBtn onClick={() => go(1)} label="Próxima">
           <ChevronRight className="w-6 h-6" />

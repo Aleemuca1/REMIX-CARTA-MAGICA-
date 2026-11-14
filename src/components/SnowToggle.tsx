@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Snowflake } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { snow } from "../lib/snow";
 
@@ -24,7 +25,7 @@ export default function SnowToggle() {
         aria-pressed={on}
       >
         <motion.span animate={on ? { rotate: 360 } : { rotate: 0 }} transition={on ? { duration: 3, repeat: Infinity, ease: "linear" } : { duration: 0.4 }}>
-          ❄️
+          <Snowflake className={`w-5 h-5 sm:w-6 sm:h-6 ${on ? "text-[#0B132B]" : "text-[#E0F2FF]"}`} />
         </motion.span>
       </motion.button>
       <AnimatePresence>
@@ -35,7 +36,7 @@ export default function SnowToggle() {
             exit={{ opacity: 0, x: -10 }}
             className="bg-[#0B132B]/90 border border-[#8EC5FF]/50 text-[#E0F2FF] text-xs font-semibold rounded-full px-3 py-1.5 shadow-lg"
           >
-            Nevasca! ❄
+            Nevasca!
           </motion.span>
         )}
       </AnimatePresence>

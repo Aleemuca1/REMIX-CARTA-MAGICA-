@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import CardTeaser from "./components/cards/CardTeaser";
 import Navbar from "./components/Navbar";
 import LandingHero from "./components/LandingHero";
 import HowItWorks from "./components/HowItWorks";
@@ -187,6 +188,7 @@ export default function App() {
 
         {/* Planos logo depois: o foco é a carta */}
         <SnowDivider />
+        <CardTeaser onPlans={(p) => void pay(null, p)} />
         <PricingSection onSelectPlan={(p) => (p === "natal" || p === "familia" ? void pay(null, p) : handleStartWizard(p))} />
 
         {/* Bônus para a família: tudo guardado num baú, abre quando a família quiser */}

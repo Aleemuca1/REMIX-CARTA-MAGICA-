@@ -91,3 +91,23 @@ export async function sendLetterLink(opts: { to: string; childName: string; lett
   <p>Dá para mandar este link para os avós e tios pelo WhatsApp. 💌</p>`;
   return sendMail(opts.to, `🎅 A carta do Papai Noel para ${opts.childName || "seu filho"}`, frame(inner, opts.siteUrl));
 }
+
+/** Lembrete: amanhã é a entrega da carta agendada / ou véspera de Natal. */
+export async function sendReminder(opts: { to: string; kind: "amanha" | "vespera"; children: { name: string; url: string }[]; siteUrl: string }): Promise<boolean> {
+  const names = opts.children.map((c) => esc(c.name)).join(", ");
+  const title = opts.kind === "amanha" ? `Amanhã a carta do Papai Noel chega para ${names}` : "Hoje é véspera de Natal!";
+  const lead =
+    opts.kind === "amanha"
+      ? "A carta que vocês agendaram vai ser entregue amanhã. Que tal preparar o momento? Abram juntos, com o som ligado, para ouvir a voz do Papai Noel."
+      : "Esta é a noite mais mágica do ano. As cartas do Papai Noel estão guardadas no Painel da Família, prontas para ler juntos antes de dormir.";
+  const buttons = opts.children
+    .slice(0, 6)
+    .map(
+      (c) =>
+        `<p style="text-align:center;margin:14px 0"><a href="${esc(c.url)}" style="background:#D90429;color:#fff;text-decoration:none;padding:12px 24px;border-radius:999px;font-weight:bold;font-family:Arial,sans-serif">Abrir a carta de ${esc(c.name)}</a></p>`,
+    )
+    .join("");
+  const inner = `<h1 style="font-size:22px;margin:12px 0">${title}</h1><p>${lead}</p>${buttons}
+  <p style="font-size:13px;color:#555">Dica: deixem um copo de leite e biscoitos perto da árvore. As renas agradecem uma cenoura!</p>`;
+  return sendMail(opts.to, opts.kind === "amanha" ? `Amanhã chega a carta do Papai Noel` : `Feliz véspera de Natal da Carta Mágica`, frame(inner, opts.siteUrl));
+}

@@ -633,3 +633,115 @@ export async function findPaidOrderByLetter(letterId: string): Promise<OrderReco
   if (error) return null;
   return data ? rowToOrder(data) : null;
 }
+
+// ---------- Perfil da família (migração 011) ----------
+export type FamilyChild = { name: string; age?: number };
+export type FamilyProfile = {
+  parentId: string;
+  familyName?: string;
+  bio?: string;
+  avatar?: string;
+  children: FamilyChild[];
+  slug?: string;
+  isPublic: boolean;
+  updatedAt?: string;
+};
+const memProfiles = new Map<string, FamilyProfile>();
+const toProfile = (r: any): FamilyProfile => ({
+  parentId: r.parent_id,
+  familyName: r.family_name ?? undefined,
+  bio: r.bio ?? undefined,
+  avatar: r.avatar ?? undefined,
+  children: Array.isArray(r.children) ? r.children : [],
+  slug: r.slug ?? undefined,
+  isPublic: Boolean(r.is_public),
+  updatedAt: r.updated_at ?? undefined,
+});
+
+export async function getProfile(parentId: string): Promise<FamilyProfile | null> {
+  if (!supabase) return memProfiles.get(parentId) ?? null;
+  const { data, error } = await supabase.from("family_profiles").select("*").eq("parent_id", parentId).maybeSingle();
+  if (error) throw new Error(`Supabase getProfile: ${error.message}`);
+  return data ? toProfile(data) : null;
+}
+
+export async function profileBySlug(slug: string): Promise<FamilyProfile | null> {
+  if (!supabase) return [...memProfiles.values()].find((p) => p.slug === slug) ?? null;
+  const { data, error } = await supabase.from("family_profiles").select("*").eq("slug", slug).maybeSingle();
+  if (error) throw new Error(`Supabase profileBySlug: ${error.message}`);
+  return data ? toProfile(data) : null;
+}
+
+/** Salva o perfil. Devolve "slug-taken" se o endereço já for de outra família. */
+export async function saveProfile(p: FamilyProfile): Promise<FamilyProfile | "slug-taken"> {
+  if (p.slug) {
+    const other = await profileBySlug(p.slug);
+    if (other && other.parentId !== p.parentId) return "slug-taken";
+  }
+  const now = new Date().toISOString();
+  if (!supabase) {
+    const saved = { ...p, updatedAt: now };
+    memProfiles.set(p.parentId, saved);
+    return saved;
+  }
+  const row = {
+    parent_id: p.parentId,
+    family_name: p.familyName || null,
+    bio: p.bio || null,
+    avatar: p.avatar || null,
+    children: p.children,
+    slug: p.slug || null,
+    is_public: p.isPublic,
+    updated_at: now,
+  };
+  const { data, error } = await supabase.from("family_profiles").upsert(row, { onConflict: "parent_id" }).select("*").single();
+  if (error) {
+    if (/duplicate key|unique/i.test(error.message)) return "slug-taken";
+    throw new Error(`Supabase saveProfile: ${error.message}`);
+  }
+  return toProfile(data);
+}
+
+// ---------- Lembretes por e-mail ----------
+export type ReminderRow = { id: string; token: string; childName: string; deliverAt?: string; email: string; parentId: string };
+/** Cartas agendadas para entregar entre `from` e `to` que ainda não tiveram lembrete. */
+export async function lettersToRemind(from: Date, to: Date): Promise<ReminderRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("letters")
+    .select("id,token,child_name,deliver_at,parent_id,parents(email)")
+    .gte("deliver_at", from.toISOString())
+    .lt("deliver_at", to.toISOString())
+    .is("reminder_sent_at", null)
+    .not("parent_id", "is", null)
+    .limit(200);
+  if (error) throw new Error(`Supabase lettersToRemind: ${error.message}`);
+  return (data ?? [])
+    .map((d: any) => {
+      const par = Array.isArray(d.parents) ? d.parents[0] : d.parents;
+      return { id: d.id, token: d.token, childName: d.child_name, deliverAt: d.deliver_at, parentId: d.parent_id, email: par?.email };
+    })
+    .filter((r: ReminderRow) => Boolean(r.email));
+}
+export async function markReminded(ids: string[], col: "reminder_sent_at" | "eve_reminder_at" = "reminder_sent_at"): Promise<void> {
+  if (!supabase || !ids.length) return;
+  await supabase.from("letters").update({ [col]: new Date().toISOString() }).in("id", ids);
+}
+/** Para o lembrete do dia 24: famílias com cartas guardadas e ainda sem o lembrete da véspera. */
+export async function lettersForEve(): Promise<ReminderRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("letters")
+    .select("id,token,child_name,deliver_at,parent_id,parents(email)")
+    .not("parent_id", "is", null)
+    .is("eve_reminder_at", null)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw new Error(`Supabase lettersForEve: ${error.message}`);
+  return (data ?? [])
+    .map((d: any) => {
+      const par = Array.isArray(d.parents) ? d.parents[0] : d.parents;
+      return { id: d.id, token: d.token, childName: d.child_name, deliverAt: d.deliver_at, parentId: d.parent_id, email: par?.email };
+    })
+    .filter((r: ReminderRow) => Boolean(r.email));
+}

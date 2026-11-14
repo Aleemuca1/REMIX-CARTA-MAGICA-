@@ -53,17 +53,17 @@ export default function HouseSection({ onUpgrade }: { onUpgrade?: () => void }) 
         <div className="relative overflow-hidden rounded-3xl border-2 border-[#FFD166]/50 bg-gradient-to-br from-[#3A1F0F] via-[#1C2541] to-[#0B132B] p-6 sm:p-10 grid md:grid-cols-2 gap-8 items-center shadow-2xl">
           <div className="absolute -left-16 -bottom-16 w-72 h-72 rounded-full bg-[#FFD166]/10 blur-3xl pointer-events-none" />
           <div className="relative z-10 text-center md:text-left">
-            <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#0B132B] bg-[#FFD166] rounded-full px-3 py-1 mb-3">🏡 Novo · jogo em família</span>
+            <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#0B132B] bg-[#FFD166] rounded-full px-3 py-1 mb-3">Novo · jogo em família</span>
             <h2 className="font-cinzel text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">Nossa Casinha de Natal</h2>
             <p className="text-sm sm:text-base text-[#EDF2F4]/80 mb-5 leading-relaxed">
               Monte a casa da família com árvore, lareira, ceia e bonecos de neve. Cada pessoa vira um bonequinho com o próprio nome, e no fim o Papai
               Noel desce pela chaminé e deixa presentes!
             </p>
             <ul className="text-xs sm:text-sm text-[#EDF2F4]/70 space-y-1.5 mb-6 inline-block text-left">
-              <li>👨‍👩‍👧 Todo mundo junto no mesmo celular, passando a vez</li>
-              <li>👵 Avós e tios colocam o bonequinho deles pelo link do WhatsApp</li>
-              <li>🌙 Noite de Natal com luzinhas, neve e a visita do Papai Noel</li>
-              <li>📲 Baixe a casinha com os recadinhos para guardar</li>
+              <li>Todo mundo junto no mesmo celular, passando a vez</li>
+              <li>Avós e tios colocam o bonequinho deles pelo link do WhatsApp</li>
+              <li>Noite de Natal com luzinhas, neve e a visita do Papai Noel</li>
+              <li>Baixe a casinha com os recadinhos para guardar</li>
             </ul>
             <div>
               <button

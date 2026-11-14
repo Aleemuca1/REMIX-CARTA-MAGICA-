@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Mail, Sparkles } from "lucide-react";
+import { Mail, Sparkles, Tag } from "lucide-react";
 import Reveal from "./Reveal";
 import { PROMO, promoActive, promoEndsLabel } from "../lib/promo";
 import { AVULSA, NORMAL, brl, priceLabel } from "../lib/pricing";
@@ -30,7 +30,7 @@ export default function BlackFridayBanner({ onPlans, onCorreio }: { onPlans: () 
           <div className="relative grid lg:grid-cols-[1.1fr_1fr] gap-6 items-center">
             <div className="text-center lg:text-left">
               <span className="inline-flex items-center gap-2 bg-[#FFD166] text-[#0B0B0F] text-[11px] sm:text-xs font-extrabold uppercase tracking-[0.2em] rounded-full px-3 py-1 mb-3">
-                🖤 Black Friday · só em novembro
+                <Tag className="w-3.5 h-3.5" /> Black Friday · só em novembro
               </span>
               <h2 className="font-cinzel text-2xl sm:text-4xl font-extrabold text-white leading-tight">
                 O Natal Completo com <span className="text-[#FFD166]">até {PROMO.off.familia} de desconto</span>

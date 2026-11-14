@@ -9,6 +9,9 @@ import { demoPhoto } from "../../cards/demoPhoto";
 import { deleteCard, listCards, type SavedCard } from "../../cards/store";
 import type { CardData, TemplateId } from "../../cards/types";
 import CardEditor from "./CardEditor";
+import CardPlanStrip, { CARD_ART, CardFan, cardArt } from "./CardPlanStrip";
+import { CARD_LIMIT, cardPlan, type CardPlan } from "../../cards/limits";
+import { priceLabel } from "../../lib/pricing";
 
 const PREVIEW_LONG = 900;
 
@@ -59,7 +62,17 @@ const STEPS = [
 
 /** Cartão de Natal Premium: galeria com os 9 modelos + editor. Substitui o antigo Retrato de Natal. */
 export default function ChristmasCardSection({ onUpgrade }: { onUpgrade?: () => void }) {
-  const [editing, setEditing] = useState<{ template: TemplateId; saved?: SavedCard } | null>(null);
+  const [editing, setEditingRaw] = useState<{ template: TemplateId; saved?: SavedCard } | null>(null);
+  const [limitHit, setLimitHit] = useState<CardPlan | null>(null);
+  // cartão novo: confere o limite do plano (grátis 1 · Carta Completa 5 · Pacote Família à vontade)
+  const setEditing = async (e: { template: TemplateId; saved?: SavedCard } | null) => {
+    if (e && !e.saved) {
+      const plan = await cardPlan();
+      const count = (await listCards()).length;
+      if (count >= CARD_LIMIT[plan]) return setLimitHit(plan);
+    }
+    setEditingRaw(e);
+  };
   const [mine, setMine] = useState<SavedCard[]>([]);
   const refresh = () => listCards().then(setMine);
   useEffect(() => {
@@ -78,6 +91,9 @@ export default function ChristmasCardSection({ onUpgrade }: { onUpgrade?: () => 
           Escolha um dos 9 modelos, coloque a foto de vocês e escreva a mensagem. Sai pronto para imprimir em A4, A5 ou A6, para o WhatsApp, o Instagram e até em vídeo.
         </p>
       </Reveal>
+      <div className="mb-8 md:mb-10">
+        <CardPlanStrip onPick={(p) => (p === "free" ? document.getElementById("cartao-galeria")?.scrollIntoView({ behavior: "smooth", block: "start" }) : onUpgrade?.())} />
+      </div>
 
       <div className="grid lg:grid-cols-[260px_1fr] gap-6 lg:gap-8 items-start">
         {/* passo a passo + recursos */}
@@ -151,7 +167,7 @@ export default function ChristmasCardSection({ onUpgrade }: { onUpgrade?: () => 
               <Reveal key={t.id} delay={0.03 * i}>
                 <article className="group h-full flex flex-col rounded-2xl bg-gradient-to-b from-[#1C2541] to-[#0B132B] border border-white/10 hover:border-[#FFD166]/70 p-2.5 sm:p-3 transition-all hover:-translate-y-1 shadow-xl" data-card-model={t.id}>
                   <button onClick={() => setEditing({ template: t.id })} className="block w-full cursor-pointer rounded-md overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.45)]" aria-label={`Personalizar o modelo ${t.name}`}>
-                    <TemplatePreview id={t.id} delay={60 * i} />
+                    <img src={cardArt(t.id)} alt={`Modelo ${t.name}`} loading="lazy" className="block w-full h-auto aspect-[4/3] object-cover" />
                   </button>
                   <div className="pt-3 px-0.5 flex-1 flex flex-col">
                     <h3 className="font-cinzel font-bold text-white text-sm sm:text-base leading-tight">{t.name}</h3>
@@ -171,6 +187,30 @@ export default function ChristmasCardSection({ onUpgrade }: { onUpgrade?: () => 
         </div>
       </div>
 
+      {limitHit && (
+        <div className="fixed inset-0 z-[110] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && setLimitHit(null)}>
+          <div role="dialog" aria-modal="true" id="card-limit" className="w-full max-w-md rounded-3xl border-2 border-[#FFD166] bg-gradient-to-b from-[#1C2541] to-[#0B132B] p-6 text-white text-center">
+            <CardFan art={limitHit === "free" ? CARD_ART.slice(0, 5) : CARD_ART} />
+            <h3 className="mt-5 font-cinzel text-xl font-bold">{limitHit === "free" ? "Seu cartão grátis já foi criado" : "Vocês já criaram os 5 cartões"}</h3>
+            <p className="mt-2 text-sm text-white/80">
+              {limitHit === "free"
+                ? `Com a Carta Completa (${priceLabel("natal")}) são até 5 cartões sem marca d'água. No Pacote Família (${priceLabel("familia")}) é à vontade, com todos os modelos.`
+                : `No Pacote Família (${priceLabel("familia")}) os cartões são à vontade, com todos os 9 modelos. Vocês também podem apagar um cartão em Meus cartões para fazer outro.`}
+            </p>
+            <div className="mt-5 flex flex-col gap-2">
+              {onUpgrade && (
+                <button onClick={() => (setLimitHit(null), onUpgrade())} className="rounded-full py-3 font-extrabold bg-gradient-to-r from-[#D90429] to-[#EF233C] border border-[#FFD166]/50 cursor-pointer" id="card-limit-upgrade">
+                  Ver os planos
+                </button>
+              )}
+              <button onClick={() => setLimitHit(null)} className="rounded-full py-2.5 text-sm font-semibold bg-white/10 hover:bg-white/15 cursor-pointer">
+                Agora não
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <AnimatePresence>
         {editing && (
           <CardEditor
@@ -178,14 +218,14 @@ export default function ChristmasCardSection({ onUpgrade }: { onUpgrade?: () => 
             template={editing.template}
             saved={editing.saved}
             onClose={() => {
-              setEditing(null);
+              setEditingRaw(null);
               refresh();
             }}
             onSaved={refresh}
             onUpgrade={
               onUpgrade
                 ? () => {
-                    setEditing(null);
+                    setEditingRaw(null);
                     setTimeout(onUpgrade, 250);
                   }
                 : undefined
