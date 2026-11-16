@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Certificado da Lista dos Bonzinhos 2026 do Papai Noel | Carta Mágica</title>
+<meta name="description" content="Grátis: gere o Certificado Oficial da Lista dos Bonzinhos do Papai Noel com o nome da criança ou do pet, em azul, rosa ou vermelho. Pronto para os Stories e o WhatsApp.">
+<link rel="canonical" href="https://www.cartamagicanatal.com.br/certificado">
+<meta name="theme-color" content="#4a070c">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:site_name" content="Carta Mágica">
+<meta property="og:title" content="🎅 Seu filho está na Lista dos Bonzinhos? Gere o certificado grátis!">
+<meta property="og:description" content="Certificado oficial do Papai Noel com nome, nota de comportamento, carimbo e assinatura. Para crianças e pets. Pronto em 10 segundos.">
+<meta property="og:url" content="https://www.cartamagicanatal.com.br/certificado">
+<meta property="og:image" content="https://www.cartamagicanatal.com.br/certificado-og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎅</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;700&family=Great+Vibes&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--red:#a3141f;--red-d:#5c0a10;--gold:#e2b857;--cream:#fbf3e0;--ink:#3a1d12}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Nunito,system-ui,sans-serif;color:var(--cream);
+    background:radial-gradient(1200px 600px at 50% -10%,#8f1621 0%,#4a070c 55%,#2a0306 100%);min-height:100vh}
+  .wrap{max-width:520px;margin:0 auto;padding:28px 18px 48px}
+  header{text-align:center;margin-bottom:22px}
+  .kicker{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);font-weight:800}
+  h1{font-family:"Cinzel Decorative",serif;font-size:30px;line-height:1.15;margin:10px 0 8px}
+  header p{margin:0;opacity:.85;font-size:15px}
+  .card{background:rgba(251,243,224,.07);border:1px solid rgba(226,184,87,.35);border-radius:20px;padding:18px}
+  label{display:block;font-weight:800;font-size:14px;margin:0 0 8px}
+  input[type=text]{width:100%;font:inherit;font-size:18px;padding:14px 16px;border-radius:14px;border:2px solid rgba(226,184,87,.5);
+    background:#fff8ea;color:var(--ink);outline:none}
+  input[type=text]:focus{border-color:var(--gold);box-shadow:0 0 0 4px rgba(226,184,87,.25)}
+  .seg{display:flex;gap:8px;margin:14px 0 16px}
+  .seg button{flex:1;font:inherit;font-weight:800;padding:12px;border-radius:12px;border:2px solid rgba(226,184,87,.45);
+    background:transparent;color:var(--cream);cursor:pointer}
+  .seg button[aria-pressed=true]{background:var(--gold);color:var(--red-d);border-color:var(--gold)}
+  .btn{display:block;width:100%;font:inherit;font-weight:800;font-size:17px;padding:15px;border-radius:14px;border:0;cursor:pointer}
+  .btn-main{background:linear-gradient(180deg,#f1cd74,#d9a640);color:var(--red-d);box-shadow:0 6px 18px rgba(0,0,0,.35)}
+  .btn-main:active{transform:translateY(1px)}
+  .btn-ghost{background:transparent;color:var(--cream);border:2px solid rgba(251,243,224,.35)}
+  .row{display:flex;gap:10px;margin-top:10px}
+  .row .btn{font-size:15px;padding:13px}
+  #result{display:none;margin-top:22px}
+  #preview{width:100%;display:block;border-radius:16px;box-shadow:0 14px 40px rgba(0,0,0,.5)}
+  .hint{font-size:13px;opacity:.8;text-align:center;margin:10px 0 0}
+  .msg{font-size:14px;text-align:center;margin-top:10px;min-height:20px;color:var(--gold);font-weight:700}
+  .cta{margin-top:26px;text-align:center;padding:18px;border-radius:18px;background:rgba(0,0,0,.22);border:1px dashed rgba(226,184,87,.5)}
+  .cta strong{font-family:Cinzel,serif;color:var(--gold);font-size:18px}
+  .cta p{margin:6px 0 0;font-size:14px;opacity:.9}
+  canvas{display:none}
+  /* --- extras --- */
+  #neve{position:fixed;inset:0;pointer-events:none;z-index:0;display:block}
+  .wrap{position:relative;z-index:1}
+  .chips-top{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .chip{font-size:12.5px;font-weight:800;padding:7px 12px;border-radius:999px;background:rgba(226,184,87,.14);
+    border:1px solid rgba(226,184,87,.4);color:var(--gold)}
+  .amostra{position:relative;margin:22px auto 26px;width:62%;max-width:300px}
+  .amostra img{width:100%;display:block;border-radius:14px;transform:rotate(-3deg);
+    box-shadow:0 18px 40px rgba(0,0,0,.55),0 0 0 3px rgba(226,184,87,.35)}
+  .amostra .tag{position:absolute;top:-12px;right:-18px;background:var(--cream);color:var(--red-d);font-weight:800;
+    font-size:12px;padding:6px 10px;border-radius:10px;transform:rotate(6deg);box-shadow:0 6px 14px rgba(0,0,0,.35);z-index:2}
+  .cores{display:flex;gap:8px;margin-top:0}
+  .cores button{flex:1;font:inherit;font-weight:800;font-size:13.5px;padding:10px 6px;border-radius:12px;cursor:pointer;
+    color:#fff;border:3px solid transparent;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .cores button i{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.8);display:block}
+  .cores button[aria-pressed=true]{border-color:var(--gold);box-shadow:0 0 0 3px rgba(226,184,87,.3)}
+  .opt{font-weight:400;opacity:.7;font-size:12.5px}
+  .field{margin-top:16px}
+  .sug{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .sug button{font:inherit;font-size:12.5px;font-weight:700;padding:6px 10px;border-radius:999px;cursor:pointer;
+    border:1px dashed rgba(226,184,87,.55);background:transparent;color:var(--cream)}
+  .seg-label{margin-top:16px}
+  .seg{margin-top:0}
+  .seguro{font-size:12.5px;opacity:.75;text-align:center;margin:12px 0 0}
+  h2{font-family:Cinzel,serif;font-size:20px;color:var(--gold);text-align:center;margin:34px 0 14px}
+  .passos{display:grid;gap:10px}
+  .passo{display:flex;gap:14px;align-items:flex-start;background:rgba(0,0,0,.2);border:1px solid rgba(226,184,87,.22);
+    border-radius:16px;padding:14px}
+  .passo .n{flex:0 0 38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:900;
+    background:var(--gold);color:var(--red-d);font-size:18px}
+  .passo b{display:block;font-size:15.5px}
+  .passo span{font-size:14px;opacity:.85}
+  .inclui{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .inclui div{background:rgba(251,243,224,.06);border:1px solid rgba(226,184,87,.22);border-radius:14px;padding:12px;font-size:13.5px}
+  .inclui div b{display:block;font-size:22px;margin-bottom:4px}
+  details{background:rgba(0,0,0,.2);border:1px solid rgba(226,184,87,.22);border-radius:14px;padding:13px 15px;margin-bottom:8px}
+  summary{font-weight:800;cursor:pointer;font-size:15px;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";float:right;color:var(--gold);font-size:20px;line-height:1}
+  details[open] summary::after{content:"–"}
+  details p{margin:8px 0 0;font-size:14px;opacity:.88;line-height:1.45}
+  .oferta{margin-top:20px;border-radius:22px;padding:20px 18px;text-align:center;color:var(--ink);
+    background:linear-gradient(180deg,#fff8ea,#f3e3bf);box-shadow:0 14px 34px rgba(0,0,0,.45);border:3px solid var(--gold);position:relative}
+  .oferta .selo{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-weight:800;
+    font-size:12px;letter-spacing:.08em;padding:6px 14px;border-radius:999px;white-space:nowrap}
+  .oferta h3{font-family:Cinzel,serif;color:#7a1018;font-size:21px;line-height:1.25;margin:8px 0 8px}
+  .oferta p{margin:0 0 12px;font-size:14.5px;color:#4a2a17}
+  .oferta ul{list-style:none;padding:0;margin:0 0 16px;text-align:left;display:grid;gap:7px;font-size:14.5px;color:#4a2a17}
+  .oferta li b{color:#7a1018}
+  a.btn{text-decoration:none;text-align:center}
+  .btn-red{background:linear-gradient(180deg,#c62230,#8f121c);color:#fff;box-shadow:0 8px 20px rgba(143,18,28,.45)}
+  .btn-zap{background:#25d366;color:#08361b}
+  .oferta small{display:block;margin-top:10px;font-size:12px;color:#6b4a2e}
+  .cta .btn{margin-top:12px}
+  .redes-t{text-align:center;font-weight:800;font-size:14px;margin:18px 0 0;color:var(--gold)}
+  .redes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .redes .btn{font-size:14.5px;padding:12px 8px}
+  .btn-ig{background:linear-gradient(45deg,#f9a825,#e91e63 55%,#7b1fa2);color:#fff}
+  .btn-tt{background:#111;color:#fff;border:2px solid #25f4ee;box-shadow:inset 0 0 0 2px #fe2c55}
+  .btn-fb{background:#1877f2;color:#fff}
+  .dica{display:none;margin-top:10px;font-size:13.5px;line-height:1.45;background:rgba(0,0,0,.25);border:1px dashed rgba(226,184,87,.5);
+    border-radius:12px;padding:10px 12px}
+  .rodape{text-align:center;font-size:12.5px;opacity:.6;margin-top:30px}
+  .flutua{position:fixed;left:0;right:0;bottom:0;padding:12px 18px calc(12px + env(safe-area-inset-bottom));z-index:5;
+    background:linear-gradient(0deg,rgba(42,3,6,.97) 60%,rgba(42,3,6,0));display:none}
+  .flutua .btn{max-width:484px;margin:0 auto}
+</style>
+</head>
+<body>
+<canvas id="neve"></canvas>
+<div class="wrap">
+  <header>
+    <div class="kicker">🎅 Polo Norte • Natal 2026</div>
+    <h1>Certificado da Lista dos Bonzinhos</h1>
+    <p>O Papai Noel conferiu a lista e já tem um certificado oficial esperando pelo seu pequeno — e até pelo seu pet! 🐶 Gere em segundos e poste nos Stories ✨</p>
+    <div class="chips-top">
+      <span class="chip">🎁 Grátis</span>
+      <span class="chip">⚡ Pronto em 10s</span>
+      <span class="chip" id="contagem">🎄 Natal chegando</span>
+    </div>
+  </header>
+
+  <div class="amostra">
+    <span class="tag">Veja como fica 👇</span>
+    <img id="amostra" alt="Exemplo de certificado">
+  </div>
+
+  <form class="card" id="form" autocomplete="off">
+    <label>Para quem é o certificado?</label>
+    <div class="seg" role="group" aria-label="Para quem">
+      <button type="button" data-g="m" aria-pressed="true">👦 Menino</button>
+      <button type="button" data-g="f" aria-pressed="false">👧 Menina</button>
+      <button type="button" data-g="p" aria-pressed="false">🐶 Pet</button>
+    </div>
+
+    <label for="nome" id="nomeLabel">Nome do menino</label>
+    <input type="text" id="nome" maxlength="28" placeholder="Ex.: Ben" required>
+
+    <label class="seg-label">Cor do certificado</label>
+    <div class="cores" role="group" aria-label="Cor">
+      <button type="button" data-t="azul" aria-pressed="true" style="background:#17408a"><i style="background:#2f6fd1"></i>Azul</button>
+      <button type="button" data-t="rosa" aria-pressed="false" style="background:#b03272"><i style="background:#e8609f"></i>Rosa</button>
+      <button type="button" data-t="vermelho" aria-pressed="false" style="background:#6d0b13"><i style="background:#b01b27"></i>Vermelho Natal</button>
+    </div>
+
+    <div class="field">
+      <label for="conquista">Uma conquista de 2026 <span class="opt">(opcional)</span></label>
+      <input type="text" id="conquista" maxlength="48" placeholder="Ex.: aprendeu a andar de bicicleta">
+      <div class="sug" id="sug"></div>
+    </div>
+
+    <button class="btn btn-main" type="submit" style="margin-top:18px">✨ Gerar certificado</button>
+    <p class="seguro">🔒 O certificado é criado no seu próprio celular. Nenhum dado é enviado ou guardado.</p>
+  </form>
+
+  <section id="result">
+    <img id="preview" alt="Certificado gerado">
+    <p class="hint" id="hint">Toque e segure a imagem para salvar no celular.</p>
+    <div class="row">
+      <button class="btn btn-main" id="baixar" style="display:none">⬇️ Baixar imagem</button>
+      <button class="btn btn-main" id="compartilhar" style="display:none">📤 Compartilhar imagem</button>
+      <button class="btn btn-ghost" id="nova">🎲 Nova nota</button>
+    </div>
+    <div class="row">
+      <button class="btn btn-ghost" id="legenda">📋 Copiar legenda para o post</button>
+    </div>
+    <p class="redes-t">📣 Compartilhe nas redes</p>
+    <div class="redes">
+      <a class="btn btn-zap" id="zap" href="#" target="_blank" rel="noopener">💬 WhatsApp</a>
+      <button class="btn btn-ig" data-rede="Instagram">📸 Instagram</button>
+      <button class="btn btn-tt" data-rede="TikTok">🎵 TikTok</button>
+      <a class="btn btn-fb" id="fb" href="#" target="_blank" rel="noopener">👍 Facebook</a>
+    </div>
+    <div class="dica" id="dica"></div>
+    <div class="msg" id="msg"></div>
+
+    <div class="oferta">
+      <span class="selo">🎅 PRÓXIMO PASSO MÁGICO</span>
+      <h3 id="ofertaTitulo">Gostou? Agora o Papai Noel quer escrever para o seu pequeno!</h3>
+      <p id="ofertaTexto">Na <b>Carta Mágica</b> a criança recebe uma carta de verdade do Papai Noel, feita só para ela:</p>
+      <ul>
+        <li>✉️ <b>Carta personalizada</b> com o nome, a idade e as conquistas do ano</li>
+        <li>🎙️ <b>A voz do Papai Noel</b> lendo a carta em voz alta</li>
+        <li>🎨 <b>Jogos e Ateliê de Natal</b> para a criançada se divertir</li>
+        <li>🖨️ <b>PDF para imprimir</b> e guardar de lembrança</li>
+      </ul>
+      <a class="btn btn-red" id="ofertaBtn" href="https://www.cartamagicanatal.com.br" target="_blank" rel="noopener">✨ Fazer a carta do Papai Noel</a>
+      <small>🌐 <b class="site-txt"></b><br>Leva menos de 2 minutos • A criança vai lembrar para sempre</small>
+    </div>
+
+  </section>
+
+
+  <h2>Como funciona</h2>
+  <div class="passos">
+    <div class="passo"><div class="n">1</div><div><b>Digite o nome</b><span>E, se quiser, uma conquista que a criança teve este ano.</span></div></div>
+    <div class="passo"><div class="n">2</div><div><b>Os elfos avaliam</b><span>Sai a nota de comportamento, com uma travessura divertida e um elogio especial.</span></div></div>
+    <div class="passo"><div class="n">3</div><div><b>Salve e compartilhe</b><span>A imagem já vem no tamanho dos Stories. Poste e marque a família!</span></div></div>
+  </div>
+
+  <h2>O que vem no certificado</h2>
+  <div class="inclui">
+    <div><b>📜</b>Nome em destaque, com selo oficial do Polo Norte</div>
+    <div><b>⭐</b>Nota de comportamento (com uma travessurinha)</div>
+    <div><b>🧝</b>Elogio dos elfos ou a conquista do ano</div>
+    <div><b>✍️</b>Assinatura do Papai Noel e nº de registro</div>
+  </div>
+
+  <h2>Dúvidas</h2>
+  <details><summary>É grátis mesmo?</summary><p>Sim! Você pode gerar quantos certificados quiser, para todos os pequenos da família.</p></details>
+  <details><summary>Posso mudar a nota?</summary><p>Pode. Depois de gerar, toque em “Nova nota” e os elfos sorteiam outra avaliação e outra travessura.</p></details>
+  <details><summary>Como salvo a imagem no celular?</summary><p>Use o botão “Baixar imagem” ou toque e segure o certificado e escolha “Salvar imagem”.</p></details>
+  <details><summary>Meus dados ficam salvos?</summary><p>Não. Tudo é feito no seu próprio aparelho; o nome não é enviado para lugar nenhum.</p></details>
+
+  <div class="cta">
+    <strong>Quer que o Papai Noel escreva de verdade?</strong>
+    <p>Na <b>Carta Mágica</b> o Papai Noel manda uma carta personalizada, com voz, jogos e PDF para imprimir. 🎁</p>
+    <a class="btn btn-main" href="https://www.cartamagicanatal.com.br" target="_blank" rel="noopener">✉️ Conhecer a Carta Mágica</a>
+  </div>
+  <p class="rodape">✨ Carta Mágica • <span class="site-txt"></span><br>@cartamagicanatal • Natal 2026</p>
+
+  <canvas id="cv" width="1080" height="1920"></canvas>
+</div>
+<div class="flutua" id="flutua"><button class="btn btn-main" id="irForm">✨ Gerar o meu certificado</button></div>
+
+<script>
+// ====== CONFIGURE AQUI ======
+const MARCA = "Carta Mágica";
+const SITE = "www.cartamagicanatal.com.br";
+const SITE_URL = "https://"+SITE;
+const INSTA = "@cartamagicanatal";
+const CERT_URL = SITE_URL+"/certificado";
+const HASHTAG = "#ListaDosBonzinhos";
+// ============================
+
+const W = 1080, H = 1920;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+var genero = "m"; var tema = "azul"; let rolagem = 0, ultimoBlob = null, ultimoNome = "";
+
+const travessuras = [
+  "bagunça na hora do banho","enrolação pra dormir","brócolis escondido no prato",
+  "brinquedo espalhado pela sala","pedidos de “só mais 5 minutinhos”","biscoito pego escondido",
+  "pulos no sofá","perguntas de “já chegou?” na viagem","guerra de travesseiro","quarto bagunçado",
+  "desenho na parede (os elfos viram!)","birra na hora de desligar a TV"
+];
+const travPet = [
+  "chinelo roído","latido para o carteiro","pelo no sofá novo","meia roubada do cesto",
+  "pedido de comida na mesa","coisas derrubadas da mesa","buraco no jardim","soneca na cama dos donos",
+  "fuga na hora do banho","papel higiênico espalhado"
+];
+const elogiosPet = ["Melhor abanada de rabo do Polo Norte","Guarda oficial da casa","Olhar pidão nível profissional",
+  "Companhia mais fiel da família","Especialista em soneca no sofá","Recepção mais animada na porta",
+  "Ronronar mais fofo do ano","Rei da bagunça mais fofa"];
+const sugestoes = {
+  m:["aprendeu a ler","começou na escolinha","ganhou um irmãozinho","perdeu o primeiro dente","aprendeu a nadar"],
+  f:["aprendeu a ler","começou na escolinha","ganhou um irmãozinho","perdeu o primeiro dente","aprendeu a nadar"],
+  p:["chegou na família","fez 1 aninho","aprendeu a dar a patinha","aprendeu a sentar","fez xixi no lugar certo"]
+};
+const temas = {
+  vermelho:{bg:["#b01b27","#6d0b13","#2e0306"],p:"#7a1018",a:"#b3202b",box:"163,20,31",d:"#5c0a10"},
+  azul:{bg:["#2f6fd1","#17408a","#08183d"],p:"#15336d",a:"#1f5fc4",box:"31,95,196",d:"#0d2350"},
+  rosa:{bg:["#e8609f","#b03272","#5a0f35"],p:"#8c1d57",a:"#d63c87",box:"214,60,135",d:"#5a0f35"}
+};
+function textos(g){
+  if(g==="p")return{lista:"Lista dos Pets Bonzinhos",bom:"anjinho",
+    frase:"recebeu o selo dos elfos e está oficialmente na Lista dos Pets Bonzinhos deste Natal!",selo:"APROVADO"};
+  if(g==="f")return{lista:"Lista das Boazinhas",bom:"boazinha",
+    frase:"foi aprovada pelos elfos e está oficialmente na Lista das Boazinhas deste Natal!",selo:"APROVADA"};
+  return{lista:"Lista dos Bonzinhos",bom:"bonzinho",
+    frase:"foi aprovado pelos elfos e está oficialmente na Lista dos Bonzinhos deste Natal!",selo:"APROVADO"};
+}
+const elogios = {
+  m:["Abraço mais gostoso do Polo Norte","Sorriso que derrete a neve","Ajudante oficial de casa",
+     "Imaginação nível Papai Noel","Melhor risada da família","Coração de ouro com quem ama",
+     "Campeão em dividir brinquedos","Explorador mais corajoso do ano"],
+  f:["Abraço mais gostoso do Polo Norte","Sorriso que derrete a neve","Ajudante oficial de casa",
+     "Imaginação nível Papai Noel","Melhor risada da família","Coração de ouro com quem ama",
+     "Campeã em dividir brinquedos","Exploradora mais corajosa do ano"]
+};
+
+function hash(s){let h=2166136261;for(const c of s){h^=c.codePointAt(0);h=Math.imul(h,16777619)}return h>>>0}
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function pick(r,a){return a[Math.floor(r()*a.length)]}
+
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function star(cx,cy,R,r,n=5){ctx.beginPath();for(let i=0;i<n*2;i++){const a=Math.PI/n*i-Math.PI/2;const rad=i%2?r:R;
+  ctx.lineTo(cx+Math.cos(a)*rad,cy+Math.sin(a)*rad)}ctx.closePath()}
+function fit(text,font,max,start){let s=start;do{ctx.font=font.replace("{s}",s);if(ctx.measureText(text).width<=max)break;s-=4}while(s>30);return s}
+function wrap(text,x,y,maxW,lh){const words=text.split(" ");let line="",lines=[];
+  for(const w of words){const t=line?line+" "+w:w;if(ctx.measureText(t).width>maxW&&line){lines.push(line);line=w}else line=t}
+  if(line)lines.push(line);lines.forEach((l,i)=>ctx.fillText(l,x,y+i*lh));return lines.length}
+function goldGrad(y0,y1){const g=ctx.createLinearGradient(0,y0,0,y1);g.addColorStop(0,"#f6dc8f");g.addColorStop(.5,"#d6a13e");g.addColorStop(1,"#f3d27a");return g}
+
+async function carregarFontes(){
+  try{await Promise.all([
+    document.fonts.load('900 100px "Cinzel Decorative"'),document.fonts.load('700 60px "Cinzel"'),
+    document.fonts.load('80px "Great Vibes"'),document.fonts.load('700 40px "Nunito"'),
+    document.fonts.load('800 40px "Nunito"'),document.fonts.load('400 40px "Nunito"')])}catch(e){}
+}
+
+function desenhar(nome,conquista,g,t){
+  const genero = g||window.genero;
+  const T = temas[t||window.tema];
+  const X = textos(genero);
+  const r = rng(hash(nome.toLowerCase()+"|"+genero+"|"+rolagem));
+  const bom = X.bom;
+  const pct = 91 + Math.floor(r()*8); // 91–98
+  const trav = pick(r,genero==="p"?travPet:travessuras);
+  const elogio = pick(r,genero==="p"?elogiosPet:elogios[genero]);
+  const serie = "PN-2026-" + String(hash(nome+rolagem)%90000+10000);
+
+  // fundo
+  const bg=ctx.createRadialGradient(W/2,300,100,W/2,900,1300);
+  bg.addColorStop(0,T.bg[0]);bg.addColorStop(.55,T.bg[1]);bg.addColorStop(1,T.bg[2]);
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  // neve
+  const rs=rng(hash(nome)+7);
+  for(let i=0;i<140;i++){const x=rs()*W,y=rs()*H,s=rs()*5+1.5;ctx.globalAlpha=.25+rs()*.55;
+    ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(x,y,s,0,Math.PI*2);ctx.fill()}
+  ctx.globalAlpha=1;
+
+  // topo
+  ctx.textAlign="center";ctx.fillStyle="#f1cd74";
+  ctx.font='800 30px Nunito';ctx.letterSpacing="6px";
+  ctx.fillText("POLO NORTE • DEPARTAMENTO DA LISTA",W/2,160);ctx.letterSpacing="0px";
+
+  // pergaminho
+  const px=80,py=200,pw=920,ph=1510;
+  ctx.save();ctx.shadowColor="rgba(0,0,0,.45)";ctx.shadowBlur=50;ctx.shadowOffsetY=18;
+  const pg=ctx.createLinearGradient(0,py,0,py+ph);pg.addColorStop(0,"#fff9ec");pg.addColorStop(1,"#f3e3bf");
+  rr(px,py,pw,ph,42);ctx.fillStyle=pg;ctx.fill();ctx.restore();
+  ctx.lineWidth=8;ctx.strokeStyle=goldGrad(py,py+ph);rr(px+22,py+22,pw-44,ph-44,30);ctx.stroke();
+  ctx.lineWidth=2.5;rr(px+40,py+40,pw-80,ph-80,22);ctx.stroke();
+  // cantos
+  [[px+62,py+62],[px+pw-62,py+62],[px+62,py+ph-62],[px+pw-62,py+ph-62]].forEach(([x,y])=>{star(x,y,16,7);ctx.fillStyle="#d6a13e";ctx.fill()});
+
+  // estrela topo
+  star(W/2,py+125,54,23);ctx.fillStyle=goldGrad(py+70,py+180);ctx.fill();
+  ctx.lineWidth=3;ctx.strokeStyle="#a8761f";ctx.stroke();
+
+  // títulos
+  ctx.fillStyle=T.p;ctx.font='700 58px Cinzel';ctx.fillText("CERTIFICADO OFICIAL",W/2,py+265);
+  ctx.fillStyle=T.a;fit(X.lista,'{s}px "Great Vibes"',780,86);ctx.fillText(X.lista,W/2,py+365);
+  ctx.fillStyle="#6b4a2e";ctx.font='800 30px Nunito';ctx.fillText("NATAL 2026",W/2,py+415);
+
+  // ornamento
+  ctx.strokeStyle="#d6a13e";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(W/2-200,py+455);ctx.lineTo(W/2-30,py+455);
+  ctx.moveTo(W/2+30,py+455);ctx.lineTo(W/2+200,py+455);ctx.stroke();star(W/2,py+455,13,6);ctx.fillStyle="#d6a13e";ctx.fill();
+
+  ctx.fillStyle="#4a2a17";ctx.font='400 38px Nunito';ctx.fillText("O Papai Noel certifica que",W/2,py+540);
+
+  // nome
+  const s=fit(nome,'900 {s}px "Cinzel Decorative"',780,118);
+  ctx.font=`900 ${s}px "Cinzel Decorative"`;ctx.fillStyle=T.p;ctx.fillText(nome,W/2,py+665);
+  ctx.strokeStyle="#d6a13e";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(px+150,py+705);ctx.lineTo(px+pw-150,py+705);ctx.stroke();
+
+  ctx.fillStyle="#4a2a17";ctx.font='400 34px Nunito';
+  wrap(X.frase,W/2,py+770,790,46);
+
+  // caixa da nota
+  const bx=px+110,by=py+880,bw=pw-220,bh=280;
+  rr(bx,by,bw,bh,26);ctx.fillStyle=`rgba(${T.box},.08)`;ctx.fill();ctx.strokeStyle=`rgba(${T.box},.38)`;ctx.lineWidth=2.5;ctx.stroke();
+  ctx.fillStyle=T.p;ctx.font='800 26px Nunito';ctx.letterSpacing="4px";ctx.fillText("NOTA DE COMPORTAMENTO",W/2,by+52);ctx.letterSpacing="0px";
+  ctx.font='900 92px "Cinzel Decorative"';ctx.fillStyle=T.a;ctx.fillText(pct+"%",W/2,by+140);
+  // barra
+  const bX=bx+60,bW=bw-120,bY=by+168;rr(bX,bY,bW,22,11);ctx.fillStyle="#ead7ad";ctx.fill();
+  rr(bX,bY,bW*pct/100,22,11);ctx.fillStyle=goldGrad(bY,bY+22);ctx.fill();
+  ctx.fillStyle="#4a2a17";ctx.font='700 30px Nunito';
+  wrap(`${pct}% ${bom}, ${100-pct}% ${trav}`,W/2,by+235,bw-60,40);
+
+  // elogio
+  if(conquista){
+    ctx.fillStyle="#6b4a2e";ctx.font='800 24px Nunito';ctx.letterSpacing="3px";ctx.fillText("🏆 CONQUISTA DO ANO",W/2,py+1210);ctx.letterSpacing="0px";
+    ctx.fillStyle=T.p;ctx.font='700 36px Nunito';
+    const c=conquista.charAt(0).toUpperCase()+conquista.slice(1);
+    wrap("“"+c+"”",W/2,py+1258,740,44);
+  }else{
+    ctx.fillStyle="#6b4a2e";ctx.font='800 24px Nunito';ctx.letterSpacing="3px";ctx.fillText("ELOGIO DOS ELFOS",W/2,py+1225);ctx.letterSpacing="0px";
+    ctx.fillStyle=T.p;ctx.font='700 40px Nunito';ctx.fillText("“"+elogio+"”",W/2,py+1275);
+  }
+
+  // assinatura
+  ctx.textAlign="left";ctx.fillStyle="#2b1a6e";ctx.font='96px "Great Vibes"';ctx.fillText("Papai Noel",px+95,py+1395);
+  ctx.strokeStyle="#c9a36a";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px+95,py+1415);ctx.lineTo(px+500,py+1415);ctx.stroke();
+  ctx.fillStyle="#8a6a4a";ctx.font='700 22px Nunito';ctx.fillText("Papai Noel • Registro nº "+serie,px+95,py+1450);
+  ctx.textAlign="center";
+
+  // selo
+  const sx=px+pw-175,sy=py+1385;
+  ctx.save();ctx.translate(sx,sy);ctx.rotate(-.22);
+  ctx.strokeStyle=T.a;ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,80,0,Math.PI*2);ctx.stroke();
+  ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(0,0,66,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle=T.a;ctx.font='700 19px Cinzel';ctx.fillText(X.selo,0,8);
+  ctx.font='800 15px Nunito';ctx.fillText("POLO NORTE",0,-30);ctx.fillText("★ 2026 ★",0,42);
+  ctx.restore();
+
+
+  // rodapé
+  ctx.fillStyle="#fbf3e0";ctx.font='800 34px Nunito';ctx.fillText("✨ Faça a carta do Papai Noel na "+MARCA+":",W/2,1772);
+  rr(W/2-330,1795,660,62,31);ctx.fillStyle="#f1cd74";ctx.fill();
+  ctx.fillStyle=T.d;ctx.font='800 31px Nunito';ctx.fillText(SITE,W/2,1837);
+  ctx.fillStyle="#f1cd74";ctx.font='700 26px Nunito';ctx.fillText(INSTA+"  •  "+HASHTAG,W/2,1892);
+}
+
+const $=id=>document.getElementById(id);
+function marcarTema(t){tema=t;document.querySelectorAll(".cores button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.t===t))}
+function montarSugestoes(){const box=$("sug");box.innerHTML="";sugestoes[genero].forEach(t=>{const b=document.createElement("button");
+  b.type="button";b.textContent=t;b.addEventListener("click",()=>{$("conquista").value=t;if(ultimoNome)gerar(ultimoNome)});box.appendChild(b)})}
+function ajustarTipo(){
+  $("nomeLabel").textContent=genero==="p"?"Nome do pet":genero==="f"?"Nome da menina":"Nome do menino";
+  $("nome").placeholder=genero==="p"?"Ex.: Thor":genero==="f"?"Ex.: Alice":"Ex.: Ben";
+  $("conquista").placeholder=genero==="p"?"Ex.: aprendeu a dar a patinha":"Ex.: aprendeu a andar de bicicleta";
+  montarSugestoes();
+}
+document.querySelectorAll(".cores button").forEach(b=>b.addEventListener("click",()=>{marcarTema(b.dataset.t);if(ultimoNome)gerar(ultimoNome)}));
+document.querySelectorAll(".seg button").forEach(b=>b.addEventListener("click",()=>{
+  genero=b.dataset.g;document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed",x===b));
+  marcarTema(genero==="m"?"azul":genero==="f"?"rosa":"vermelho");ajustarTipo();
+  if(ultimoNome)gerar(ultimoNome);
+}));
+
+async function gerar(nome){
+  await carregarFontes();
+  desenhar(nome,$("conquista").value.trim().replace(/\s+/g," "));
+  $("preview").src=cv.toDataURL("image/png");
+  ultimoBlob=null;cv.toBlob(b=>{ultimoBlob=b},"image/png");
+  $("result").style.display="block";$("msg").textContent="";$("flutua").style.display="none";atualizarLinks();
+}
+
+function formatarNome(n){return n.trim().replace(/\s+/g," ").replace(/(^|\s)(\S)/g,(m,a,c)=>a+c.toUpperCase())}
+
+$("form").addEventListener("submit",async e=>{
+  e.preventDefault();const n=formatarNome($("nome").value);if(!n)return;
+  ultimoNome=n;rolagem=0;await gerar(n);
+  $("result").scrollIntoView({behavior:"smooth",block:"start"});
+});
+$("nova").addEventListener("click",()=>{if(!ultimoNome)return;rolagem++;gerar(ultimoNome)});
+
+function legendaTxt(){const X=textos(genero);
+  if(genero==="p")return `O Papai Noel confirmou: ${ultimoNome} está na ${X.lista} 2026! 🐾🎅✨\nFaça o certificado do seu pet também — e a carta do Papai Noel para as crianças da casa 💌 👉 ${SITE_URL}\n${HASHTAG} #Natal2026 #CartaMágica`;
+  return `O Papai Noel confirmou: ${ultimoNome} está na ${X.lista} 2026! 🎅✨\nE ainda vai ganhar uma carta de verdade do Papai Noel 💌 Faça a do seu pequeno também 👉 ${SITE_URL}\n${HASHTAG} #Natal2026 #CartaMágica`}
+function zapTxt(){const X=textos(genero);
+  if(genero==="p")return `Gente, até o pet entrou na lista do Papai Noel 😂🐶🎅 O ${ultimoNome} está na ${X.lista}!\n\nFaça o do seu pet grátis 👉 ${CERT_URL}\n\nE na Carta Mágica o Papai Noel escreve uma carta só para as crianças, com o nome e a voz dele 💌✨\n👉 ${SITE_URL}`;
+  return `Gente, olha o que o Papai Noel mandou ${genero==="m"?"pro":"pra"} ${ultimoNome} 😂🎅 Entrou na ${X.lista}!\n\nFaça o certificado do seu pequeno grátis 👉 ${CERT_URL}\n\nE na Carta Mágica o Papai Noel escreve uma carta só pro seu filho, com o nome e até a voz dele 💌✨\n👉 ${SITE_URL}`}
+function atualizarLinks(){
+  $("zap").href="https://wa.me/?text="+encodeURIComponent(zapTxt());
+  $("fb").href="https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(CERT_URL);
+  if(genero==="p"){
+    $("ofertaTitulo").textContent="Gostou? Agora o Papai Noel quer escrever para as crianças da casa!";
+    $("ofertaTexto").innerHTML="Na <b>Carta Mágica</b> cada criança recebe uma carta de verdade do Papai Noel, feita só para ela:";
+    $("ofertaBtn").textContent="✨ Fazer a carta do Papai Noel";return;
+  }
+  const pron=genero==="m"?"o":"a";
+  $("ofertaTitulo").textContent=`Gostou? Agora o Papai Noel quer escrever para ${pron} ${ultimoNome}!`;
+  $("ofertaTexto").innerHTML=`Na <b>Carta Mágica</b> ${genero==="m"?"ele":"ela"} recebe uma carta de verdade do Papai Noel, feita só para ${genero==="m"?"ele":"ela"}:`;
+  $("ofertaBtn").textContent=`✨ Fazer a carta d${pron} ${ultimoNome.split(" ")[0]}`;
+}
+$("legenda").addEventListener("click",async()=>{
+  const txt=legendaTxt();
+  try{await navigator.clipboard.writeText(txt);$("msg").textContent="Legenda copiada! Agora é só colar no post. 🎄"}
+  catch(e){$("msg").textContent=txt}
+});
+
+// download e compartilhamento
+function nomeArquivo(){return "certificado-papai-noel-"+ultimoNome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-")+".png"}
+let downloads=null;
+const dentroDoClaude = !!(window.claude && window.claude.use);
+if(!dentroDoClaude){ $("baixar").style.display="block"; $("hint").textContent="Ou toque e segure a imagem para salvar."; }
+else{(async()=>{try{downloads=await window.claude.use("downloads");
+  if(downloads){$("baixar").style.display="block";$("hint").textContent="Ou toque e segure a imagem para salvar."}}catch(e){}})();}
+function pegarBlob(){return new Promise(res=>{if(ultimoBlob)return res(ultimoBlob);cv.toBlob(b=>{ultimoBlob=b;res(b)},"image/png")})}
+$("baixar").addEventListener("click",async()=>{
+  const blob=await pegarBlob(); if(!blob)return;
+  if(downloads){
+    try{await downloads.save({filename:nomeArquivo(),data:blob});$("msg").textContent="Imagem salva! Poste nos Stories com "+HASHTAG+" 🎁"}
+    catch(e){if(e&&e.code==="declined")return;$("msg").textContent="Não deu para baixar aqui — toque e segure a imagem para salvar."}
+    return;
+  }
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=nomeArquivo();
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+  $("msg").textContent="Imagem salva! Poste nos Stories com "+HASHTAG+" 🎁";
+});
+try{ if(!dentroDoClaude && navigator.canShare && navigator.canShare({files:[new File(["x"],"t.png",{type:"image/png"})]})) $("compartilhar").style.display="block"; }catch(e){}
+$("compartilhar").addEventListener("click",async()=>{
+  const blob=await pegarBlob(); if(!blob)return;
+  const file=new File([blob],nomeArquivo(),{type:"image/png"});
+  try{await navigator.share({files:[file],text:legendaTxt()})}catch(e){}
+});
+
+// Instagram / TikTok: abre o menu de compartilhar com a imagem; se não der, salva + copia a legenda
+document.querySelectorAll("[data-rede]").forEach(b=>b.addEventListener("click",async()=>{
+  const rede=b.dataset.rede, dica=$("dica");
+  const blob=await new Promise(r=>{if(typeof ultimoBlob!=="undefined"&&ultimoBlob)return r(ultimoBlob);cv.toBlob(r,"image/png")});
+  try{await navigator.clipboard.writeText(legendaTxt())}catch(e){}
+  const passos = rede==="Instagram"
+    ? "No Instagram: toque em <b>+ → Story</b> (ou Post), escolha o certificado da galeria e cole a legenda. Marque <b>@cartamagicanatal</b>! 🎄"
+    : "No TikTok: toque em <b>+ → Carregar</b>, escolha o certificado, coloque uma música de Natal e cole a legenda. Marque <b>@cartamagicanatal</b>! 🎄";
+  try{
+    const file=new File([blob],"certificado-papai-noel.png",{type:"image/png"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      dica.innerHTML="✅ Legenda copiada! Escolha o <b>"+rede+"</b> na lista que abriu. "+passos;dica.style.display="block";
+      await navigator.share({files:[file]});return;
+    }
+  }catch(e){if(e&&e.name==="AbortError")return}
+  dica.innerHTML="✅ Legenda copiada! Primeiro salve a imagem (botão <b>Baixar</b> ou toque e segure no certificado). "+passos;
+  dica.style.display="block";
+}));
+
+document.querySelectorAll(".site-txt").forEach(e=>e.textContent=SITE);
+
+// sugestões de conquista
+ajustarTipo();
+
+// exemplo no topo
+(async()=>{await carregarFontes();rolagem=0;desenhar("Ben","",
+  "m");$("amostra").src=cv.toDataURL("image/jpeg",.85)})();
+
+// contagem regressiva
+(function(){const hoje=new Date();const natal=new Date(hoje.getFullYear(),11,25);
+  const d=Math.ceil((natal-new Date(hoje.getFullYear(),hoje.getMonth(),hoje.getDate()))/864e5);
+  $("contagem").textContent=d>1?`🎄 Faltam ${d} dias pro Natal`:d===1?"🎄 Amanhã é Natal!":"🎄 Feliz Natal!"})();
+
+// botão flutuante
+$("irForm").addEventListener("click",()=>{$("form").scrollIntoView({behavior:"smooth",block:"center"});setTimeout(()=>$("nome").focus(),450)});
+try{new IntersectionObserver(es=>{const vis=es[0].isIntersecting;
+  $("flutua").style.display=(!vis&&$("result").style.display!=="block")?"block":"none"}).observe($("form"))}catch(e){}
+
+// neve
+(function(){const c=$("neve"),x=c.getContext("2d");let fl=[];
+  function tam(){c.width=innerWidth;c.height=innerHeight;fl=Array.from({length:Math.round(innerWidth/9)},()=>({
+    x:Math.random()*c.width,y:Math.random()*c.height,r:Math.random()*2.6+.8,v:Math.random()*.6+.25,o:Math.random()*.5+.3,d:Math.random()*6.28}))}
+  tam();addEventListener("resize",tam);
+  (function loop(){x.clearRect(0,0,c.width,c.height);for(const f of fl){f.y+=f.v;f.d+=.01;f.x+=Math.sin(f.d)*.3;
+    if(f.y>c.height){f.y=-5;f.x=Math.random()*c.width}x.globalAlpha=f.o;x.fillStyle="#fff";x.beginPath();x.arc(f.x,f.y,f.r,0,6.28);x.fill()}
+    requestAnimationFrame(loop)})()})();
+</script>
+</body>
+</html>
