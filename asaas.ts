@@ -10,12 +10,17 @@ import { planPrice } from "./src/lib/pricing.js";
 export type PaidPlan = "pro" | "natal" | "familia";
 
 /** o que pode ser cobrado: os planos e a troca Carta Completa -> Pacote Família */
-export type CheckoutPlan = PaidPlan | "upgrade";
+export type CheckoutPlan = PaidPlan | "upgrade" | "ligacao";
 export const PLAN_PRICES: Record<CheckoutPlan, { value: number; name: string; description: string }> = {
   upgrade: {
     value: 11, // o valor cobrado vem de planPrice() (pricing.ts)
     name: "Carta Mágica: vire Família",
     description: "Troca da Carta Completa pelo Pacote Família: até 5 crianças e 23 cartas completas no total (paga só a diferença)",
+  },
+  ligacao: {
+    value: 5.9,
+    name: "Carta Mágica: Ligação do Noel",
+    description: "Ligação do Papai Noel: ele chama a criança pelo nome, faz perguntas, responde com voz e conta uma história (1 chamada de 2 minutos)",
   },
   pro: {
     value: 5.9,

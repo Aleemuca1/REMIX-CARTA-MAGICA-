@@ -76,20 +76,26 @@ export default function CreationWizard({
   useEffect(() => {
     if (!isOpen || !auth.parent) return;
     loadProfile().then((r) => setKids(r.profile?.children ?? []));
+  }, [isOpen, auth.parent]);
+  // vindo do painel ou da Ligação do Papai Noel: já chega com o que a criança contou
+  useEffect(() => {
+    if (!isOpen) return;
     try {
       const pre = sessionStorage.getItem("cm-prefill-child");
       if (pre) {
         sessionStorage.removeItem("cm-prefill-child");
-        const c = JSON.parse(pre) as FamilyChild;
+        const c = JSON.parse(pre) as FamilyChild & { achievements?: string; gift?: string };
         if (c?.name) {
           setChildName(c.name);
           if (c.age) setAge(c.age);
+          if (c.achievements) setAchievements(c.achievements);
+          if (c.gift) setGiftRequest(c.gift);
         }
       }
     } catch {
       /* sem sessionStorage */
     }
-  }, [isOpen, auth.parent]);
+  }, [isOpen]);
   const [more, setMore] = useState(false);
   const [extras, setExtras] = useState({ siblings: "", pet: "", friend: "", food: "", favorite: "", encourage: "" });
   const setX = (k: keyof typeof extras, v: string) => setExtras((x) => ({ ...x, [k]: v.slice(0, k === "encourage" ? 90 : 60) }));

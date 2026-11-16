@@ -12,6 +12,7 @@ import { ADVENT_DAYS } from "./src/advent/days.js";
 import { voiceById, voiceForSender } from "./src/lib/voices.js";
 import * as mailer from "./mailer.js";
 import * as eleven from "./elevenlabs.js";
+import { openaiConfigured, openaiText } from "./openai.js";
 import * as audioStore from "./audioStore.js";
 import { createHash, timingSafeEqual } from "crypto";
 import { MAX_AUTHOR, MAX_ORNAMENTS, MAX_TEXT, ORNAMENT_TYPES, VIEW_H, VIEW_W, sanitizeText } from "./src/tree/model.js";
@@ -207,7 +208,7 @@ app.get("/api/me/panel", async (req, res) => {
   if (!p) return res.status(401).json({ error: "Entre na Área dos Pais." });
   res.setHeader("Cache-Control", "no-store");
   try {
-    const orders = (await db.paidOrdersByEmail(p.email)).filter((o) => o.plan !== "upgrade" && o.accessCode);
+    const orders = (await db.paidOrdersByEmail(p.email)).filter((o) => o.plan !== "upgrade" && o.plan !== "ligacao" && o.accessCode);
     const plans = [];
     for (const o of orders) {
       const st = await codeStatus(o.accessCode!);
@@ -647,6 +648,24 @@ ${input.imageBase64 ? "Leia a cartinha manuscrita na imagem (pode ter erros de o
 Responda SOMENTE um JSON com este formato exato:
 {"transcricao":"texto da cartinha, fiel ao que a criança escreveu, corrigindo só a ortografia para ficar legível","nome":"primeiro nome da criança, se ela escreveu (senão vazio)","idade":0,"cidade":"cidade, se ela escreveu (senão vazio)","pedidos":["cada presente ou desejo pedido"],"perguntas":["cada pergunta que a criança fez ao Papai Noel"],"contou":["coisas que ela contou sobre ela: conquistas, família, bichinho, escola"],"sensivel":false,"motivo":""}
 Marque "sensivel": true (e explique em "motivo") se a cartinha falar de luto, morte, doença grave, separação dos pais, violência, fome, medo ou tristeza profunda. Se a imagem não for uma cartinha (ou não der para ler nada), devolva "transcricao":"" e listas vazias.${typed ? `\n\nCARTINHA:\n"""${typed}"""` : ""}`;
+  const parseRead = (raw0: string): ReadLetter => {
+    const raw = String(raw0 || "").trim().replace(/^```json\s*|```$/g, "");
+    const j = JSON.parse(raw);
+    const text = sanitizeText(j.transcricao, 1500);
+    const wishes = { pedidos: cleanList(j.pedidos), perguntas: cleanList(j.perguntas), contou: cleanList(j.contou, 8) };
+    const sensitive = Boolean(j.sensivel) || SENSITIVE_WORDS.test(text);
+    const idade = Math.round(Number(j.idade) || 0);
+    return { text, wishes, sensitive, why: sanitizeText(j.motivo, 200), name: sanitizeText(j.nome, 30), age: idade >= 1 && idade <= 14 ? idade : 0, city: sanitizeText(j.cidade, 60) };
+  };
+  // OpenAI primeiro (quando a chave existe); se falhar, o Gemini assume
+  if (openaiConfigured()) {
+    try {
+      const out = await openaiText({ user: instruction, imageBase64: input.imageBase64, mime: input.mime, json: true, temperature: 0.2 });
+      if (out) return parseRead(out);
+    } catch (e: any) {
+      console.warn("Leitura da cartinha (OpenAI) falhou:", e?.message || e);
+    }
+  }
   if (ai) {
     for (const model of LETTER_MODELS) {
       try {
@@ -842,6 +861,7 @@ async function codeStatus(raw: unknown) {
   if (code.length !== 6) return null;
   const order = await db.findPaidOrderByCode(code);
   if (!order) return null;
+  if (order.plan === "ligacao") return null; // a ligação avulsa não dá cartas nem libera o plano
   const limit = asaas.PLAN_LETTERS[order.plan] ?? 1;
   const extra = await db.countLettersByCode(code);
   if (extra === null) return { code, plan: order.plan, limit, used: limit, remaining: 0 };
@@ -879,7 +899,7 @@ async function composeLetter(o: {
   let letterContent = "";
   let generatedWithAI = false;
   const ai = getGeminiClient();
-  if (ai) {
+  if (ai || openaiConfigured()) {
     try {
       const systemInstruction = `Você é o verdadeiro Papai Noel escrevendo, de próprio punho, uma carta mágica, divertida e emocionante para uma criança brasileira${Number(age) > 0 ? ` de ${age} anos` : ""}. A carta será lida em voz alta pelos pais ou pela voz do Papai Noel, então escreva para a CRIANÇA entender e se encantar: frases curtas, palavras simples, muita imaginação e humor carinhoso.
 
@@ -912,8 +932,14 @@ REGRAS IMPORTANTES:
 - Palavras especiais dos pais/respons\xE1veis: ${parentNotes || "Nenhum detalhe extra"}
 ${extrasText ? `${extrasText}\n` : ""}- Plano: ${isPro ? "PRO (m\xE1xima profundidade emocional, detalhes sensoriais e magia liter\xE1ria)" : "Gratuito (b\xE1sica, terna e envolvente)"}
 - Estilo: ${style}${childLetter ? `\n- Esta carta é a RESPOSTA à cartinha que a criança enviou (veja as instruções). Responda tudo o que ela perguntou.` : ""}`;
+      // OpenAI primeiro (quando a chave existe); se não responder, o Gemini assume
+      const viaOpenAI = await openaiText({ system: systemInstruction, user: userPrompt, temperature: 0.9 });
+      if (viaOpenAI && viaOpenAI.length > 200) {
+        letterContent = viaOpenAI;
+        generatedWithAI = true;
+      }
       // se um modelo falhar (fila cheia, instabilidade), tenta o próximo antes de usar a carta reserva
-      for (const model of LETTER_MODELS) {
+      for (const model of letterContent || !ai ? [] : LETTER_MODELS) {
         try {
           const response = await ai.models.generateContent({
             model,
@@ -1219,6 +1245,244 @@ app.post("/api/tts", async (req, res) => {
       });
   }
 });
+// =============== Papai Noel Ao Vivo (chamada guiada com voz) ===============
+// O Papai Noel faz 3 perguntas (idade, uma coisa boa do ano e o pedido), a criança responde no microfone
+// (o celular transforma em texto) e ele responde juntando tudo, sempre com o NOME dela.
+// Saudação, perguntas, reações, despedida e histórias ficam guardadas (geradas uma vez por nome).
+// Só a resposta final personalizada usa a IA. Nada do que a criança fala é gravado ou guardado.
+const AOVIVO_SECONDS = 120; // 2 minutos por chamada
+const AOVIVO_MAX_TURNS = 6; // respostas livres depois das perguntas
+/** quantas chamadas cada compra dá */
+const AOVIVO_CALLS: Record<string, number> = { ligacao: 1, natal: 1, familia: 3 };
+const AOVIVO_STORIES = [
+  "Era uma vez um floquinho de neve chamado Pingo, que tinha medo de cair do céu. Todos os outros flocos desciam dançando, e ele ficava agarrado na nuvem. Um dia, eu passei de trenó e falei: Pingo, lá embaixo tem uma criança esperando o primeiro floco do Natal. Ele respirou fundo, soltou a nuvem e desceu rodopiando. Caiu bem na ponta do nariz de uma menina, que deu a risada mais gostosa do mundo. E o Pingo descobriu que coragem é ir mesmo com um friozinho na barriga.",
+  "Vou te contar um segredo da minha oficina. Uma noite, o duende mais novo, o Tico, trocou todas as etiquetas dos presentes sem querer. Foi uma correria! Mas em vez de brigar, todos os duendes sentaram juntos e arrumaram uma por uma, cantando. Terminaram antes do sol nascer. E o Tico aprendeu que errar acontece, e que pedir ajuda é a coisa mais esperta que existe.",
+  "Na véspera do Natal passado, a rena mais nova estava com o nariz gelado e não queria voar. As outras renas fizeram uma roda bem apertadinha em volta dela, e o calor do abraço esquentou tudo. Ela voou a noite inteira, mais rápido que o vento. Desde aquele dia, antes de cada viagem, as renas dão um abraço coletivo. E é por isso que o trenó nunca atrasa.",
+];
+const AOVIVO_REACTIONS = ["Ho ho ho! Que maravilha!", "Mas que coisa linda de ouvir!", "Os duendes aqui do lado bateram palmas!"];
+const aovivoQuestion = (n: number, nome: string) =>
+  n === 1
+    ? `Me conta, ${nome}: quantos anos você tem?`
+    : n === 2
+      ? `Agora me conta, ${nome}: qual foi uma coisa boa que você fez este ano?`
+      : `E o que você quer pedir de Natal, ${nome}?`;
+const aovivoOn = () => process.env.AOVIVO_ATIVO !== "nao";
+const kidName = (v: unknown) => {
+  const n = String(v ?? "").replace(/[^\p{L} '-]/gu, "").trim().split(/\s+/)[0] || "";
+  return n ? n.charAt(0).toUpperCase() + n.slice(1).toLowerCase().slice(0, 19) : "";
+};
+const cleanCode = (v: unknown) => String(v ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+
+// ---- chamada assinada: vale 2 minutos (mais uma folga) a partir do início, sem guardar nada da criança ----
+const aovivoSecret = () => sha(`aovivo:${process.env.AOVIVO_SECRET || process.env.ASAAS_WEBHOOK_TOKEN || process.env.SUPABASE_SERVICE_ROLE_KEY || "dev"}`);
+const signCall = (code: string, start: number) => `${code}.${start}.${sha(`${code}|${start}|${aovivoSecret()}`).slice(0, 32)}`;
+function readCall(token: unknown): { code: string; start: number; left: number } | null {
+  const [code, startRaw, sig] = String(token || "").split(".");
+  const start = Number(startRaw);
+  if (!code || !start || !sig || sig !== sha(`${code}|${start}|${aovivoSecret()}`).slice(0, 32)) return null;
+  const left = AOVIVO_SECONDS + 25 - Math.floor((Date.now() - start) / 1000); // 25 s de folga para a última resposta
+  return { code, start, left };
+}
+const callTurns = new Map<string, number>();
+
+/** chamadas que este código ainda tem (cada chamada iniciada vira um registro pequeno no armazenamento) */
+async function callsLeft(codeRaw: unknown): Promise<{ code: string; plan: string; total: number; used: number; left: number } | null> {
+  const code = cleanCode(codeRaw);
+  if (code.length !== 6) return null;
+  const order = await db.findPaidOrderByCode(code).catch(() => null);
+  if (!order) return null;
+  const total = AOVIVO_CALLS[order.plan] ?? 0;
+  if (!total) return null;
+  const used = (await audioStore.list(`aovivo-uso/${code}`).catch(() => [] as string[])).length;
+  return { code, plan: order.plan, total, used, left: Math.max(0, total - used) };
+}
+/** primeiro código (o da ligação avulsa ou o do plano) que ainda tem chamada */
+async function pickCall(b: any) {
+  const all = [];
+  for (const c of [b?.callCode, b?.accessCode]) {
+    const st = c ? await callsLeft(c) : null;
+    if (st) all.push(st);
+  }
+  return { hit: all.find((x) => x.left > 0) ?? null, any: all.length > 0 };
+}
+
+/** Texto -> áudio na voz do Papai Noel. keep=true guarda para reutilizar (saudações, perguntas e histórias). */
+async function santaAudio(text: string, keep: boolean): Promise<{ audioUrl?: string; audioBase64?: string; mime?: string } | null> {
+  const spoken = elevenText(text);
+  if (eleven.elevenEnabled()) {
+    const key = `aovivo/${createHash("sha256").update(`noel|${spoken}`).digest("hex").slice(0, 40)}.mp3`;
+    try {
+      if (keep) {
+        const cached = await audioStore.url(key).catch(() => null);
+        if (cached) return { audioUrl: cached, mime: "audio/mpeg" };
+      }
+      const mp3 = await eleven.speak(spoken, "noel", { cheap: true });
+      if (keep && (await audioStore.put(key, mp3, "audio/mpeg"))) {
+        const u = await audioStore.url(key);
+        if (u) return { audioUrl: u, mime: "audio/mpeg" };
+      }
+      return { audioBase64: mp3.toString("base64"), mime: "audio/mpeg" };
+    } catch (e: any) {
+      console.warn("Ao Vivo: ElevenLabs falhou, tentando a voz do Google:", e?.message || e);
+    }
+  }
+  const ai = getGeminiClient();
+  if (ai) {
+    const ck = `aovivo|${text}`;
+    const hit = ttsCache.get(ck);
+    if (hit) return { audioBase64: hit, mime: "audio/pcm" };
+    try {
+      const voice = voiceById("noel");
+      const r = await ai.models.generateContent({
+        model: "gemini-3.1-flash-tts-preview",
+        contents: [{ parts: [{ text: `${voice.style}\n\nFale em português do Brasil, animado e carinhoso, como numa ligação. Não leia estas instruções, só o texto abaixo.\n\n${text.slice(0, 900)}` }] }],
+        config: { responseModalities: ["AUDIO"], speechConfig: { languageCode: "pt-BR", voiceConfig: { prebuiltVoiceConfig: { voiceName: voice.gemini } } } },
+      });
+      const part: any = r.candidates?.[0]?.content?.parts?.[0];
+      if (part?.inlineData?.data) {
+        if (keep) {
+          if (ttsCache.size > 150) ttsCache.delete(ttsCache.keys().next().value as string);
+          ttsCache.set(ck, part.inlineData.data);
+        }
+        return { audioBase64: part.inlineData.data, mime: "audio/pcm" };
+      }
+    } catch (e: any) {
+      console.warn("Ao Vivo: voz do Google falhou:", e?.message || e);
+    }
+  }
+  return null; // o navegador fala com a voz do aparelho
+}
+const audioParts = async (items: [string, boolean][]) => (await Promise.all(items.map(([t, keep]) => santaAudio(t, keep)))).filter(Boolean);
+/** texto da IA (OpenAI primeiro, Gemini de reserva) */
+async function aovivoAI(system: string, user: string): Promise<string> {
+  let text = (await openaiText({ system, user, temperature: 0.8, maxTokens: 220 })) || "";
+  if (!text) {
+    const ai = getGeminiClient();
+    for (const model of ai ? LETTER_MODELS : []) {
+      try {
+        const r = await ai!.models.generateContent({ model, contents: user, config: { systemInstruction: system, temperature: 0.8, maxOutputTokens: 260 } });
+        text = String(r?.text || "").trim();
+        if (text) break;
+      } catch (e: any) {
+        console.warn(`Ao Vivo (${model}) falhou:`, e?.message || e);
+      }
+    }
+  }
+  return sanitizeText(text.replace(/[*_#`]/g, ""), 520);
+}
+const AOVIVO_RULES = (nome: string) => `REGRAS:
+- Frases curtas, fáceis de falar em voz alta. Sem emojis, sem listas, sem asteriscos.
+- Diga o nome ${nome} pelo menos duas vezes.
+- Nunca prometa presentes, nunca use chantagem ("se não obedecer..."), nunca peça endereço, telefone, escola, senha ou qualquer dado.
+- Fale só de coisas de criança e de Natal. Se o assunto for adulto ou perigoso, diga com carinho que isso é para conversar com a mamãe ou o papai e volte para o Natal.
+- Se perguntarem se você é de verdade, responda com magia e carinho, sem dizer que é uma pessoa: você é o Papai Noel da Carta Mágica.
+- Não cite marcas, filmes nem personagens.`;
+
+app.get("/api/aovivo/status", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const { hit, any } = await pickCall({ callCode: req.query.call, accessCode: req.query.code }).catch(() => ({ hit: null, any: false }));
+  res.json({ ativo: aovivoOn(), chamadas: hit?.left ?? 0, temCodigo: any, segundos: AOVIVO_SECONDS, preco: planPrice("ligacao") });
+});
+
+app.post("/api/aovivo/falar", async (req, res) => {
+  try {
+    if (!aovivoOn()) return res.status(503).json({ error: "O Papai Noel está descansando agora. Volte daqui a pouquinho!" });
+    const b = req.body || {};
+    if (!b.parentalConsent) return res.status(400).json({ error: "Um responsável precisa autorizar a chamada." });
+    const nome = kidName(b.childName);
+    if (!nome) return res.status(400).json({ error: "Diga o nome da criança para o Papai Noel." });
+    const kind = String(b.kind || "");
+    const ip = ipOf(req);
+    if (tooMany(`aovivo:${ip}`, 90, 60 * 60 * 1000)) return res.status(429).json({ error: "O Papai Noel precisa descansar um pouquinho. Volte mais tarde!" });
+
+    // ---- 1) saudação: o momento mágico do NOME. Grátis para todos; quem tem chamada já começa a conversa ----
+    if (kind === "ola") {
+      const call = readCall(b.callToken);
+      const resumed = call && call.left > 15 ? call : null; // voltou no meio da chamada (recarregou a página)
+      const { hit, any } = resumed ? { hit: null, any: true } : await pickCall(b);
+      const hello = `Ho ho ho! Olá, ${nome}! Aqui é o Papai Noel, falando lá do Polo Norte! Que alegria falar com você, ${nome}!`;
+      if (resumed || hit) {
+        let token = String(b.callToken || "");
+        let left = resumed?.left ?? AOVIVO_SECONDS;
+        if (!resumed && hit) {
+          const start = Date.now();
+          await audioStore.put(`aovivo-uso/${hit.code}/${start}.txt`, Buffer.from("1"), "text/plain");
+          token = signCall(hit.code, start);
+          left = AOVIVO_SECONDS;
+        }
+        const q1 = aovivoQuestion(1, nome);
+        return res.json({ text: `${hello} ${q1}`, paid: true, callToken: token, seconds: Math.min(AOVIVO_SECONDS, left), ask: 1, parts: await audioParts([[hello, true], [q1, true]]) });
+      }
+      if (tooMany(`aovivo-ola:${ip}`, 6, 24 * 60 * 60 * 1000)) return res.status(429).json({ error: "Por hoje o Papai Noel já ligou bastante. Volte amanhã!" });
+      const free = `${hello} Os duendes já me falaram muito bem de você!`;
+      return res.json({ text: free, paid: false, used: any, ...((await santaAudio(free, true)) || {}) });
+    }
+    if (kind === "tchau") {
+      const text = `Ho ho ho! Foi maravilhoso falar com você, ${nome}! As renas estão me chamando para treinar o voo. Um abraço bem apertado e até a noite de Natal, ${nome}!`;
+      return res.json({ text, done: true, ...((await santaAudio(text, true)) || {}) });
+    }
+
+    // ---- daqui para baixo, só dentro de uma chamada paga e ainda no tempo ----
+    const call = readCall(b.callToken);
+    if (!call) return res.status(402).json({ error: "Para conversar com o Papai Noel, libere a ligação.", paywall: true });
+    if (call.left <= 0) return res.json({ text: "", limit: true });
+
+    // 2) próxima pergunta (áudios guardados: custo zero depois da primeira vez)
+    if (kind === "pergunta") {
+      const n = Math.min(3, Math.max(2, Math.round(Number(b.n) || 2)));
+      const react = AOVIVO_REACTIONS[(n + nome.length) % AOVIVO_REACTIONS.length];
+      const q = aovivoQuestion(n, nome);
+      return res.json({ text: `${react} ${q}`, paid: true, ask: n, parts: await audioParts([[react, true], [q, true]]) });
+    }
+    if (kind === "historia") {
+      const i = Math.abs(Math.round(Number(b.story) || 0)) % AOVIVO_STORIES.length;
+      const intro = `Senta aqui pertinho, ${nome}, que essa história é para você.`;
+      return res.json({ text: `${intro} ${AOVIVO_STORIES[i]}`, paid: true, parts: await audioParts([[intro, true], [AOVIVO_STORIES[i], true]]) });
+    }
+
+    const ans = { idade: sanitizeText(b.answers?.idade, 60), bom: sanitizeText(b.answers?.bom, 300), pedido: sanitizeText(b.answers?.pedido, 300) };
+    const said = sanitizeText(b.said, 300);
+    // assunto delicado: resposta fixa e acolhedora, sem IA
+    if (SENSITIVE_WORDS.test(`${said} ${ans.bom} ${ans.pedido}`)) {
+      const text = `${nome}, obrigado por me contar isso. Você é muito corajoso por falar. Eu quero que você conte tudo para a mamãe, o papai ou um adulto que cuida de você, porque eles podem te dar um abraço bem apertado agora. E saiba que eu gosto muito de você, ${nome}.`;
+      return res.json({ text, paid: true, sensitive: true, ...((await santaAudio(text, false)) || {}) });
+    }
+
+    // 3) a resposta do Papai Noel juntando idade + coisa boa + pedido (a única parte que usa a IA)
+    if (kind === "resposta") {
+      const system = `Você é o Papai Noel numa ligação com uma criança brasileira chamada ${nome}. Ela acabou de responder três perguntas suas. Fale como o Papai Noel de verdade: caloroso, divertido e orgulhoso dela.
+Responda em 4 frases curtas: (1) comente a idade com carinho; (2) elogie de forma concreta a coisa boa que ela contou; (3) diga que anotou o pedido no Grande Livro Dourado, sem prometer que vai chegar; (4) um carinho final.
+Se alguma resposta estiver vazia ou confusa, não invente: fale só do que ela disse.
+${AOVIVO_RULES(nome)}`;
+      const user = `Respostas de ${nome}:\n- Idade: "${ans.idade || "(não respondeu)"}"\n- Uma coisa boa que fez este ano: "${ans.bom || "(não respondeu)"}"\n- O que quer pedir de Natal: "${ans.pedido || "(não respondeu)"}"\n\nResponda como o Papai Noel.`;
+      let text = await aovivoAI(system, user);
+      if (!text) text = `${nome}, que orgulho de você! Adorei saber de tudo isso. Já anotei o seu pedido no meu Grande Livro Dourado, com a minha caneta de pena. Continue sendo essa criança maravilhosa, ${nome}!`;
+      return res.json({ text, paid: true, final: true, ...((await santaAudio(text, false)) || {}) });
+    }
+
+    // 4) conversa livre, enquanto houver tempo
+    if (kind === "conversa") {
+      if (!said) return res.status(400).json({ error: "Não consegui ouvir. Fala de novo?" });
+      const n = (callTurns.get(String(b.callToken)) ?? 0) + 1;
+      if (callTurns.size > 500) callTurns.clear();
+      callTurns.set(String(b.callToken), n);
+      if (n > AOVIVO_MAX_TURNS) return res.json({ text: "", limit: true });
+      const hist = (Array.isArray(b.history) ? b.history : [])
+        .slice(-6)
+        .map((h: any) => `${h?.from === "n" ? "Papai Noel" : nome}: ${sanitizeText(h?.text, 240)}`)
+        .join("\n");
+      const system = `Você é o Papai Noel numa ligação com uma criança brasileira chamada ${nome}. Responda ao que ela disse em NO MÁXIMO 2 ou 3 frases e termine com uma perguntinha simples.\n${AOVIVO_RULES(nome)}`;
+      let text = await aovivoAI(system, `${hist ? `Conversa até agora:\n${hist}\n\n` : ""}${nome} disse agora: "${said}"\n\nResponda como o Papai Noel.`);
+      if (!text) text = `Ho ho ho, ${nome}! Adorei ouvir isso. Me conta mais: o que você mais gosta no Natal?`;
+      return res.json({ text, paid: true, ...((await santaAudio(text, false)) || {}) });
+    }
+    res.status(400).json({ error: "Pedido inválido." });
+  } catch (err: any) {
+    console.error("aovivo/falar:", err?.message || err);
+    res.status(500).json({ error: "A ligação com o Polo Norte falhou. Tente de novo." });
+  }
+});
+
 app.post("/api/video/render-request", (req, res) => {
   try {
     const { letterId, childName, theme = "oficina_polo_norte" } = req.body;
@@ -1529,8 +1793,8 @@ app.post("/api/checkout", async (req, res) => {
     const { letterId } = req.body || {};
     // Carta Completa (natal), Pacote Família (familia) ou troca de plano (upgrade). "pro" antigo vira "natal".
     // "avulsa" = Resposta Mágica de UMA cartinha do Correio (fica gravada como plano "pro": 1 carta)
-    const plan: "natal" | "familia" | "upgrade" | "pro" | null =
-      req.body?.plan === "upgrade" ? "upgrade" : req.body?.plan === "avulsa" ? "pro" : req.body?.plan === "familia" ? "familia" : asaas.isPaidPlan(req.body?.plan) ? "natal" : null;
+    const plan: "natal" | "familia" | "upgrade" | "pro" | "ligacao" | null =
+      req.body?.plan === "ligacao" ? "ligacao" : req.body?.plan === "upgrade" ? "upgrade" : req.body?.plan === "avulsa" ? "pro" : req.body?.plan === "familia" ? "familia" : asaas.isPaidPlan(req.body?.plan) ? "natal" : null;
     if (!plan) {
       return res.status(400).json({ error: "Plano inválido." });
     }
@@ -1561,7 +1825,7 @@ app.post("/api/checkout", async (req, res) => {
     await db.insertOrder({
       orderId,
       letterId: letter?.id ?? null,
-      childName: letter?.childName ?? "Família",
+      childName: letter?.childName ?? (plan === "ligacao" ? kidName(req.body?.childName) || "Ligação" : "Família"),
       amount: price.value,
       plan,
       includePhysicalDispatch: false,
@@ -1620,6 +1884,7 @@ app.post("/api/access/redeem", async (req, res) => {
     const code = String(req.body?.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
     const order = await db.findPaidOrderByCode(code);
     if (!order) return res.status(404).json({ error: "Código não encontrado. Confira as letras e tente de novo." });
+    if (order.plan === "ligacao") return res.status(400).json({ error: "Esse código é de uma Ligação do Papai Noel. Abra o Papai Noel Ao Vivo para usar." });
     const letter = await db.findLetter(order.letterId);
     res.json({ ok: true, plan: order.plan, letterToken: letter?.token, childName: letter?.childName });
   } catch {
@@ -1981,7 +2246,7 @@ app.post("/api/asaas/webhook", async (req, res) => {
         (typeof evt.checkout?.customerData?.email === "string" && evt.checkout.customerData.email) ||
         (customerId ? await asaas.getCustomerEmail(String(customerId)) : undefined);
       await db.updateOrder(order.orderId, { status: "paid", accessCode, customerEmail: customerEmail || undefined });
-      const letter = await db.findLetter(order.letterId);
+      const letter = order.plan === "ligacao" ? null : await db.findLetter(order.letterId);
       if (letter) await db.updateLetter(letter.id, { plan: order.plan as any });
       // e-mail com o link da carta e o código mágico (só se o Resend estiver configurado)
       if (letter && customerEmail) {
@@ -2375,7 +2640,7 @@ async function songCodeFor(body: any): Promise<{ code: string; plan: string; let
   }
   if (code.length !== 6) return null;
   const order = await db.findPaidOrderByCode(code);
-  if (!order) return null;
+  if (!order || order.plan === "ligacao") return null;
   return { code, plan: order.plan, letter };
 }
 async function songsOf(code: string): Promise<SongMeta[]> {
@@ -2430,6 +2695,22 @@ O que ela pediu ao Papai Noel: ${sanitizeText(o.gift, 120) || "uma surpresa"}.
 ${o.extras ? `Detalhes: ${sanitizeText(o.extras, 200)}.` : ""}
 Regras: português do Brasil, palavras simples que uma criança canta junto, rimas fáceis, versos curtos (6 a 10 sílabas). O NOME da criança aparece no refrão. Cite 1 ou 2 conquistas reais dela. Pode citar o pedido, mas NUNCA prometa que o presente vai chegar. Não use marcas, nomes de artistas nem trechos de músicas existentes. Nada triste.
 Responda SOMENTE um JSON: {"titulo":"...","secoes":[{"nome":"Intro","linhas":[]},{"nome":"Verso 1","linhas":[4 linhas]},{"nome":"Refrão","linhas":[4 linhas]},{"nome":"Verso 2","linhas":[4 linhas]},{"nome":"Refrão","linhas":[as mesmas 4 linhas do refrão]},{"nome":"Final","linhas":[1 ou 2 linhas]}]}`;
+  const parseLyrics = (raw: string) => {
+    const j = JSON.parse(String(raw || "").trim().replace(/^```json\s*|```$/g, ""));
+    const sections: eleven.SongSection[] = (Array.isArray(j.secoes) ? j.secoes : [])
+      .slice(0, 7)
+      .map((x: any) => ({ name: sanitizeText(x?.nome, 40) || "Verso", lines: (Array.isArray(x?.linhas) ? x.linhas : []).map((l: any) => sanitizeText(l, 140)).filter(Boolean).slice(0, 6) }));
+    return sections.filter((x) => x.lines.length).length >= 3 ? { title: sanitizeText(j.titulo, 60) || `O Natal de ${firstName(o.name)}`, sections } : null;
+  };
+  if (openaiConfigured()) {
+    try {
+      const out = await openaiText({ user: prompt, json: true, temperature: 0.9 });
+      const parsed = out ? parseLyrics(out) : null;
+      if (parsed) return parsed;
+    } catch (e: any) {
+      console.warn("Letra da música (OpenAI) falhou:", e?.message || e);
+    }
+  }
   if (ai) {
     for (const model of LETTER_MODELS) {
       try {

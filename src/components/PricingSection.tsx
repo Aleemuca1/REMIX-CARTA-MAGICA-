@@ -46,6 +46,7 @@ const PLANS: Plan[] = [
       { text: "Envelope mágico e carta brilhante em 5 cores" },
       { text: "Prévia da voz do Papai Noel" },
       { text: "1 Cartão de Natal com a foto da família" },
+      { text: "Papai Noel Ao Vivo: saudação com o nome da criança" },
       { text: "Jogos, Árvore de Luz e Lista do Bom Comportamento" },
       { text: "Ateliê de Natal com desenhos para colorir" },
       { text: "1ª portinha do Calendário do Advento" },
@@ -60,7 +61,7 @@ const PLANS: Plan[] = [
     note: "pagamento único",
     cta: "Quero para meus filhos",
     highlight: true,
-    features: [{ text: "Até 5 Cartões de Natal com a foto da família, sem marca d'água", strong: true }, ...PAID],
+    features: [{ text: "NOVO: 1 Ligação do Papai Noel Ao Vivo (2 minutos, com o nome da criança)", strong: true }, { text: "Até 5 Cartões de Natal com a foto da família, sem marca d'água", strong: true }, ...PAID],
   },
   {
     id: "familia",
@@ -70,7 +71,7 @@ const PLANS: Plan[] = [
     get price() { return priceLabel("familia"); },
     note: "pagamento único",
     cta: "Quero o Pacote Família",
-    features: [{ text: "Cartões de Natal à vontade: todos os 9 modelos", strong: true }, ...PAID],
+    features: [{ text: "NOVO: 3 Ligações do Papai Noel Ao Vivo (2 minutos cada)", strong: true }, { text: "Cartões de Natal à vontade: todos os 9 modelos", strong: true }, ...PAID],
   },
 ];
 

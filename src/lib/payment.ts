@@ -4,16 +4,17 @@ import { getAccessCode, grantFullAccess, saveAccessCode } from "../advent/access
 import { rememberPlan } from "../cards/limits";
 import { loginWithCode } from "./auth";
 import { fetchLetter } from "./correio";
+import { saveCallCode } from "./aovivo";
 
 type Msg = { kind: "wait" | "ok" | "error"; text: string } | null;
 
 /** Cria o pedido no servidor e leva para a página de pagamento do Asaas. Devolve uma mensagem de erro, se houver. */
-export async function startCheckout(letterId: string | null, plan: "pro" | "natal" | "familia" | "upgrade" | "avulsa", code?: string): Promise<string | null> {
+export async function startCheckout(letterId: string | null, plan: "pro" | "natal" | "familia" | "upgrade" | "avulsa" | "ligacao", code?: string, childName?: string): Promise<string | null> {
   try {
     const res = await fetch("/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ letterId, plan, code }),
+      body: JSON.stringify({ letterId, plan, code, childName }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.checkoutUrl) {
@@ -32,7 +33,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * Quando o cliente volta do Asaas (?pedido=...&status=...), espera o webhook
  * confirmar o pagamento e reabre a carta já com o plano liberado.
  */
-export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Letter) => void, createLetter?: () => void, openCorreio?: (l: Letter) => void) {
+export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Letter) => void, createLetter?: () => void, openCorreio?: (l: Letter) => void, openCall?: () => void) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get("pedido");
@@ -61,6 +62,16 @@ export function usePaymentReturn(setMsg: (m: Msg) => void, openLetter: (l: Lette
           const r = await fetch(`/api/order/${encodeURIComponent(orderId)}`);
           if (r.ok) {
             const o = await r.json();
+            if (o.status === "paid" && o.plan === "ligacao") {
+              // Ligação do Papai Noel: guarda o código da chamada (não mexe no plano) e reabre a chamada
+              clean();
+              if (o.accessCode) saveCallCode(o.accessCode);
+              setMsg({ kind: "ok", text: "Pagamento confirmado! O Papai Noel já vai ligar. Chame a criança e aumente o som." });
+              // o aviso some sozinho para não cobrir os botões da chamada
+              setTimeout(() => setMsg(null), 4500);
+              openCall?.();
+              return;
+            }
             if (o.status === "paid" && o.plan === "pro") {
               // Resposta Mágica: libera esta cartinha e guarda o código para a 2ª cartinha (sem trocar um código de plano que já exista)
               clean();

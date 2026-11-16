@@ -32,6 +32,8 @@ import WhyUs from "./components/WhyUs";
 import PromoBar from "./components/PromoBar";
 import BlackFridayBanner from "./components/BlackFridayBanner";
 import CorreioFlow from "./components/correio/CorreioFlow";
+import SantaLiveSection from "./components/aovivo/SantaLiveSection";
+import SantaCall from "./components/aovivo/SantaCall";
 import OnTheWay from "./components/correio/OnTheWay";
 import { fetchLetter } from "./lib/correio";
 import { celebrateFrom } from "./lib/celebrate";
@@ -56,6 +58,7 @@ export default function App() {
   // carta que vai junto no pagamento; "nova" = pagar antes de criar a carta
   const [chooseFor, setChooseFor] = useState<Letter | "nova" | null>(null);
   const [correioOpen, setCorreioOpen] = useState(false);
+  const [liveOpen, setLiveOpen] = useState(false);
   const [correioResume, setCorreioResume] = useState<Letter | null>(null);
   const [correioReturn, setCorreioReturn] = useState<Letter | null>(null);
   const [correioQuiet, setCorreioQuiet] = useState(false);
@@ -63,7 +66,7 @@ export default function App() {
   const [payMsg, setPayMsg] = useState<{ kind: "wait" | "ok" | "error"; text: string } | null>(null);
 
   // volta do Asaas: confirma o pagamento e reabre a carta já liberada
-  usePaymentReturn(setPayMsg, setActiveLetter, () => handleStartWizard("free"), (l) => setCorreioResume(l));
+  usePaymentReturn(setPayMsg, setActiveLetter, () => handleStartWizard("free"), (l) => setCorreioResume(l), () => setLiveOpen(true));
 
   useEffect(() => {
     void loadMe();
@@ -83,11 +86,11 @@ export default function App() {
     if (/^[a-z-]{2,30}$/.test(id)) setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }), 700);
   }, []);
 
-  const pay = async (letter: Letter | null, plan: PaidChoice | "upgrade" | "avulsa", code?: string) => {
+  const pay = async (letter: Letter | null, plan: PaidChoice | "upgrade" | "avulsa" | "ligacao", code?: string, childName?: string) => {
     // a compra fica na conta do responsável (e o e-mail dele recebe tudo)
     if ((await parentForCheckout()) === "cancel") return;
     setPayMsg({ kind: "wait", text: "Abrindo o pagamento seguro do Asaas..." });
-    const err = await startCheckout(letter?.id ?? null, plan, code);
+    const err = await startCheckout(letter?.id ?? null, plan, code, childName);
     if (err) setPayMsg({ kind: "error", text: err });
   };
 
@@ -177,6 +180,8 @@ export default function App() {
         <BlackFridayBanner onPlans={() => handleScrollTo("precos")} onCorreio={() => setCorreioOpen(true)} />
 
         {/* Correio do Polo Norte: a criança escreve, o Papai Noel responde */}
+        <SantaLiveSection onStart={() => setLiveOpen(true)} />
+
         <CorreioSection onStart={() => setCorreioOpen(true)} />
 
         {/* Como funciona: 3 passos */}
@@ -247,6 +252,18 @@ export default function App() {
       )}
 
       <AnimatePresence>
+        {liveOpen && (
+          <SantaCall
+            key="aovivo"
+            onClose={() => setLiveOpen(false)}
+            onUpgrade={() => setChooseFor("nova")}
+            onBuyCall={(childName) => void pay(null, "ligacao", undefined, childName)}
+            onMakeLetter={() => {
+              setLiveOpen(false);
+              handleStartWizard("free");
+            }}
+          />
+        )}
         {(correioOpen || correioResume) && (
           <CorreioFlow
             key={correioResume?.token ?? "novo"}

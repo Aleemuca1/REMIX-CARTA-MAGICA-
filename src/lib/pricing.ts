@@ -16,14 +16,17 @@ export const NORMAL: Record<PricedPlan, number> = { natal: 14.9, familia: 25.9, 
 export const PROMO_PRICE: Record<"natal" | "familia", number> = { natal: 11.9, familia: 19.9 };
 /** Resposta Mágica avulsa (até 2 cartinhas do Correio): de R$ 9,90 por R$ 5,90. O Asaas não cobra menos de R$ 5,00. */
 export const AVULSA = 5.9;
+/** Ligação do Papai Noel (Papai Noel Ao Vivo): 1 chamada de 2 minutos */
+export const LIGACAO = 5.9;
 /** quantas cartinhas a Resposta Mágica cobre */
 export const AVULSA_CARTAS = 2;
 
 export const promoActive = (now = Date.now()) => now < Date.parse(PROMO.until);
 
 /** quanto o Asaas cobra agora por cada plano */
-export function planPrice(plan: PricedPlan | "upgrade", now = Date.now()): number {
+export function planPrice(plan: PricedPlan | "upgrade" | "ligacao", now = Date.now()): number {
   if (plan === "pro") return AVULSA;
+  if (plan === "ligacao") return LIGACAO;
   const on = promoActive(now);
   const p = (k: "natal" | "familia") => (on ? PROMO_PRICE[k] : NORMAL[k]);
   // troca Carta Completa -> Pacote Família: paga só a diferença
